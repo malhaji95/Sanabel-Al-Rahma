@@ -46,6 +46,10 @@ class DonationService
      */
     public function verify(Donation $donation, int $verifierId): Donation
     {
+        // Money paths always act on database truth, never on whatever a caller
+        // left dirty on the in-memory model.
+        $donation->refresh();
+
         if ($donation->status !== 'pending') {
             throw new \RuntimeException('Only a pending donation can be verified.');
         }
@@ -73,6 +77,8 @@ class DonationService
 
     public function reject(Donation $donation, int $verifierId, string $reason): Donation
     {
+        $donation->refresh();
+
         if ($donation->status !== 'pending') {
             throw new \RuntimeException('Only a pending donation can be rejected.');
         }
@@ -101,6 +107,8 @@ class DonationService
      */
     public function reverse(Donation $donation, int $actorId, string $reason): Donation
     {
+        $donation->refresh();
+
         if (! $donation->isVerified()) {
             throw new \RuntimeException('Only a verified donation can be reversed.');
         }
