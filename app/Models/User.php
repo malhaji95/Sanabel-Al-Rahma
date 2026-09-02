@@ -18,9 +18,13 @@ class User extends Authenticatable implements FilamentUser
 
     protected $fillable = [
         'name', 'email', 'password', 'role_id', 'region_id', 'association_id', 'phone_encrypted', 'is_active',
+        'two_factor_secret', 'two_factor_confirmed_at',
     ];
 
-    protected $hidden = ['password', 'remember_token', 'phone_encrypted'];
+    protected $hidden = ['password', 'remember_token', 'phone_encrypted', 'two_factor_secret'];
+
+    /** Roles that must pass a second factor before reaching a panel (T-38). */
+    public const TWO_FACTOR_ROLES = ['admin', 'council'];
 
     protected function casts(): array
     {
@@ -28,6 +32,8 @@ class User extends Authenticatable implements FilamentUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'phone_encrypted' => 'encrypted',
+            'two_factor_secret' => 'encrypted',
+            'two_factor_confirmed_at' => 'datetime',
             'is_active' => 'boolean',
         ];
     }
@@ -71,6 +77,16 @@ class User extends Authenticatable implements FilamentUser
     public function can_(string $permissionKey): bool
     {
         return app(\App\Services\PermissionService::class)->has($this, $permissionKey);
+    }
+
+    public function requiresTwoFactor(): bool
+    {
+        return in_array($this->role?->key, self::TWO_FACTOR_ROLES, true);
+    }
+
+    public function hasConfirmedTwoFactor(): bool
+    {
+        return $this->two_factor_secret !== null && $this->two_factor_confirmed_at !== null;
     }
 
     public function canAccessPanel(Panel $panel): bool

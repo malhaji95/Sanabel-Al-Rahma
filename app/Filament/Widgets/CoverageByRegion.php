@@ -11,6 +11,8 @@ use Filament\Widgets\TableWidget as BaseWidget;
 /** Coverage per region, so an admin can see where the money is not reaching. */
 class CoverageByRegion extends BaseWidget
 {
+    protected static ?int $sort = 2;
+
     protected int|string|array $columnSpan = 'full';
 
     public function getTableHeading(): string

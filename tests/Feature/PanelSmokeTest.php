@@ -19,6 +19,9 @@ beforeEach(function () {
     seedCore();
     (new RegionSeeder)->run();
     $this->region = regionWithRates();
+
+    // The 2FA gate is SecurityTest's subject; here it is a precondition.
+    passTwoFactor();
 });
 
 it('loads every admin resource list page', function (string $resource) {

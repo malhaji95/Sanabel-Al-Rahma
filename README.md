@@ -1,66 +1,122 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# سنابل الرحمة — Sanabel Al-Rahma
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Phase 1 of the Sanabel Al-Rahma platform, built to the spec in [`docs/`](docs/).
+By **Takteek Agency**.
 
-## About Laravel
+The whole journey works end to end:
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+> register family → field visit → assess → approve → publish (masked) →
+> donor gives → payment verified → coverage updates → delivery proved → case closed
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Stack
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- Laravel 11 (PHP 8.3+) · PostgreSQL · Redis queues
+- Filament v3 for the internal panels — admin, association, provider
+- Donor portal and public site: Blade + Livewire + Tailwind, Arabic and RTL
+- Delegate field app: a PWA route on the same app, IndexedDB for offline
+- Media: S3-compatible private bucket, signed URLs only
+- Tests: Pest
 
-## Learning Laravel
+## Getting started
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+```bash
+composer install && npm install
+cp .env.example .env && php artisan key:generate
+# point DB_* at a PostgreSQL database, then:
+php artisan migrate --seed
+npm run build          # or: npm run dev
+php artisan serve
+```
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+Demo and training data (synthetic families only — rule 11):
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+```bash
+php artisan migrate:fresh
+php artisan db:seed --class=SyntheticDataSeeder
+```
 
-## Laravel Sponsors
+Demo accounts, all with the password from `SEED_DEMO_PASSWORD` (default
+`password`): `admin@`, `officer@`, `supervisor@`, `delegate@`, `association@`,
+`council@`, `provider@`, `donor@` — each `@sanabel.local`.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+`admin` and `council` are asked to enrol a second factor on first login.
 
-### Premium Partners
+## Where things are
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+| Path | What |
+|---|---|
+| `app/Services/NeedEngine.php` | MonthlyNeed, StableIncome, Gap, F |
+| `app/Services/ScoreService.php` | M/V/H/U/D/B, bands, overcrowding, rent burden |
+| `app/Services/RankingService.php` | Remaining, current score, waiting bonus |
+| `app/Services/BasketService.php` | reservation under `lockForUpdate` |
+| `app/Services/DonationService.php` | record, verify, reject, reversal, allocation split |
+| `app/Http/Resources/MaskedCaseResource.php` | the only thing a donor ever receives |
+| `app/Filament/` | admin, association and provider panels |
+| `app/Livewire/` | donor portal |
+| `resources/js/field.js` | the offline queue in the delegate PWA |
+| `lang/ar/` | every user-facing string |
+| `docs/api.md` | the API contract |
+| `docs/deployment.md` | deploying, backups, the restore test |
+| `docs/erd.md` | the schema, generated from the live database |
 
-## Contributing
+## The seven rules that are never simplified
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Each is implemented and each has a test.
 
-## Code of Conduct
+| # | Rule | Where |
+|---|---|---|
+| 1 | `transaction_ref` unique in the database | unique index on `donations`; `DuplicateTransactionRef` turns it into an Arabic message |
+| 2 | Donors never see names, IDs, phones, addresses | `MaskedCaseResource`, with one leak test per donor route |
+| 3 | Nothing is hard-deleted | `SoftDeletes` everywhere; every policy returns false for `forceDelete` |
+| 4 | Every write to a case or money is logged | `Auditable` trait → append-only `audit_log`, with PII redacted |
+| 5 | A verified payment is never edited | `Donation::booted()` refuses it; corrections create a linked reversal |
+| 6 | Reservations happen inside a DB transaction | `BasketService::reserve()` with `lockForUpdate` |
+| 7 | Every assessment stores a snapshot | `snapshot_json` holds the rates, rents, weights and versions used |
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Commands
 
-## Security Vulnerabilities
+```bash
+php artisan test                          # the suite
+php artisan schedule:work                 # basket expiry, reminders, reassessment flags
+php artisan sanabel:release-expired-baskets
+php artisan sanabel:sponsorship-cycle
+php artisan sanabel:flag-reassessments
+php artisan sanabel:send-notifications
+BACKUP_PASSPHRASE=... scripts/verify-restore.sh   # the restore test
+php scripts/basket-race-check.php 10              # two-process reservation race
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Tests
 
-## License
+`docs/06-tests.md` lists the tests that matter; all of them are written and
+green. Coverage beyond that list is deliberately not chased.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```
+tests/Feature/EngineTest.php                 need engine + snapshot immutability
+tests/Feature/ScoreTest.php                  score factors, bands, overrides
+tests/Feature/RankingTest.php                remaining, waiting bonus, exclusion
+tests/Feature/MoneyTest.php                  duplicate ref, verify-only coverage, reversal, funds
+tests/Feature/BasketTest.php                 reservation, row lock, expiry, split
+tests/Feature/SponsorshipTest.php            installments, lapse, reminders
+tests/Feature/PrivacyTest.php                one leak test per donor route
+tests/Feature/PermissionsTest.php            council write-denial per route, scoping
+tests/Feature/OfflineSyncTest.php            offline entry, double sync, conflict
+tests/Feature/ClosureAndDistributionTest.php closure proof, frozen list, partial
+tests/Feature/OtherRulesTest.php             campaigns, referrals, complaints, merge, audit
+tests/Feature/SecurityTest.php               TOTP vectors, 2FA gate, rate limit, media
+tests/Feature/PanelSmokeTest.php             every panel screen mounts
+tests/Feature/PortalSmokeTest.php            public site, donor flow, field app
+```
+
+## Language
+
+Spec, code, identifiers and comments are English. Everything a user sees is
+Arabic and right-to-left, from `lang/ar` — a hardcoded user-facing string is a bug.
+
+## Before go-live
+
+`docs/07-decisions.md` lists what is still with the client. The one that blocks
+correctness is item 1: **the real living and rent reference values per region**.
+Until they are loaded, `ReferenceValueSeeder` writes placeholders and every
+computed need is wrong. Load them through
+**Reference data → living reference values → import**.

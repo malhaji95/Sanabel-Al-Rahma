@@ -74,3 +74,13 @@ function publishedCase(App\Models\Region $region, int $adults = 2, int $children
 
     return $beneficiary->refresh();
 }
+
+/**
+ * Clears the second-factor gate for the current test. admin and council cannot
+ * reach a panel without it (T-38); SecurityTest covers the gate itself, so
+ * panel tests declare that it has already been passed.
+ */
+function passTwoFactor(): void
+{
+    session([App\Http\Middleware\RequireTwoFactor::SESSION_KEY => now()->toIso8601String()]);
+}

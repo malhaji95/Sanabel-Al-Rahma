@@ -33,12 +33,17 @@
                 <dt class="text-slate-500">{{ __('sanabel.public.family_size') }}</dt>
                 <dd>{{ $case['family_size'] }}</dd>
             </div>
-            <div>
+            <div class="col-span-2">
                 <dt class="text-slate-500">{{ __('sanabel.public.composition') }}</dt>
-                <dd class="text-xs">
-                    {{ __('sanabel.masked.age_band.child') }} {{ $case['age_bands']['child'] }} ·
-                    {{ __('sanabel.masked.age_band.adult') }} {{ $case['age_bands']['adult'] }} ·
-                    {{ __('sanabel.masked.age_band.elderly') }} {{ $case['age_bands']['elderly'] }}
+                {{-- Each band stays on one line: a bare digit next to Arabic text
+                     breaks badly across a line in a bidirectional layout. --}}
+                <dd class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                    @foreach (['child', 'adult', 'elderly'] as $band)
+                        <span class="whitespace-nowrap">
+                            {{ __('sanabel.masked.age_band.' . $band) }}
+                            <span class="font-medium">{{ $case['age_bands'][$band] }}</span>
+                        </span>
+                    @endforeach
                 </dd>
             </div>
             <div>

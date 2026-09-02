@@ -12,6 +12,8 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 /** T-35 — the weekly view without a manual export. */
 class OverviewStats extends BaseWidget
 {
+    protected static ?int $sort = 1;
+
     protected function getStats(): array
     {
         $targetHours = (int) Setting::value(

@@ -9,6 +9,7 @@ use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationGroup;
 use Filament\Pages;
+use App\Filament\Support\InitialsAvatarProvider;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -35,6 +36,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandName(__('sanabel.app_name'))
             ->colors(['primary' => Color::Emerald])
             ->font('Tajawal')
+            ->defaultAvatarProvider(InitialsAvatarProvider::class)
             ->defaultThemeMode(ThemeMode::Light)
             ->navigationGroups([
                 NavigationGroup::make(__('sanabel.nav.beneficiaries')),
@@ -49,6 +51,11 @@ class AdminPanelProvider extends PanelProvider
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([Pages\Dashboard::class])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
+            // The numbers first, then the detail behind them.
+            ->widgets([
+                \App\Filament\Widgets\OverviewStats::class,
+                \App\Filament\Widgets\CoverageByRegion::class,
+            ])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -60,6 +67,9 @@ class AdminPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
-            ->authMiddleware([Authenticate::class]);
+            ->authMiddleware([
+                Authenticate::class,
+                \App\Http\Middleware\RequireTwoFactor::class,
+            ]);
     }
 }
