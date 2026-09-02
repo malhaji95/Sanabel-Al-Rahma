@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\Beneficiary;
 use App\Services\CoverageService;
 use App\Services\RankingService;
+use App\Services\ScoreService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -78,7 +79,7 @@ class MaskedCaseResource extends JsonResource
     /** A label, never the raw score. */
     private function urgencyLabel(Beneficiary $case): string
     {
-        $band = \App\Services\ScoreService::urgencyBand($case->urgency_deadline_at);
+        $band = ScoreService::urgencyBand($case->urgency_deadline_at);
 
         return __('sanabel.masked.urgency.'.match (true) {
             $band >= 100 => 'critical',

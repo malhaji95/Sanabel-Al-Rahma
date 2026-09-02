@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ReferralResource\Pages;
 use App\Models\Referral;
+use App\Models\Setting;
 use App\Services\ReferralService;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -47,7 +48,7 @@ class ReferralResource extends Resource
 
             Forms\Components\DateTimePicker::make('expires_at')
                 ->label(__('sanabel.referral.expires_at'))
-                ->default(fn () => now()->addDays((int) \App\Models\Setting::value(
+                ->default(fn () => now()->addDays((int) Setting::value(
                     'referral_validity_days',
                     config('sanabel.setting_defaults.referral_validity_days')
                 )))

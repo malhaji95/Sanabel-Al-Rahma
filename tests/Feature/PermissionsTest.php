@@ -4,9 +4,10 @@ use App\Http\Resources\CoordinationLookupResource;
 use App\Http\Resources\ReferralCardResource;
 use App\Models\Beneficiary;
 use App\Models\Donation;
-use App\Models\Donor;
+use App\Models\JobProfile;
 use App\Models\Provider;
 use App\Models\Referral;
+use App\Models\Region;
 use App\Services\CaseService;
 use App\Services\PermissionService;
 
@@ -19,7 +20,7 @@ it('rejects council on every write route', function (string $method, string $rou
     $council = userWithRole('council');
     $case = publishedCase($this->region);
     $donation = Donation::factory()->create();
-    $profile = App\Models\JobProfile::factory()->create([
+    $profile = JobProfile::factory()->create([
         'beneficiary_id' => $case->id,
         'region_id' => $case->region_id,
         'status' => 'published',
@@ -173,8 +174,8 @@ it('stops the creator from being the final approver', function () {
 });
 
 it('scopes a delegate to their own region subtree', function () {
-    $area = App\Models\Region::factory()->create(['parent_id' => $this->region->id]);
-    $otherArea = App\Models\Region::factory()->create(['parent_id' => $this->region->id]);
+    $area = Region::factory()->create(['parent_id' => $this->region->id]);
+    $otherArea = Region::factory()->create(['parent_id' => $this->region->id]);
 
     $delegate = userWithRole('delegate', ['region_id' => $area->id]);
 

@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\HouseholdMember;
+use App\Models\HealthRecord;
 use App\Services\AssessmentService;
 use App\Services\DependencyRules;
 use App\Services\ScoreService;
@@ -84,12 +84,12 @@ it('computes the health factor from the worst band and the summed medical cost',
     $region = regionWithRates();
     $family = familyOf($region, adults: 2, children: 3); // need 16,000
 
-    App\Models\HealthRecord::factory()->create([
+    HealthRecord::factory()->create([
         'beneficiary_id' => $family->id,
         'severity_band' => 100, 'economic_impact_band' => 50,
         'care_burden_band' => 0, 'monthly_medical_cost' => 1_600,
     ]);
-    App\Models\HealthRecord::factory()->create([
+    HealthRecord::factory()->create([
         'beneficiary_id' => $family->id,
         'severity_band' => 25, 'economic_impact_band' => 75,
         'care_burden_band' => 100, 'monthly_medical_cost' => 1_600,
@@ -104,12 +104,12 @@ it('computes the health factor from the worst band and the summed medical cost',
 it('bands urgency by the distance to the deadline', function () {
     $now = now();
 
-    expect(App\Services\ScoreService::urgencyBand(null, $now))->toBe(0)
-        ->and(App\Services\ScoreService::urgencyBand($now->copy()->addHours(24), $now))->toBe(100)
-        ->and(App\Services\ScoreService::urgencyBand($now->copy()->addDays(5), $now))->toBe(75)
-        ->and(App\Services\ScoreService::urgencyBand($now->copy()->addDays(20), $now))->toBe(50)
-        ->and(App\Services\ScoreService::urgencyBand($now->copy()->addDays(60), $now))->toBe(25)
-        ->and(App\Services\ScoreService::urgencyBand($now->copy()->addDays(200), $now))->toBe(0);
+    expect(ScoreService::urgencyBand(null, $now))->toBe(0)
+        ->and(ScoreService::urgencyBand($now->copy()->addHours(24), $now))->toBe(100)
+        ->and(ScoreService::urgencyBand($now->copy()->addDays(5), $now))->toBe(75)
+        ->and(ScoreService::urgencyBand($now->copy()->addDays(20), $now))->toBe(50)
+        ->and(ScoreService::urgencyBand($now->copy()->addDays(60), $now))->toBe(25)
+        ->and(ScoreService::urgencyBand($now->copy()->addDays(200), $now))->toBe(0);
 });
 
 it('weights the base score exactly as docs/03-rules.md states', function () {

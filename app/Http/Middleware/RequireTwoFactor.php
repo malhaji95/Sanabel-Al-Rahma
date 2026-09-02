@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Filament\Pages\TwoFactor;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -31,6 +32,6 @@ class RequireTwoFactor
             return $next($request);
         }
 
-        return redirect()->to(\App\Filament\Pages\TwoFactor::getUrl(panel: filament()->getCurrentPanel()?->getId()));
+        return redirect()->to(TwoFactor::getUrl(panel: filament()->getCurrentPanel()?->getId()));
     }
 }

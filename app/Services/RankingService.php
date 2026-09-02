@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Beneficiary;
+use App\Models\Region;
 use Illuminate\Support\Collection;
 
 /**
@@ -70,7 +71,7 @@ class RankingService
             ->with(['assessments', 'region']);
 
         if ($regionId) {
-            $query->whereIn('region_id', \App\Models\Region::descendantIds($regionId));
+            $query->whereIn('region_id', Region::descendantIds($regionId));
         }
 
         return $query->get()

@@ -2,14 +2,18 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Support\InitialsAvatarProvider;
+use App\Filament\Widgets\CoverageByRegion;
+use App\Filament\Widgets\OverviewStats;
+use App\Http\Middleware\RequireTwoFactor;
 use Filament\Enums\ThemeMode;
+use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationGroup;
 use Filament\Pages;
-use App\Filament\Support\InitialsAvatarProvider;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -34,10 +38,22 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             ->brandName(__('sanabel.app_name'))
-            ->colors(['primary' => Color::Emerald])
-            ->font('Tajawal')
+            // The name-only version: a panel top bar is not room for the full lockup.
+            ->brandLogo(config('brand.logo.wordmark'))
+            ->brandLogoHeight('1.75rem')
+            ->favicon(config('brand.icons.favicon'))
+            ->colors([
+                'primary' => Color::hex(config('brand.colors.primary')),
+                'warning' => Color::hex(config('brand.colors.gold')),
+            ])
+            // Self-hosted, so the panels do not depend on an outside font host.
+            ->font(
+                config('brand.font.family'),
+                url: asset('fonts/ibm-plex-sans-arabic.css'),
+                provider: LocalFontProvider::class,
+            )
             ->defaultAvatarProvider(InitialsAvatarProvider::class)
-            ->defaultThemeMode(ThemeMode::Light)
+            ->defaultThemeMode(ThemeMode::System)
             ->navigationGroups([
                 NavigationGroup::make(__('sanabel.nav.beneficiaries')),
                 NavigationGroup::make(__('sanabel.nav.assessment')),
@@ -53,8 +69,8 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             // The numbers first, then the detail behind them.
             ->widgets([
-                \App\Filament\Widgets\OverviewStats::class,
-                \App\Filament\Widgets\CoverageByRegion::class,
+                OverviewStats::class,
+                CoverageByRegion::class,
             ])
             ->middleware([
                 EncryptCookies::class,
@@ -69,7 +85,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-                \App\Http\Middleware\RequireTwoFactor::class,
+                RequireTwoFactor::class,
             ]);
     }
 }

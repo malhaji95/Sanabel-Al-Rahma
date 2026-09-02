@@ -2,8 +2,8 @@
 
 namespace App\Policies;
 
-use App\Models\Visit;
 use App\Models\User;
+use App\Models\Visit;
 use App\Policies\Concerns\DeniesReadOnlyRoles;
 
 class VisitPolicy

@@ -1,10 +1,13 @@
 <?php
 
 use App\Models\Assessment;
+use App\Models\Beneficiary;
+use App\Models\HealthRecord;
 use App\Models\HouseholdMember;
 use App\Models\Housing;
 use App\Models\Income;
 use App\Models\RegionRate;
+use App\Models\Visit;
 use App\Services\AssessmentService;
 use App\Services\NeedEngine;
 
@@ -106,12 +109,12 @@ it('accepts no score factor as an input anywhere', function () {
     $forbidden = ['m', 'h', 'd', 'b', 'base_score', 'M', 'H', 'D', 'B'];
 
     $writable = array_merge(
-        (new App\Models\Beneficiary)->getFillable(),
+        (new Beneficiary)->getFillable(),
         (new HouseholdMember)->getFillable(),
         (new Housing)->getFillable(),
         (new Income)->getFillable(),
-        (new App\Models\HealthRecord)->getFillable(),
-        (new App\Models\Visit)->getFillable(),
+        (new HealthRecord)->getFillable(),
+        (new Visit)->getFillable(),
     );
 
     expect(array_intersect($forbidden, $writable))->toBeEmpty();

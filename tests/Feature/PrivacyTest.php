@@ -4,9 +4,11 @@ use App\Http\Resources\MaskedCaseResource;
 use App\Models\Beneficiary;
 use App\Models\Campaign;
 use App\Models\Donor;
+use App\Models\HealthRecord;
 use App\Models\HouseholdMember;
 use App\Models\JobProfile;
-use App\Services\BasketService;
+use App\Models\Region;
+use App\Models\User;
 use App\Services\DonationService;
 
 beforeEach(function () {
@@ -44,7 +46,7 @@ function assertNoLeak(string $body, Beneficiary $case): void
     }
 }
 
-function donorUser(): App\Models\User
+function donorUser(): User
 {
     $user = userWithRole('donor');
     Donor::factory()->create(['user_id' => $user->id]);
@@ -53,7 +55,7 @@ function donorUser(): App\Models\User
 }
 
 /** A case with every identifying field populated, so a leak has something to leak. */
-function fullCase(App\Models\Region $region): Beneficiary
+function fullCase(Region $region): Beneficiary
 {
     $case = publishedCase($region);
     $case->update([
@@ -66,7 +68,7 @@ function fullCase(App\Models\Region $region): Beneficiary
         'landlord_name_ar' => 'أبو المالك الخاص',
         'landlord_phone_encrypted' => '0999888777',
     ]);
-    App\Models\HealthRecord::factory()->create([
+    HealthRecord::factory()->create([
         'beneficiary_id' => $case->id,
         'description_ar' => 'تشخيص سري للغاية',
         'severity_band' => 75,

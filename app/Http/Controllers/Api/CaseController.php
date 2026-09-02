@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Beneficiary;
 use App\Services\CaseService;
+use App\Services\DuplicateService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -52,7 +53,7 @@ class CaseController extends Controller
             'phone' => ['nullable', 'string', 'max:32'],
         ]);
 
-        app(\App\Services\DuplicateService::class)->guardAgainstDuplicate($validated['national_id']);
+        app(DuplicateService::class)->guardAgainstDuplicate($validated['national_id']);
 
         $case = Beneficiary::create([
             'file_number' => 'F-'.now()->format('y').'-'.str_pad((string) (Beneficiary::withoutGlobalScopes()->max('id') + 1), 6, '0', STR_PAD_LEFT),
@@ -68,7 +69,7 @@ class CaseController extends Controller
             'source' => $request->user()->hasRole('association') ? 'association' : 'delegate',
         ]);
 
-        app(\App\Services\DuplicateService::class)->flagIfSuspicious($case);
+        app(DuplicateService::class)->flagIfSuspicious($case);
 
         return response()->json(['id' => $case->id, 'file_number' => $case->file_number], 201);
     }

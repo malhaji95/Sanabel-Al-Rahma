@@ -5,10 +5,13 @@ use App\Models\Beneficiary;
 use App\Models\Campaign;
 use App\Models\Complaint;
 use App\Models\Donation;
+use App\Models\DonationAllocation;
+use App\Models\Donor;
 use App\Models\JobProfile;
 use App\Models\Provider;
 use App\Models\Referral;
 use App\Services\CaseService;
+use App\Services\CoverageService;
 use App\Services\DuplicateService;
 use App\Services\ReferralService;
 
@@ -92,7 +95,7 @@ it('hides a job profile when a case approval is revoked', function () {
     expect($case->fresh()->jobProfile->status)->toBe('hidden');
 
     $visible = $this->actingAs(userWithRole('donor'), 'sanctum');
-    App\Models\Donor::factory()->create(['user_id' => auth()->id()]);
+    Donor::factory()->create(['user_id' => auth()->id()]);
 
     expect(JobProfile::where('status', 'published')->count())->toBe(0);
 });
@@ -125,7 +128,7 @@ it('blocks a second file for the same national ID and merges without deleting hi
     // A merge moves history across; nothing is deleted.
     $duplicate = publishedCase($this->region);
     $donation = Donation::factory()->create(['status' => 'verified', 'verified_at' => now()]);
-    App\Models\DonationAllocation::create([
+    DonationAllocation::create([
         'donation_id' => $donation->id,
         'beneficiary_id' => $duplicate->id,
         'amount' => 5_000,
@@ -192,7 +195,7 @@ it('flags an overdue reassessment without stopping existing support', function (
     $case->forceFill(['next_assessment_due_at' => now()->subDay()])->save();
 
     $donation = Donation::factory()->create(['status' => 'verified', 'verified_at' => now()]);
-    App\Models\DonationAllocation::create([
+    DonationAllocation::create([
         'donation_id' => $donation->id,
         'beneficiary_id' => $case->id,
         'amount' => 4_000,
@@ -202,5 +205,5 @@ it('flags an overdue reassessment without stopping existing support', function (
     expect(app(CaseService::class)->flagOverdueReassessments())->toBe(1)
         ->and($case->fresh()->status)->toBe('needs_reassessment')
         // Support already given is untouched.
-        ->and(app(App\Services\CoverageService::class)->confirmedSupport($case->fresh()))->toBe(4_000);
+        ->and(app(CoverageService::class)->confirmedSupport($case->fresh()))->toBe(4_000);
 });

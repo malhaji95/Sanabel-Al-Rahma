@@ -55,9 +55,12 @@ Demo accounts, all with the password from `SEED_DEMO_PASSWORD` (default
 | `app/Livewire/` | donor portal |
 | `resources/js/field.js` | the offline queue in the delegate PWA |
 | `lang/ar/` | every user-facing string |
+| `config/brand.php` | colours, logo variants, typeface — the one swap point |
+| `public/brand/` | logo variants and app icons |
 | `docs/api.md` | the API contract |
 | `docs/deployment.md` | deploying, backups, the restore test |
 | `docs/erd.md` | the schema, generated from the live database |
+| `docs/brand.md` | the visual identity: colours, typeface, logo use |
 
 ## The seven rules that are never simplified
 

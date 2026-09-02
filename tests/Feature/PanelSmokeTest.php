@@ -1,12 +1,39 @@
 <?php
 
+use App\Filament\Association\Pages\CoordinationLookup;
+use App\Filament\Association\Resources\CaseResource;
+use App\Filament\Pages\ManageSettings;
+use App\Filament\Provider\Pages\VerifyCard;
+use App\Filament\Provider\Resources\OfferResource;
+use App\Filament\Resources\AdjustmentCatalogResource;
+use App\Filament\Resources\BannerResource;
+use App\Filament\Resources\BeneficiaryResource;
+use App\Filament\Resources\CampaignResource;
+use App\Filament\Resources\ChangeRequestResource;
+use App\Filament\Resources\ComplaintResource;
+use App\Filament\Resources\DistributionResource;
+use App\Filament\Resources\DonationResource;
+use App\Filament\Resources\JobProfileResource;
+use App\Filament\Resources\MemberResource;
+use App\Filament\Resources\PageResource;
+use App\Filament\Resources\PostResource;
+use App\Filament\Resources\ProviderResource;
+use App\Filament\Resources\ReferralResource;
+use App\Filament\Resources\RegionRateResource;
+use App\Filament\Resources\RegionRentReferenceResource;
+use App\Filament\Resources\RegionResource;
+use App\Filament\Resources\ScoringWeightResource;
+use App\Filament\Resources\SponsorshipResource;
+use App\Filament\Resources\UserResource;
+use App\Filament\Widgets\CoverageByRegion;
+use App\Filament\Widgets\OverviewStats;
 use App\Models\Campaign;
 use App\Models\Complaint;
 use App\Models\Distribution;
 use App\Models\Donation;
-use App\Models\Donor;
 use App\Models\Provider;
 use App\Models\Referral;
+use App\Models\Setting;
 use Database\Seeders\RegionSeeder;
 use Filament\Facades\Filament;
 
@@ -31,26 +58,26 @@ it('loads every admin resource list page', function (string $resource) {
         ->get($resource::getUrl('index'))
         ->assertSuccessful();
 })->with([
-    App\Filament\Resources\BeneficiaryResource::class,
-    App\Filament\Resources\DonationResource::class,
-    App\Filament\Resources\CampaignResource::class,
-    App\Filament\Resources\SponsorshipResource::class,
-    App\Filament\Resources\DistributionResource::class,
-    App\Filament\Resources\ChangeRequestResource::class,
-    App\Filament\Resources\MemberResource::class,
-    App\Filament\Resources\ProviderResource::class,
-    App\Filament\Resources\ReferralResource::class,
-    App\Filament\Resources\JobProfileResource::class,
-    App\Filament\Resources\ComplaintResource::class,
-    App\Filament\Resources\RegionResource::class,
-    App\Filament\Resources\RegionRateResource::class,
-    App\Filament\Resources\RegionRentReferenceResource::class,
-    App\Filament\Resources\AdjustmentCatalogResource::class,
-    App\Filament\Resources\ScoringWeightResource::class,
-    App\Filament\Resources\PageResource::class,
-    App\Filament\Resources\PostResource::class,
-    App\Filament\Resources\BannerResource::class,
-    App\Filament\Resources\UserResource::class,
+    BeneficiaryResource::class,
+    DonationResource::class,
+    CampaignResource::class,
+    SponsorshipResource::class,
+    DistributionResource::class,
+    ChangeRequestResource::class,
+    MemberResource::class,
+    ProviderResource::class,
+    ReferralResource::class,
+    JobProfileResource::class,
+    ComplaintResource::class,
+    RegionResource::class,
+    RegionRateResource::class,
+    RegionRentReferenceResource::class,
+    AdjustmentCatalogResource::class,
+    ScoringWeightResource::class,
+    PageResource::class,
+    PostResource::class,
+    BannerResource::class,
+    UserResource::class,
 ]);
 
 it('loads every admin resource create page', function (string $resource) {
@@ -60,16 +87,16 @@ it('loads every admin resource create page', function (string $resource) {
         ->get($resource::getUrl('create'))
         ->assertSuccessful();
 })->with([
-    App\Filament\Resources\BeneficiaryResource::class,
-    App\Filament\Resources\DonationResource::class,
-    App\Filament\Resources\CampaignResource::class,
-    App\Filament\Resources\SponsorshipResource::class,
-    App\Filament\Resources\DistributionResource::class,
-    App\Filament\Resources\ProviderResource::class,
-    App\Filament\Resources\ReferralResource::class,
-    App\Filament\Resources\ComplaintResource::class,
-    App\Filament\Resources\RegionRateResource::class,
-    App\Filament\Resources\UserResource::class,
+    BeneficiaryResource::class,
+    DonationResource::class,
+    CampaignResource::class,
+    SponsorshipResource::class,
+    DistributionResource::class,
+    ProviderResource::class,
+    ReferralResource::class,
+    ComplaintResource::class,
+    RegionRateResource::class,
+    UserResource::class,
 ]);
 
 it('loads the admin dashboard with its widgets', function () {
@@ -83,11 +110,11 @@ it('loads the admin dashboard with its widgets', function () {
         ->assertSuccessful();
 
     Livewire\Livewire::actingAs(userWithRole('admin'))
-        ->test(App\Filament\Widgets\OverviewStats::class)
+        ->test(OverviewStats::class)
         ->assertSuccessful();
 
     Livewire\Livewire::actingAs(userWithRole('admin'))
-        ->test(App\Filament\Widgets\CoverageByRegion::class)
+        ->test(CoverageByRegion::class)
         ->assertSuccessful();
 });
 
@@ -95,12 +122,12 @@ it('loads the settings page and saves a value', function () {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
 
     Livewire\Livewire::actingAs(userWithRole('admin'))
-        ->test(App\Filament\Pages\ManageSettings::class)
+        ->test(ManageSettings::class)
         ->assertSuccessful()
         ->fillForm(['basket_hold_hours' => 12])
         ->call('save');
 
-    expect(App\Models\Setting::value('basket_hold_hours'))->toBe(12);
+    expect(Setting::value('basket_hold_hours'))->toBe(12);
 });
 
 it('keeps the settings page away from roles without edit_config', function () {
@@ -108,11 +135,11 @@ it('keeps the settings page away from roles without edit_config', function () {
 
     $this->actingAs(userWithRole('council'));
 
-    expect(App\Filament\Pages\ManageSettings::canAccess())->toBeFalse();
+    expect(ManageSettings::canAccess())->toBeFalse();
 
     $this->actingAs(userWithRole('admin'));
 
-    expect(App\Filament\Pages\ManageSettings::canAccess())->toBeTrue();
+    expect(ManageSettings::canAccess())->toBeTrue();
 });
 
 it('loads an edit page for each record-bearing resource', function () {
@@ -127,12 +154,12 @@ it('loads an edit page for each record-bearing resource', function () {
 
     $this->actingAs($admin);
 
-    $this->get(App\Filament\Resources\BeneficiaryResource::getUrl('edit', [$case]))->assertSuccessful();
-    $this->get(App\Filament\Resources\CampaignResource::getUrl('edit', [$campaign]))->assertSuccessful();
-    $this->get(App\Filament\Resources\DistributionResource::getUrl('edit', [$distribution]))->assertSuccessful();
-    $this->get(App\Filament\Resources\ComplaintResource::getUrl('edit', [$complaint]))->assertSuccessful();
+    $this->get(BeneficiaryResource::getUrl('edit', [$case]))->assertSuccessful();
+    $this->get(CampaignResource::getUrl('edit', [$campaign]))->assertSuccessful();
+    $this->get(DistributionResource::getUrl('edit', [$distribution]))->assertSuccessful();
+    $this->get(ComplaintResource::getUrl('edit', [$complaint]))->assertSuccessful();
     // A pending donation is still editable; a verified one is not.
-    $this->get(App\Filament\Resources\DonationResource::getUrl('edit', [$donation]))->assertSuccessful();
+    $this->get(DonationResource::getUrl('edit', [$donation]))->assertSuccessful();
 });
 
 it('loads the association panel and its coordination lookup', function () {
@@ -143,11 +170,11 @@ it('loads the association panel and its coordination lookup', function () {
     $case->forceFill(['created_by' => $association->id])->save();
 
     $this->actingAs($association)
-        ->get(App\Filament\Association\Resources\CaseResource::getUrl('index'))
+        ->get(CaseResource::getUrl('index'))
         ->assertSuccessful();
 
     Livewire\Livewire::actingAs($association)
-        ->test(App\Filament\Association\Pages\CoordinationLookup::class)
+        ->test(CoordinationLookup::class)
         ->assertSuccessful()
         ->fillForm(['national_id' => $case->national_id_encrypted])
         ->call('lookup')
@@ -166,11 +193,11 @@ it('loads the provider panel and verifies a card through it', function () {
     ]);
 
     $this->actingAs($user)
-        ->get(App\Filament\Provider\Resources\OfferResource::getUrl('index'))
+        ->get(OfferResource::getUrl('index'))
         ->assertSuccessful();
 
     Livewire\Livewire::actingAs($user)
-        ->test(App\Filament\Provider\Pages\VerifyCard::class)
+        ->test(VerifyCard::class)
         ->assertSuccessful()
         ->fillForm(['code' => $referral->code])
         ->call('verify')

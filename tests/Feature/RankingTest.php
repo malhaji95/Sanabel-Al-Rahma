@@ -1,7 +1,9 @@
 <?php
 
+use App\Models\Beneficiary;
 use App\Models\Donation;
 use App\Models\DonationAllocation;
+use App\Models\Region;
 use App\Services\AssessmentService;
 use App\Services\RankingService;
 
@@ -10,7 +12,7 @@ beforeEach(function () {
 });
 
 /** Gives a family an approved assessment with an exact base score and need. */
-function caseScoring(App\Models\Region $region, float $score, int $need, array $attributes = []): App\Models\Beneficiary
+function caseScoring(Region $region, float $score, int $need, array $attributes = []): Beneficiary
 {
     $family = familyOf($region, adults: 2, children: 3, attributes: array_merge([
         'status' => 'published',
@@ -30,7 +32,7 @@ function caseScoring(App\Models\Region $region, float $score, int $need, array $
     return $family->refresh();
 }
 
-function fundWith(App\Models\Beneficiary $family, int $amount, string $status = 'verified'): Donation
+function fundWith(Beneficiary $family, int $amount, string $status = 'verified'): Donation
 {
     $donation = Donation::factory()->create([
         'amount' => $amount,

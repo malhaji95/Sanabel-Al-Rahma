@@ -2,8 +2,17 @@
  | Caches the field app shell so a delegate can open the form with no network.
  | Visit data itself lives in IndexedDB, not here.
  */
-const CACHE = 'sanabel-field-v1'
-const SHELL = ['/field', '/field/manifest.webmanifest']
+const CACHE = 'sanabel-field-v2'
+const SHELL = [
+    '/field',
+    '/field/manifest.webmanifest',
+    // The identity assets the shell needs with no network.
+    '/brand/logo-symbol.png',
+    '/brand/icon-192.png',
+    '/fonts/ibm-plex-sans-arabic-arabic-400.woff2',
+    '/fonts/ibm-plex-sans-arabic-arabic-600.woff2',
+    '/fonts/ibm-plex-sans-arabic-arabic-700.woff2',
+]
 
 self.addEventListener('install', (event) => {
     event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()))

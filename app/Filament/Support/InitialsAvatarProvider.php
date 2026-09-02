@@ -3,6 +3,7 @@
 namespace App\Filament\Support;
 
 use Filament\AvatarProviders\Contracts\AvatarProvider;
+use Filament\Models\Contracts\HasAvatar;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
@@ -13,7 +14,7 @@ use Illuminate\Support\Str;
  */
 class InitialsAvatarProvider implements AvatarProvider
 {
-    public function get(Model|\Filament\Models\Contracts\HasAvatar $record): string
+    public function get(Model|HasAvatar $record): string
     {
         $name = trim((string) ($record->name ?? ''));
 

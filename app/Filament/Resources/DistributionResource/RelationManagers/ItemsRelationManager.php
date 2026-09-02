@@ -9,13 +9,14 @@ use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 /** Transfers are executed manually and confirmed one by one. */
 class ItemsRelationManager extends RelationManager
 {
     protected static string $relationship = 'items';
 
-    public static function getTitle(\Illuminate\Database\Eloquent\Model $ownerRecord, string $pageClass): string
+    public static function getTitle(Model $ownerRecord, string $pageClass): string
     {
         return __('sanabel.distribution.items');
     }

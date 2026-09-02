@@ -1,7 +1,9 @@
 <?php
 
+use App\Models\Beneficiary;
 use App\Models\Visit;
 use App\Services\VisitSyncService;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
@@ -10,7 +12,7 @@ beforeEach(function () {
 });
 
 /** One queued visit as the device would hold it in IndexedDB. */
-function queuedVisit(App\Models\Beneficiary $case, array $overrides = []): array
+function queuedVisit(Beneficiary $case, array $overrides = []): array
 {
     return array_merge([
         'client_uuid' => (string) Str::uuid(),
@@ -66,7 +68,7 @@ it('is protected by a unique index on client_uuid, not only by application code'
     expect(fn () => Visit::factory()->create([
         'beneficiary_id' => $case->id,
         'client_uuid' => $uuid,
-    ]))->toThrow(Illuminate\Database\QueryException::class);
+    ]))->toThrow(QueryException::class);
 });
 
 it('stores a new visit and flags a conflict when the server changed since the last sync', function () {

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AppNotification;
 use App\Models\Donor;
 use App\Models\Sponsorship;
 use App\Models\SponsorshipInstallment;
@@ -106,6 +107,6 @@ it('reminds the donor before the due date, once', function () {
 
     expect(app(SponsorshipService::class)->sendReminders())->toBe(1)
         ->and(app(SponsorshipService::class)->sendReminders())->toBe(0)
-        ->and(App\Models\AppNotification::where('template_key', 'sponsorship_due')->exists())->toBeTrue()
+        ->and(AppNotification::where('template_key', 'sponsorship_due')->exists())->toBeTrue()
         ->and(SponsorshipInstallment::whereNotNull('reminded_at')->count())->toBe(1);
 });

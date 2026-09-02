@@ -2,8 +2,19 @@
 
 namespace App\Services;
 
+use App\Models\Assessment;
+use App\Models\BasketItem;
 use App\Models\Beneficiary;
+use App\Models\Delivery;
+use App\Models\DistributionItem;
+use App\Models\DonationAllocation;
+use App\Models\HealthRecord;
+use App\Models\HouseholdMember;
+use App\Models\Income;
+use App\Models\Referral;
+use App\Models\Sponsorship;
 use App\Models\User;
+use App\Models\Visit;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -61,19 +72,19 @@ class DuplicateService
             throw new \RuntimeException('A file cannot be merged into itself.');
         }
 
-        return DB::transaction(function () use ($primary, $duplicate, $admin) {
+        return DB::transaction(function () use ($primary, $duplicate) {
             foreach ([
-                \App\Models\DonationAllocation::class,
-                \App\Models\BasketItem::class,
-                \App\Models\Delivery::class,
-                \App\Models\Sponsorship::class,
-                \App\Models\Visit::class,
-                \App\Models\Assessment::class,
-                \App\Models\HouseholdMember::class,
-                \App\Models\Income::class,
-                \App\Models\HealthRecord::class,
-                \App\Models\Referral::class,
-                \App\Models\DistributionItem::class,
+                DonationAllocation::class,
+                BasketItem::class,
+                Delivery::class,
+                Sponsorship::class,
+                Visit::class,
+                Assessment::class,
+                HouseholdMember::class,
+                Income::class,
+                HealthRecord::class,
+                Referral::class,
+                DistributionItem::class,
             ] as $model) {
                 $model::where('beneficiary_id', $duplicate->getKey())
                     ->update(['beneficiary_id' => $primary->getKey()]);

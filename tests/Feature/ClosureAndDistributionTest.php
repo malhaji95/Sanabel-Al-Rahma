@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\AppNotification;
+use App\Models\Delivery;
 use App\Models\Distribution;
 use App\Models\DistributionItem;
 use App\Services\CaseService;
@@ -18,7 +20,7 @@ it('cannot close a case without a delivery proof', function () {
         ->toThrow(RuntimeException::class, __('sanabel.cases.close_requires_proof'));
 
     // A delivery row with no proof is still not enough.
-    App\Models\Delivery::create([
+    Delivery::create([
         'beneficiary_id' => $case->id,
         'type' => 'cash',
         'confirmed_by' => $this->admin->id,
@@ -109,7 +111,7 @@ it('marks a distribution completed only when every item was executed', function 
     }
 
     expect($distribution->fresh()->status)->toBe('completed')
-        ->and(App\Models\AppNotification::where('template_key', 'distribution_executed')->count())
+        ->and(AppNotification::where('template_key', 'distribution_executed')->count())
         ->toBeGreaterThanOrEqual(2);
 });
 

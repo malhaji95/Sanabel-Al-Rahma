@@ -10,8 +10,11 @@ class Fund extends Model
     use HasFactory;
 
     public const OPERATIONAL = 'operational';
+
     public const RESTRICTED = 'restricted';
+
     public const ZAKAT = 'zakat';
+
     public const MEMBERSHIP = 'membership';
 
     protected $fillable = ['key', 'name_ar', 'can_fund_families'];

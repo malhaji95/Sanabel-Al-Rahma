@@ -1,8 +1,7 @@
 <?php
 
 use App\Exceptions\DuplicateTransactionRef;
-use App\Models\Basket;
-use App\Models\BasketItem;
+use App\Models\Delivery;
 use App\Models\Donation;
 use App\Models\DonationAllocation;
 use App\Models\Donor;
@@ -153,7 +152,7 @@ it('lets a family with no wallet receive help paid to a provider', function () {
     ]);
     app(DonationService::class)->verify($donation, userWithRole('admin')->id);
 
-    $delivery = App\Models\Delivery::create([
+    $delivery = Delivery::create([
         'beneficiary_id' => $family->id,
         'donation_id' => $donation->id,
         'type' => 'provider_invoice',

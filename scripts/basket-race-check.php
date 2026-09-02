@@ -23,7 +23,7 @@
 require __DIR__.'/../vendor/autoload.php';
 
 $app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app->make(Kernel::class)->bootstrap();
 
 use App\Exceptions\ReservationUnavailable;
 use App\Models\Basket;
@@ -32,6 +32,7 @@ use App\Models\Beneficiary;
 use App\Models\Donor;
 use App\Services\BasketService;
 use App\Services\CoverageService;
+use Illuminate\Contracts\Console\Kernel;
 
 // ---- child mode: one contender ------------------------------------------------
 

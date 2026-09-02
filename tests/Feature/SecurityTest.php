@@ -1,8 +1,14 @@
 <?php
 
+use App\Filament\Pages\TwoFactor;
+use App\Filament\Resources\BeneficiaryResource;
 use App\Http\Middleware\RequireTwoFactor;
+use App\Models\Media;
+use App\Services\MediaService;
 use App\Services\Totp;
 use Filament\Facades\Filament;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     seedCore();
@@ -49,8 +55,8 @@ it('sends an admin to the two-factor screen before any panel page', function () 
     $admin = userWithRole('admin');
 
     $this->actingAs($admin)
-        ->get(App\Filament\Resources\BeneficiaryResource::getUrl('index'))
-        ->assertRedirect(App\Filament\Pages\TwoFactor::getUrl(panel: 'admin'));
+        ->get(BeneficiaryResource::getUrl('index'))
+        ->assertRedirect(TwoFactor::getUrl(panel: 'admin'));
 });
 
 it('lets an admin enrol and then reach the panel', function () {
@@ -58,7 +64,7 @@ it('lets an admin enrol and then reach the panel', function () {
     $admin = userWithRole('admin');
 
     $page = Livewire\Livewire::actingAs($admin)
-        ->test(App\Filament\Pages\TwoFactor::class)
+        ->test(TwoFactor::class)
         ->assertSuccessful();
 
     $secret = $page->get('pendingSecret');
@@ -70,7 +76,7 @@ it('lets an admin enrol and then reach the panel', function () {
         ->and(session()->has(RequireTwoFactor::SESSION_KEY))->toBeTrue();
 
     $this->actingAs($admin)
-        ->get(App\Filament\Resources\BeneficiaryResource::getUrl('index'))
+        ->get(BeneficiaryResource::getUrl('index'))
         ->assertSuccessful();
 });
 
@@ -79,7 +85,7 @@ it('refuses a wrong code and does not store the secret', function () {
     $admin = userWithRole('admin');
 
     Livewire\Livewire::actingAs($admin)
-        ->test(App\Filament\Pages\TwoFactor::class)
+        ->test(TwoFactor::class)
         ->fillForm(['code' => '000000'])
         ->call('confirm');
 
@@ -97,7 +103,7 @@ it('requires two factor for council as well, but not for a delegate', function (
 
     // A delegate is never diverted.
     $this->actingAs(userWithRole('delegate', ['region_id' => $this->region->id]))
-        ->get(App\Filament\Resources\BeneficiaryResource::getUrl('index'))
+        ->get(BeneficiaryResource::getUrl('index'))
         ->assertSuccessful();
 });
 
@@ -133,13 +139,13 @@ it('never exposes a secret or a hash through a model', function () {
 });
 
 it('keeps media private with a signed, expiring URL', function () {
-    Illuminate\Support\Facades\Storage::fake('media_test');
+    Storage::fake('media_test');
 
     $case = publishedCase($this->region);
     $uploader = userWithRole('delegate', ['region_id' => $this->region->id]);
 
-    $media = app(App\Services\MediaService::class)->store(
-        Illuminate\Http\UploadedFile::fake()->image('receipt.jpg'),
+    $media = app(MediaService::class)->store(
+        UploadedFile::fake()->image('receipt.jpg'),
         $case,
         'receipt',
         $uploader,
@@ -149,19 +155,19 @@ it('keeps media private with a signed, expiring URL', function () {
         // The stored key carries nothing about the family.
         ->and($media->storage_key)->not->toContain($case->file_number)
         ->and($media->storage_key)->not->toContain($case->family_name)
-        ->and(Illuminate\Support\Facades\Storage::disk('media_test')->exists($media->storage_key))->toBeTrue();
+        ->and(Storage::disk('media_test')->exists($media->storage_key))->toBeTrue();
 
-    $url = app(App\Services\MediaService::class)->temporaryUrl($media);
+    $url = app(MediaService::class)->temporaryUrl($media);
 
     // Time-limited whichever driver is behind it: S3 signs, the local disk
     // stamps an expiry. What matters is that no permanent URL exists.
     expect($url)->toMatch('/(signature|expiration|Expires)/i')
-        ->and(app(App\Services\MediaService::class)->temporaryUrl($media, 60))
+        ->and(app(MediaService::class)->temporaryUrl($media, 60))
         ->not->toBe($url);
 
     // Rule 3 — a removed file is soft-deleted, never destroyed.
-    app(App\Services\MediaService::class)->softDelete($media);
+    app(MediaService::class)->softDelete($media);
 
-    expect(App\Models\Media::withTrashed()->find($media->id))->not->toBeNull()
-        ->and(Illuminate\Support\Facades\Storage::disk('media_test')->exists($media->storage_key))->toBeTrue();
+    expect(Media::withTrashed()->find($media->id))->not->toBeNull()
+        ->and(Storage::disk('media_test')->exists($media->storage_key))->toBeTrue();
 });

@@ -1,5 +1,17 @@
 <?php
 
+use App\Http\Middleware\RequireTwoFactor;
+use App\Models\Beneficiary;
+use App\Models\HouseholdMember;
+use App\Models\Housing;
+use App\Models\Region;
+use App\Models\RegionRate;
+use App\Models\RegionRentReference;
+use App\Models\User;
+use App\Services\AssessmentService;
+use Database\Seeders\FundSeeder;
+use Database\Seeders\RoleAndPermissionSeeder;
+use Database\Seeders\SettingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -13,18 +25,18 @@ pest()->extend(TestCase::class)
 
 function seedCore(): void
 {
-    (new Database\Seeders\RoleAndPermissionSeeder)->run();
-    (new Database\Seeders\FundSeeder)->run();
-    (new Database\Seeders\SettingSeeder)->run();
+    (new RoleAndPermissionSeeder)->run();
+    (new FundSeeder)->run();
+    (new SettingSeeder)->run();
 }
 
 /** A region with adult/child/elderly rates and a rent reference in force. */
-function regionWithRates(int $adult = 5000, int $child = 2000, int $elderly = 6000, int $rent = 40000): App\Models\Region
+function regionWithRates(int $adult = 5000, int $child = 2000, int $elderly = 6000, int $rent = 40000): Region
 {
-    $region = App\Models\Region::factory()->governorate()->create();
+    $region = Region::factory()->governorate()->create();
 
     foreach (['adult' => $adult, 'child' => $child, 'elderly' => $elderly] as $class => $amount) {
-        App\Models\RegionRate::factory()->create([
+        RegionRate::factory()->create([
             'region_id' => $region->id,
             'person_class' => $class,
             'amount' => $amount,
@@ -32,7 +44,7 @@ function regionWithRates(int $adult = 5000, int $child = 2000, int $elderly = 60
     }
 
     foreach (['1-3', '4-6', '7+'] as $band) {
-        App\Models\RegionRentReference::factory()->create([
+        RegionRentReference::factory()->create([
             'region_id' => $region->id,
             'family_size_band' => $band,
             'reference_rent' => $rent,
@@ -43,26 +55,26 @@ function regionWithRates(int $adult = 5000, int $child = 2000, int $elderly = 60
 }
 
 /** A family of `$adults` adults and `$children` children, owning their home. */
-function familyOf(App\Models\Region $region, int $adults = 2, int $children = 3, array $attributes = []): App\Models\Beneficiary
+function familyOf(Region $region, int $adults = 2, int $children = 3, array $attributes = []): Beneficiary
 {
-    $beneficiary = App\Models\Beneficiary::factory()->create(
+    $beneficiary = Beneficiary::factory()->create(
         array_merge(['region_id' => $region->id], $attributes)
     );
 
-    App\Models\HouseholdMember::factory()->count($adults)->adult()->create(['beneficiary_id' => $beneficiary->id]);
-    App\Models\HouseholdMember::factory()->count($children)->child()->create(['beneficiary_id' => $beneficiary->id]);
-    App\Models\Housing::factory()->create(['beneficiary_id' => $beneficiary->id]);
+    HouseholdMember::factory()->count($adults)->adult()->create(['beneficiary_id' => $beneficiary->id]);
+    HouseholdMember::factory()->count($children)->child()->create(['beneficiary_id' => $beneficiary->id]);
+    Housing::factory()->create(['beneficiary_id' => $beneficiary->id]);
 
     return $beneficiary->refresh();
 }
 
-function userWithRole(string $roleKey, array $attributes = []): App\Models\User
+function userWithRole(string $roleKey, array $attributes = []): User
 {
-    return App\Models\User::factory()->role($roleKey)->create($attributes);
+    return User::factory()->role($roleKey)->create($attributes);
 }
 
 /** Publishes a family with an approved assessment, so it can be funded. */
-function publishedCase(App\Models\Region $region, int $adults = 2, int $children = 3, array $attributes = []): App\Models\Beneficiary
+function publishedCase(Region $region, int $adults = 2, int $children = 3, array $attributes = []): Beneficiary
 {
     $beneficiary = familyOf($region, $adults, $children, array_merge([
         'status' => 'published',
@@ -70,7 +82,7 @@ function publishedCase(App\Models\Region $region, int $adults = 2, int $children
         'published_at' => now()->subDays(10),
     ], $attributes));
 
-    app(App\Services\AssessmentService::class)->create($beneficiary, status: 'approved');
+    app(AssessmentService::class)->create($beneficiary, status: 'approved');
 
     return $beneficiary->refresh();
 }
@@ -82,5 +94,5 @@ function publishedCase(App\Models\Region $region, int $adults = 2, int $children
  */
 function passTwoFactor(): void
 {
-    session([App\Http\Middleware\RequireTwoFactor::SESSION_KEY => now()->toIso8601String()]);
+    session([RequireTwoFactor::SESSION_KEY => now()->toIso8601String()]);
 }

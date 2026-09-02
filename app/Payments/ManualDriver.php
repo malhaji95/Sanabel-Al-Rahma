@@ -2,7 +2,6 @@
 
 namespace App\Payments;
 
-use App\Exceptions\DuplicateTransactionRef;
 use App\Models\Donation;
 use App\Services\DonationService;
 

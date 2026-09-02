@@ -2,12 +2,14 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Support\InitialsAvatarProvider;
+use App\Http\Middleware\RequireTwoFactor;
+use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Pages;
-use App\Filament\Support\InitialsAvatarProvider;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -32,8 +34,20 @@ class AssociationPanelProvider extends PanelProvider
             ->path('association')
             ->login()
             ->brandName(__('sanabel.app_name'))
-            ->colors(['primary' => Color::Teal])
-            ->font('Tajawal')
+            // The name-only version: a panel top bar is not room for the full lockup.
+            ->brandLogo(config('brand.logo.wordmark'))
+            ->brandLogoHeight('1.75rem')
+            ->favicon(config('brand.icons.favicon'))
+            ->colors([
+                'primary' => Color::hex(config('brand.colors.primary')),
+                'warning' => Color::hex(config('brand.colors.gold')),
+            ])
+            // Self-hosted, so the panels do not depend on an outside font host.
+            ->font(
+                config('brand.font.family'),
+                url: asset('fonts/ibm-plex-sans-arabic.css'),
+                provider: LocalFontProvider::class,
+            )
             ->defaultAvatarProvider(InitialsAvatarProvider::class)
             ->discoverResources(in: app_path('Filament/Association/Resources'), for: 'App\\Filament\\Association\\Resources')
             ->discoverPages(in: app_path('Filament/Association/Pages'), for: 'App\\Filament\\Association\\Pages')
@@ -51,7 +65,7 @@ class AssociationPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-                \App\Http\Middleware\RequireTwoFactor::class,
+                RequireTwoFactor::class,
             ]);
     }
 }

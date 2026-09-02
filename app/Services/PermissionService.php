@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Permission;
 use App\Models\Region;
+use App\Models\Scopes\RegionScope;
 use App\Models\User;
 
 /**
@@ -55,7 +56,7 @@ class PermissionService
             return false;
         }
 
-        if (! in_array($user->role?->key, \App\Models\Scopes\RegionScope::SCOPED_ROLES, true)) {
+        if (! in_array($user->role?->key, RegionScope::SCOPED_ROLES, true)) {
             return true;
         }
 

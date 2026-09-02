@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Donor;
 
 use App\Http\Controllers\Controller;
 use App\Models\JobProfile;
+use App\Models\JobRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -46,7 +47,7 @@ class JobMarketController extends Controller
         abort_if($request->user()->isReadOnly(), 403, __('sanabel.permissions.read_only'));
         abort_unless($request->user()->can_('browse_job_market'), 403, __('sanabel.permissions.denied'));
 
-        \App\Models\JobRequest::create([
+        JobRequest::create([
             'requester_name_ar' => $validated['requester_name_ar'],
             'contact_encrypted' => $validated['contact'],
             'trade_key' => $profile->trade_key,

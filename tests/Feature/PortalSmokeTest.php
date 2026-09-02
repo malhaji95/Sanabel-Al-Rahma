@@ -1,11 +1,19 @@
 <?php
 
+use App\Livewire\AddToBasket;
+use App\Livewire\BrowseCases;
+use App\Livewire\DonorBasket;
+use App\Livewire\DonorPortal;
 use App\Models\Banner;
 use App\Models\Campaign;
+use App\Models\Donation;
+use App\Models\DonationAllocation;
 use App\Models\Donor;
+use App\Models\Page;
 use App\Models\Post;
-use App\Models\Provider;
+use App\Models\User;
 use App\Services\CoverageService;
+use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -13,7 +21,7 @@ beforeEach(function () {
     $this->region = regionWithRates();
 });
 
-function donorFor(): App\Models\User
+function donorFor(): User
 {
     $user = userWithRole('donor');
     Donor::factory()->create(['user_id' => $user->id]);
@@ -42,7 +50,7 @@ it('renders the public home page with CMS content', function () {
 
 it('renders news, a post, a CMS page and the campaigns list', function () {
     Post::create(['slug' => 'story', 'title_ar' => 'قصة', 'body_ar' => 'التفاصيل', 'is_published' => true, 'published_at' => now()]);
-    App\Models\Page::create(['slug' => 'about', 'title_ar' => 'من نحن', 'body_ar' => 'نبذة', 'is_published' => true]);
+    Page::create(['slug' => 'about', 'title_ar' => 'من نحن', 'body_ar' => 'نبذة', 'is_published' => true]);
     Campaign::factory()->create(['surplus_policy_text_ar' => 'سياسة', 'is_published' => true]);
 
     $this->get(route('news'))->assertOk()->assertSee('قصة');
@@ -51,14 +59,14 @@ it('renders news, a post, a CMS page and the campaigns list', function () {
     $this->get(route('campaigns.public'))->assertOk();
 
     // An unpublished page is not reachable.
-    App\Models\Page::create(['slug' => 'draft', 'title_ar' => 'مسودة', 'is_published' => false]);
+    Page::create(['slug' => 'draft', 'title_ar' => 'مسودة', 'is_published' => false]);
     $this->get(route('page', 'draft'))->assertNotFound();
 });
 
 it('browses cases without leaking anything identifying', function () {
     $case = publishedCase($this->region);
 
-    $response = Livewire::test(App\Livewire\BrowseCases::class)
+    $response = Livewire::test(BrowseCases::class)
         ->assertSee($case->file_number)
         ->assertDontSee($case->first_name)
         ->assertDontSee($case->family_name)
@@ -71,7 +79,7 @@ it('shows monthly and one-time cases as two separate lists', function () {
     $monthly = publishedCase($this->region, attributes: ['support_type' => 'monthly']);
     $oneTime = publishedCase($this->region, attributes: ['support_type' => 'one_time']);
 
-    Livewire::test(App\Livewire\BrowseCases::class)
+    Livewire::test(BrowseCases::class)
         ->assertSee($monthly->file_number)
         ->assertDontSee($oneTime->file_number)
         ->set('supportType', 'one_time')
@@ -85,7 +93,7 @@ it('adds a family to the basket, reserves it and records the transfer', function
     $remaining = app(CoverageService::class)->remainingNeed($case);
 
     Livewire::actingAs($user)
-        ->test(App\Livewire\AddToBasket::class, [
+        ->test(AddToBasket::class, [
             'fileNumber' => $case->file_number,
             'remaining' => $remaining,
         ])
@@ -94,7 +102,7 @@ it('adds a family to the basket, reserves it and records the transfer', function
         ->assertSet('notice', __('sanabel.public.added_to_basket'));
 
     Livewire::actingAs($user)
-        ->test(App\Livewire\DonorBasket::class)
+        ->test(DonorBasket::class)
         ->assertSee($case->file_number)
         ->call('reserve')
         ->assertSet('error', null)
@@ -102,7 +110,7 @@ it('adds a family to the basket, reserves it and records the transfer', function
         ->call('recordTransfer')
         ->assertSet('notice', __('sanabel.public.transfer_recorded'));
 
-    expect(App\Models\Donation::where('transaction_ref', 'TRX-PORTAL-1')->exists())->toBeTrue();
+    expect(Donation::where('transaction_ref', 'TRX-PORTAL-1')->exists())->toBeTrue();
 });
 
 it('refuses a basket amount beyond the remaining need', function () {
@@ -111,7 +119,7 @@ it('refuses a basket amount beyond the remaining need', function () {
     $remaining = app(CoverageService::class)->remainingNeed($case);
 
     Livewire::actingAs($user)
-        ->test(App\Livewire\AddToBasket::class, [
+        ->test(AddToBasket::class, [
             'fileNumber' => $case->file_number,
             'remaining' => $remaining,
         ])
@@ -124,13 +132,13 @@ it('surfaces a duplicate transaction ref to the donor as a review message', func
     $case = publishedCase($this->region);
     $user = donorFor();
 
-    App\Models\Donation::factory()->create([
+    Donation::factory()->create([
         'donor_id' => $user->donor->id,
         'transaction_ref' => 'TRX-DUP-PORTAL',
     ]);
 
     Livewire::actingAs($user)
-        ->test(App\Livewire\AddToBasket::class, [
+        ->test(AddToBasket::class, [
             'fileNumber' => $case->file_number,
             'remaining' => 10_000,
         ])
@@ -138,7 +146,7 @@ it('surfaces a duplicate transaction ref to the donor as a review message', func
         ->call('add');
 
     Livewire::actingAs($user)
-        ->test(App\Livewire\DonorBasket::class)
+        ->test(DonorBasket::class)
         ->set('transactionRef', 'TRX-DUP-PORTAL')
         ->call('recordTransfer')
         ->assertSet('error', __('sanabel.donations.duplicate_ref').' (TRX-DUP-PORTAL)');
@@ -148,8 +156,8 @@ it('shows the donor their own donations and badge, masked', function () {
     $case = publishedCase($this->region);
     $user = donorFor();
 
-    $donation = App\Models\Donation::factory()->create(['donor_id' => $user->donor->id]);
-    App\Models\DonationAllocation::create([
+    $donation = Donation::factory()->create(['donor_id' => $user->donor->id]);
+    DonationAllocation::create([
         'donation_id' => $donation->id,
         'beneficiary_id' => $case->id,
         'amount' => 1_000,
@@ -157,7 +165,7 @@ it('shows the donor their own donations and badge, masked', function () {
     ]);
 
     Livewire::actingAs($user)
-        ->test(App\Livewire\DonorPortal::class)
+        ->test(DonorPortal::class)
         ->assertSee($donation->transaction_ref)
         ->assertSee($case->file_number)
         ->assertDontSee($case->family_name);
@@ -188,7 +196,7 @@ it('serves the field manifest and service worker', function () {
 
 it('logs a user in and sends them to the right screen for their role', function () {
     $donor = donorFor();
-    $donor->forceFill(['password' => Illuminate\Support\Facades\Hash::make('secret123')])->save();
+    $donor->forceFill(['password' => Hash::make('secret123')])->save();
 
     $this->post(route('login'), ['email' => $donor->email, 'password' => 'secret123'])
         ->assertRedirect(route('donor.portal'));
@@ -196,7 +204,7 @@ it('logs a user in and sends them to the right screen for their role', function 
     $this->post(route('logout'))->assertRedirect(route('home'));
 
     $delegate = userWithRole('delegate', ['region_id' => $this->region->id]);
-    $delegate->forceFill(['password' => Illuminate\Support\Facades\Hash::make('secret123')])->save();
+    $delegate->forceFill(['password' => Hash::make('secret123')])->save();
 
     $this->post(route('login'), ['email' => $delegate->email, 'password' => 'secret123'])
         ->assertRedirect(route('field'));
@@ -205,7 +213,7 @@ it('logs a user in and sends them to the right screen for their role', function 
 it('refuses to log in a deactivated account', function () {
     $user = donorFor();
     $user->forceFill([
-        'password' => Illuminate\Support\Facades\Hash::make('secret123'),
+        'password' => Hash::make('secret123'),
         'is_active' => false,
     ])->save();
 
