@@ -1,0 +1,13 @@
+[
+  {
+    "name_ar": "درعا",
+    "type": "governorate",
+    "children": [
+      { "name_ar": "درعا المدينة", "type": "area" },
+      { "name_ar": "إزرع", "type": "area" },
+      { "name_ar": "الصنمين", "type": "area" },
+      { "name_ar": "بصرى الشام", "type": "area" },
+      { "name_ar": "الشيخ مسكين", "type": "area" }
+    ]
+  }
+]
