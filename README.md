@@ -10,11 +10,11 @@ The whole journey works end to end:
 
 ## Stack
 
-- Laravel 11 (PHP 8.3+) · PostgreSQL · Redis queues
+- Laravel 11 (PHP 8.3+) · MySQL/MariaDB or PostgreSQL · Redis queues
 - Filament v3 for the internal panels — admin, association, provider
 - Donor portal and public site: Blade + Livewire + Tailwind, Arabic and RTL
 - Delegate field app: a PWA route on the same app, IndexedDB for offline
-- Media: S3-compatible private bucket, signed URLs only
+- Media: private local disk or S3-compatible bucket — signed URLs only either way
 - Tests: Pest
 
 ## Getting started
@@ -22,7 +22,7 @@ The whole journey works end to end:
 ```bash
 composer install && npm install
 cp .env.example .env && php artisan key:generate
-# point DB_* at a PostgreSQL database, then:
+# point DB_* at a MySQL/MariaDB or PostgreSQL database, then:
 php artisan migrate --seed
 npm run build          # or: npm run dev
 php artisan serve
@@ -59,6 +59,7 @@ Demo accounts, all with the password from `SEED_DEMO_PASSWORD` (default
 | `public/brand/` | logo variants and app icons |
 | `docs/api.md` | the API contract |
 | `docs/deployment.md` | deploying, backups, the restore test |
+| `docs/deployment-cloudways.md` | step-by-step deployment on Cloudways |
 | `docs/erd.md` | the schema, generated from the live database |
 | `docs/brand.md` | the visual identity: colours, typeface, logo use |
 

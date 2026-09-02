@@ -3,13 +3,18 @@
 Phase 1. One Laravel app serves the public site, the donor portal, the delegate
 PWA and three Filament panels.
 
+> Deploying to Cloudways? Use [`deployment-cloudways.md`](deployment-cloudways.md),
+> which matches that panel step by step. This page is the platform-neutral version.
+
 ## Requirements
 
-- PHP 8.3+ with `pdo_pgsql`, `redis`, `gd`, `intl`, `zip`, `sodium`
-- PostgreSQL 14+
+- PHP 8.3+ with `redis`, `gd`, `intl`, `zip`, `sodium`, and `pdo_mysql` or `pdo_pgsql`
+- **MySQL 8.4+, MariaDB 10.11+, or PostgreSQL 14+** — the suite runs green on
+  MySQL/MariaDB and PostgreSQL, and `scripts/basket-race-check.php` passes on both
 - Redis 6+ (queues and cache)
-- Node 20+ (build only)
-- An S3-compatible bucket, **private**, for media
+- Node 20+ (to build assets; can be done off the server)
+- Optional: an S3-compatible bucket, **private**, for media. Without one, media
+  falls back to a private local disk.
 
 ## Deploy
 
@@ -41,9 +46,29 @@ every five minutes — without it, a family stays held after its hold ends.
 
 ### Storage
 
-`SANABEL_MEDIA_DISK=media` points at the private bucket. The bucket must **not**
-allow public reads: media is served only through short-lived signed URLs, and
-never to a donor.
+`SANABEL_MEDIA_DISK` selects where media lives:
+
+- `media_local` (default) — a private directory under `storage/app/private/media`,
+  outside the web root, served only through signed expiring URLs. Back it up with
+  the database; `scripts/backup.sh` does this automatically.
+- `media` — an S3-compatible private bucket. The bucket must **not** allow public
+  reads.
+
+Either way media is served only through short-lived signed URLs, and never to a
+donor.
+
+### A note on MySQL isolation
+
+InnoDB defaults to REPEATABLE READ; PostgreSQL defaults to READ COMMITTED. The
+basket reservation, which is the one check-and-write that has to hold across
+concurrent transactions, sets READ COMMITTED for its own transaction on MySQL —
+otherwise a second donor keeps a pre-lock snapshot and both reserve the same
+last amount. This needs `binlog_format` to be `MIXED` or `ROW`, which is the
+default on MySQL 8 and MariaDB 10.11. Check with:
+
+```sql
+SELECT @@binlog_format;
+```
 
 ## First admin
 

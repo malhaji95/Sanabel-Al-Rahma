@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Beneficiary;
 use App\Models\User;
 use App\Models\Visit;
+use App\Support\DatabaseErrors;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -64,7 +65,7 @@ class VisitSyncService
         } catch (QueryException $e) {
             // Two devices pushing the same uuid at once: the unique index wins,
             // and the loser reads back the row the winner just wrote.
-            if (($e->errorInfo[0] ?? null) === '23505') {
+            if (DatabaseErrors::isUniqueViolation($e)) {
                 return Visit::where('client_uuid', $clientUuid)->firstOrFail();
             }
 

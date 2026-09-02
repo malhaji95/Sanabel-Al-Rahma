@@ -21,7 +21,11 @@
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="pgsql"/>
+        <!--
+            The engine, host and port come from .env, so the suite runs against
+            whatever you deploy on. Only the database name is pinned, so tests
+            can never touch the working database.
+        -->
         <env name="DB_DATABASE" value="sanabel_test"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>

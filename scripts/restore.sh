@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# T-41 — restore a backup into a database, and verify it.
+# T-41 — restore a database backup, and verify it.
 #
 # Usage: BACKUP_PASSPHRASE=... scripts/restore.sh <backup-file> <target-database>
 #
@@ -18,22 +18,45 @@ if [[ -z "${BACKUP_PASSPHRASE:-}" ]]; then
 fi
 
 # shellcheck disable=SC2046
-export $(grep -E '^DB_(HOST|PORT|USERNAME|PASSWORD)=' "$ENV_FILE" | xargs -d '\n')
+export $(grep -E '^DB_(CONNECTION|HOST|PORT|USERNAME|PASSWORD)=' "$ENV_FILE" | xargs -d '\n')
+
+# Creating and dropping a database needs more rights than the application user
+# usually has — on a managed host it typically has none. Set RESTORE_DB_USERNAME
+# and RESTORE_DB_PASSWORD to an administrative account for the restore test.
+DB_USERNAME="${RESTORE_DB_USERNAME:-$DB_USERNAME}"
+DB_PASSWORD="${RESTORE_DB_PASSWORD:-$DB_PASSWORD}"
 
 if [[ -f "$BACKUP_FILE.sha256" ]]; then
     sha256sum --check "$BACKUP_FILE.sha256"
 fi
 
-export PGPASSWORD="$DB_PASSWORD"
+decrypt() {
+    openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:BACKUP_PASSPHRASE -in "$BACKUP_FILE"
+}
 
-psql --host="$DB_HOST" --port="$DB_PORT" --username="$DB_USERNAME" --dbname=postgres \
-    -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS \"$TARGET_DB\";"
-psql --host="$DB_HOST" --port="$DB_PORT" --username="$DB_USERNAME" --dbname=postgres \
-    -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"$TARGET_DB\";"
+case "${DB_CONNECTION:-mysql}" in
+    mysql|mariadb)
+        export MYSQL_PWD="$DB_PASSWORD"
+        MYSQL=(mysql --host="$DB_HOST" --port="$DB_PORT" --user="$DB_USERNAME")
 
-openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:BACKUP_PASSPHRASE -in "$BACKUP_FILE" \
-| gunzip \
-| psql --host="$DB_HOST" --port="$DB_PORT" --username="$DB_USERNAME" --dbname="$TARGET_DB" \
-    -v ON_ERROR_STOP=1 --quiet
+        "${MYSQL[@]}" -e "DROP DATABASE IF EXISTS \`$TARGET_DB\`;"
+        "${MYSQL[@]}" -e "CREATE DATABASE \`$TARGET_DB\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+        decrypt | gunzip | "${MYSQL[@]}" --default-character-set=utf8mb4 "$TARGET_DB"
+        ;;
+    pgsql|postgres|postgresql)
+        export PGPASSWORD="$DB_PASSWORD"
+        PSQL=(psql --host="$DB_HOST" --port="$DB_PORT" --username="$DB_USERNAME")
+
+        "${PSQL[@]}" --dbname=postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS \"$TARGET_DB\";"
+        "${PSQL[@]}" --dbname=postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"$TARGET_DB\";"
+
+        decrypt | gunzip | "${PSQL[@]}" --dbname="$TARGET_DB" -v ON_ERROR_STOP=1 --quiet
+        ;;
+    *)
+        echo "Unsupported DB_CONNECTION '${DB_CONNECTION}'." >&2
+        exit 1
+        ;;
+esac
 
 echo "Restored $BACKUP_FILE into $TARGET_DB"

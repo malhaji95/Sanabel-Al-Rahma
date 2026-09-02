@@ -63,9 +63,33 @@ it('takes a row lock inside a transaction when reserving', function () {
     app(BasketService::class)->reserve($basket);
     $queries = collect(DB::getQueryLog())->pluck('query');
 
-    expect($queries->contains(fn ($q) => str_contains(strtolower($q), 'for update')))->toBeTrue()
-        ->and($queries->first(fn ($q) => str_contains(strtolower($q), 'for update')))
-        ->toContain('"beneficiaries"');
+    $locking = $queries->first(fn ($q) => str_contains(strtolower($q), 'for update'));
+
+    // The identifier quoting differs by engine (" on PostgreSQL, ` on MySQL),
+    // so match the table name itself rather than one engine's syntax.
+    expect($locking)->not->toBeNull()
+        ->and($locking)->toContain('beneficiaries');
+});
+
+it('aligns the isolation level so the lock actually protects the check on MySQL', function () {
+    /*
+     | InnoDB defaults to REPEATABLE READ. Without this, a second transaction
+     | blocks on the row lock, acquires it, and then still reads its pre-lock
+     | snapshot — so it never sees the hold the first donor just committed, and
+     | both reserve the same last amount. Verified against a real MySQL server:
+     | scripts/basket-race-check.php failed 8 rounds out of 8 before this, and
+     | passes 10 out of 10 after it.
+     |
+     | The suite cannot exercise it directly, because RefreshDatabase wraps every
+     | test in a transaction and neither engine will change isolation mid-flight.
+     | This asserts the guard is still in place; the race script is the proof.
+     */
+    $source = file_get_contents(app_path('Services/BasketService.php'));
+
+    expect($source)->toContain('SET TRANSACTION ISOLATION LEVEL READ COMMITTED')
+        ->toContain("getDriverName() === 'mysql'")
+        // Skipped inside an open transaction, which is why the suite is unaffected.
+        ->toContain('transactionLevel() > 0');
 });
 
 it('lets a second reservation through once the first one is released', function () {

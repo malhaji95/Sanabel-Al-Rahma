@@ -43,6 +43,25 @@ return [
             'throw' => true,
         ],
 
+        /*
+         | The private local disk. Used until an S3-compatible bucket is in
+         | place: files live under storage/app/private/media, outside the web
+         | root, and are reachable only through a signed, expiring route that
+         | Laravel registers because of 'serve'. Nothing is publicly listable.
+         |
+         | It is the weaker option — the files sit on the application server, so
+         | they must be backed up with the database (scripts/backup.sh does
+         | this) and they do not survive a server move on their own. Switch
+         | SANABEL_MEDIA_DISK to 'media' once a bucket exists.
+         */
+        'media_local' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/media'),
+            'serve' => true,
+            'visibility' => 'private',
+            'throw' => true,
+        ],
+
         // Tests and local development: a private local disk with signed URLs.
         'media_test' => [
             'driver' => 'local',

@@ -35,7 +35,12 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            $table->index(['region_id', 'family_size_band', 'effective_from']);
+            // Named explicitly: the generated name would run past MySQL's
+            // 64-character identifier limit.
+            $table->index(
+                ['region_id', 'family_size_band', 'effective_from'],
+                'rent_ref_region_band_effective_index',
+            );
         });
 
         Schema::create('adjustments_catalog', function (Blueprint $table) {

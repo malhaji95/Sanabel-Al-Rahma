@@ -20,11 +20,8 @@
  | Exit code 0 means exactly one donor won every round.
  */
 
-require __DIR__.'/../vendor/autoload.php';
-
-$app = require __DIR__.'/../bootstrap/app.php';
-$app->make(Kernel::class)->bootstrap();
-
+// Imports first: PHP applies a `use` only from the point it appears, so a
+// standalone script has to declare them above the code that needs them.
 use App\Exceptions\ReservationUnavailable;
 use App\Models\Basket;
 use App\Models\BasketItem;
@@ -33,6 +30,11 @@ use App\Models\Donor;
 use App\Services\BasketService;
 use App\Services\CoverageService;
 use Illuminate\Contracts\Console\Kernel;
+
+require __DIR__.'/../vendor/autoload.php';
+
+$app = require __DIR__.'/../bootstrap/app.php';
+$app->make(Kernel::class)->bootstrap();
 
 // ---- child mode: one contender ------------------------------------------------
 

@@ -7,6 +7,7 @@ use App\Models\Basket;
 use App\Models\Donation;
 use App\Models\DonationAllocation;
 use App\Models\Fund;
+use App\Support\DatabaseErrors;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
@@ -203,7 +204,6 @@ class DonationService
 
     private function isUniqueViolation(QueryException $e, string $column): bool
     {
-        return ($e->errorInfo[0] ?? null) === '23505'
-            && str_contains((string) $e->getMessage(), $column);
+        return DatabaseErrors::isUniqueViolation($e, $column);
     }
 }

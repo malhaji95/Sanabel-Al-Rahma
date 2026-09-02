@@ -4,8 +4,13 @@ return [
     // One base currency. USD exists only as a reference rate for reading approval thresholds.
     'currency' => env('SANABEL_CURRENCY', 'SYP'),
 
-    // Private bucket. Media is never served from a public URL.
-    'media_disk' => env('SANABEL_MEDIA_DISK', 's3'),
+    /*
+     | Where media is stored. Never a public URL either way.
+     |
+     |   media_local — private local disk, signed expiring URLs (the default)
+     |   media       — S3-compatible private bucket (preferred once available)
+     */
+    'media_disk' => env('SANABEL_MEDIA_DISK', 'media_local'),
 
     /*
      | The relation values that count as an orphan for the V factor. A domain

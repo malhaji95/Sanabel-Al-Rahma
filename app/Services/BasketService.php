@@ -68,6 +68,8 @@ class BasketService
             config('sanabel.setting_defaults.basket_hold_hours')
         );
 
+        $this->useReadCommitted();
+
         return DB::transaction(function () use ($basket, $hours) {
             $items = $basket->items()->orderBy('beneficiary_id')->get();
 
@@ -103,6 +105,35 @@ class BasketService
 
             return $basket->refresh();
         });
+    }
+
+    /**
+     * Aligns the isolation level with what this check assumes.
+     *
+     * PostgreSQL runs READ COMMITTED by default; InnoDB runs REPEATABLE READ.
+     * Under REPEATABLE READ the transaction keeps the snapshot it took before
+     * it blocked on the row lock, so the remaining-need read below would not
+     * see a hold another donor committed while this one waited — and both
+     * donors would reserve the same last amount. Verified by
+     * scripts/basket-race-check.php, which fails on MySQL without this.
+     *
+     * This is the one place in the system where a check and a write have to
+     * agree across concurrent transactions, so the change is scoped to it.
+     */
+    private function useReadCommitted(): void
+    {
+        $connection = DB::connection();
+
+        // Both engines refuse to change transaction characteristics once a
+        // transaction is open, and the test suite runs inside one.
+        if ($connection->transactionLevel() > 0) {
+            return;
+        }
+
+        if ($connection->getDriverName() === 'mysql') {
+            // Applies to the next transaction only, not the session.
+            $connection->statement('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
+        }
     }
 
     /** Releases one basket back to the funding list. */
