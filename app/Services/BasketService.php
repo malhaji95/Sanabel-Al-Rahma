@@ -29,6 +29,23 @@ class BasketService
         );
     }
 
+    /**
+     * The basket the donor is actually working with: the live reservation if one
+     * is held, otherwise the open one. `openFor` alone would hand back a fresh
+     * empty basket the moment a reservation is made.
+     */
+    public function currentFor(Donor $donor): Basket
+    {
+        $reserved = Basket::query()
+            ->where('donor_id', $donor->getKey())
+            ->where('status', 'reserved')
+            ->where('reserved_until', '>', now())
+            ->latest('id')
+            ->first();
+
+        return $reserved ?? $this->openFor($donor);
+    }
+
     public function addItem(Basket $basket, Beneficiary $beneficiary, int $amount): BasketItem
     {
         return BasketItem::updateOrCreate(

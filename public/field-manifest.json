@@ -1,0 +1,12 @@
+{
+    "name": "سنابل الرحمة — تطبيق المندوب",
+    "short_name": "سنابل الميداني",
+    "start_url": "/field",
+    "scope": "/field",
+    "display": "standalone",
+    "background_color": "#f8fafc",
+    "theme_color": "#059669",
+    "lang": "ar",
+    "dir": "rtl",
+    "icons": []
+}

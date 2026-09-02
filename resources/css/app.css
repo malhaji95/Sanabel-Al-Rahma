@@ -1,3 +1,50 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ | Arabic, right-to-left. Logical properties throughout, so a single stylesheet
+ | is correct in both directions and nothing needs mirroring by hand.
+ */
+@layer base {
+    html {
+        font-family: 'Tajawal', 'IBM Plex Sans Arabic', system-ui, sans-serif;
+    }
+
+    body {
+        @apply bg-slate-50 text-slate-800 antialiased;
+    }
+
+    h1, h2, h3 {
+        @apply font-bold text-slate-900;
+    }
+}
+
+@layer components {
+    .btn {
+        @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2
+               text-sm font-medium transition focus:outline-none focus:ring-2
+               focus:ring-sanabel-500 focus:ring-offset-2 disabled:opacity-50;
+    }
+
+    .btn-primary {
+        @apply btn bg-sanabel-600 text-white hover:bg-sanabel-700;
+    }
+
+    .btn-secondary {
+        @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+    }
+
+    .card {
+        @apply rounded-xl border border-slate-200 bg-white p-5 shadow-sm;
+    }
+
+    .field {
+        @apply w-full rounded-lg border-slate-300 text-sm
+               focus:border-sanabel-500 focus:ring-sanabel-500;
+    }
+
+    .badge {
+        @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    }
+}
