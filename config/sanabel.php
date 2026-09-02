@@ -8,6 +8,12 @@ return [
     'media_disk' => env('SANABEL_MEDIA_DISK', 's3'),
 
     /*
+     | The relation values that count as an orphan for the V factor. A domain
+     | value, so it is data rather than a literal buried in the score service.
+     */
+    'orphan_relation_keys' => ['orphan', 'يتيم'],
+
+    /*
      | Defaults used only when the matching row is missing from the `settings` table.
      | Everything operational lives in `settings` so it changes without a deploy.
      */

@@ -95,7 +95,8 @@ class ScoreService
         $earners = $members->filter(fn ($m) => ! $m->dependent && ! $m->unable_to_earn);
         $singleCaregiver = ($earners->count() === 1 && $members->where('dependent', true)->count() > 0) ? 1 : 0;
 
-        $orphans = $members->contains(fn ($m) => in_array($m->relation, ['orphan', 'يتيم'], true)) ? 1 : 0;
+        $orphanKeys = config('sanabel.orphan_relation_keys');
+        $orphans = $members->contains(fn ($m) => in_array($m->relation, $orphanKeys, true)) ? 1 : 0;
 
         $unsupportedElderly = ($members->contains(fn ($m) => $m->person_class === 'elderly')
             && $earners->isEmpty()) ? 1 : 0;

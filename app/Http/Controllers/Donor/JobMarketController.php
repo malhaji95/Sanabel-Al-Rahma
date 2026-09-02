@@ -57,6 +57,6 @@ class JobMarketController extends Controller
         ]);
 
         // The requester never receives the family's details; admin makes contact.
-        return response()->json(['message' => 'تم استلام الطلب وسيتم التواصل عبر إدارة الجمعية.'], 201);
+        return response()->json(['message' => __('sanabel.job_profile.contact_received')], 201);
     }
 }

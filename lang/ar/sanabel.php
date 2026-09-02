@@ -378,6 +378,7 @@ return [
     'job_profile' => [
         'singular' => 'ملف مهني', 'plural' => 'سوق العمل',
         'case' => 'الملف', 'trade' => 'المهنة', 'summary' => 'الوصف', 'availability' => 'التفرغ',
+        'contact_received' => 'تم استلام الطلب وسيتم التواصل عبر إدارة الجمعية.',
     ],
     'job_profile_status' => ['pending' => 'قيد المراجعة', 'published' => 'منشور', 'hidden' => 'مخفي'],
     'complaint' => [
