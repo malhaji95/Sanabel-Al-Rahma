@@ -1,9 +1,12 @@
 <?php
 
+use App\Http\Resources\MaskedCaseResource;
 use App\Models\DonationAllocation;
 use App\Models\Donor;
 use App\Services\CoverageService;
 use App\Services\DonationService;
+use App\Services\RankingService;
+use Illuminate\Support\Facades\DB;
 
 /*
  | The public lists fetch confirmed support for every family in one query
@@ -55,4 +58,40 @@ it('sums coverage in one query exactly as it does one family at a time', functio
     expect($batch[$paid->getKey()])->toBe(15_000)
         ->and($batch[$reversed->getKey()] ?? 0)->toBe(0)
         ->and($batch[$untouched->getKey()] ?? 0)->toBe(0);
+});
+
+/*
+ | The donor list is the page that broke the first demo deploy: it issued a
+ | query per published family, so a page that was fine locally took ninety
+ | seconds against a database in another region. What matters is not the exact
+ | number but that it does not grow with the number of families.
+ */
+it('costs the same number of queries however many families are published', function () {
+    $region = regionWithRates();
+
+    $render = function (): int {
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        app(RankingService::class)->fundingList('monthly')
+            ->take(12)
+            ->each(fn (array $row) => (new MaskedCaseResource($row['beneficiary'], $row['confirmed']))->resolve());
+
+        $count = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        return $count;
+    };
+
+    foreach (range(1, 3) as $ignored) {
+        publishedCase($region);
+    }
+    $few = $render();
+
+    foreach (range(1, 12) as $ignored) {
+        publishedCase($region);
+    }
+    $many = $render();
+
+    expect($many)->toBe($few);
 });

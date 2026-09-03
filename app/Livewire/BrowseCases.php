@@ -40,9 +40,9 @@ class BrowseCases extends Component
         $perPage = 12;
         $page = $this->getPage();
 
-        $cases = $ranked->pluck('beneficiary')
+        $cases = $ranked
             ->forPage($page, $perPage)
-            ->map(fn ($case) => (new MaskedCaseResource($case))->resolve())
+            ->map(fn (array $row) => (new MaskedCaseResource($row['beneficiary'], $row['confirmed']))->resolve())
             ->values();
 
         return view('livewire.browse-cases', [

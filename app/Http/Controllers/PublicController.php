@@ -26,7 +26,7 @@ class PublicController extends Controller
         // The three most urgent published cases, masked like every donor view.
         $urgent = $this->ranking->fundingList('monthly')
             ->take(3)
-            ->map(fn (array $row) => (new MaskedCaseResource($row['beneficiary']))->resolve());
+            ->map(fn (array $row) => (new MaskedCaseResource($row['beneficiary'], $row['confirmed']))->resolve());
 
         return view('public.home', [
             'banners' => Banner::where('is_published', true)->orderBy('sort_order')->get(),

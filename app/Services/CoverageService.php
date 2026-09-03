@@ -90,6 +90,14 @@ class CoverageService
     /** Verified money currently held against this family by a live basket reservation. */
     public function reservedAmount(Beneficiary $beneficiary): int
     {
+        // As elsewhere, use the relation when a list has loaded it. Basket::isLive()
+        // is the same condition the query below expresses.
+        if ($beneficiary->relationLoaded('basketItems')) {
+            return (int) $beneficiary->basketItems
+                ->filter(fn ($item) => (bool) $item->basket?->isLive())
+                ->sum('amount');
+        }
+
         return (int) $beneficiary->basketItems()
             ->whereHas('basket', fn ($q) => $q
                 ->where('status', 'reserved')
@@ -98,29 +106,35 @@ class CoverageService
     }
 
     /** What a new reservation may still claim: need − confirmed − already reserved. */
-    public function remainingNeed(Beneficiary $beneficiary): int
+    public function remainingNeed(Beneficiary $beneficiary, ?int $confirmed = null): int
     {
         return max(0, $this->needAmount($beneficiary)
-            - $this->confirmedSupport($beneficiary)
+            - ($confirmed ?? $this->confirmedSupport($beneficiary))
             - $this->reservedAmount($beneficiary));
     }
 
     /** 0.0 – 1.0 */
-    public function coverageRatio(Beneficiary $beneficiary): float
+    /**
+     * The optional $confirmed lets a caller that has already fetched the figure
+     * pass it in. A card shows the percent, the label and the remaining amount,
+     * which is three identical sums per case unless they share one lookup.
+     */
+    public function coverageRatio(Beneficiary $beneficiary, ?int $confirmed = null): float
     {
         $need = $this->needAmount($beneficiary);
+        $confirmed ??= $this->confirmedSupport($beneficiary);
 
-        return $need > 0 ? min(1.0, $this->confirmedSupport($beneficiary) / $need) : 1.0;
+        return $need > 0 ? min(1.0, $confirmed / $need) : 1.0;
     }
 
-    public function coveragePercent(Beneficiary $beneficiary): int
+    public function coveragePercent(Beneficiary $beneficiary, ?int $confirmed = null): int
     {
-        return (int) round(100 * $this->coverageRatio($beneficiary));
+        return (int) round(100 * $this->coverageRatio($beneficiary, $confirmed));
     }
 
-    public function coverageLabel(Beneficiary $beneficiary): string
+    public function coverageLabel(Beneficiary $beneficiary, ?int $confirmed = null): string
     {
-        $ratio = $this->coverageRatio($beneficiary);
+        $ratio = $this->coverageRatio($beneficiary, $confirmed);
 
         return match (true) {
             $ratio <= 0.0 => 'none',

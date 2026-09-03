@@ -64,7 +64,7 @@ class RankingService
      * The funding list for one support type. Monthly and one-time cases are
      * two separate lists in the donor UI.
      *
-     * @return Collection<int,array{beneficiary:Beneficiary,ranking:array}>
+     * @return Collection<int,array{beneficiary:Beneficiary,confirmed:int,ranking:array}>
      */
     public function fundingList(string $supportType, ?int $regionId = null): Collection
     {
@@ -72,7 +72,7 @@ class RankingService
             ->published()
             ->where('support_type', $supportType)
             // Everything MaskedCaseResource reads, loaded once for the whole list.
-            ->with(['assessments.overrides', 'region', 'members', 'housing', 'healthRecords']);
+            ->with(['assessments.overrides', 'region', 'members', 'housing', 'healthRecords', 'basketItems.basket']);
 
         if ($regionId) {
             $query->whereIn('region_id', Region::descendantIds($regionId));
@@ -84,6 +84,7 @@ class RankingService
         return $families
             ->map(fn (Beneficiary $b) => [
                 'beneficiary' => $b,
+                'confirmed' => $confirmed[$b->getKey()] ?? 0,
                 'ranking' => $this->rank($b, $confirmed[$b->getKey()] ?? 0),
             ])
             ->filter(fn (array $row) => $row['ranking']['eligible'])

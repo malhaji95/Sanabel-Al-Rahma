@@ -34,6 +34,15 @@ class MaskedCaseResource extends JsonResource
         'urgency_label', 'has_chronic_illness', 'rent_band', 'is_renting', 'waiting_weeks',
     ];
 
+    /**
+     * A list has already fetched confirmed support for every case in one query;
+     * it passes the figure in so the card does not go and ask again.
+     */
+    public function __construct($resource, private readonly ?int $confirmed = null)
+    {
+        parent::__construct($resource);
+    }
+
     public function toArray(Request $request): array
     {
         /** @var Beneficiary $case */
@@ -44,6 +53,9 @@ class MaskedCaseResource extends JsonResource
 
         // The relation, not a fresh query: a list eager-loads it once for the page.
         $members = $case->members;
+
+        // One figure for the three coverage numbers on the card.
+        $confirmed = $this->confirmed ?? $coverage->confirmedSupport($case);
 
         return [
             'file_number' => $case->file_number,
@@ -56,9 +68,9 @@ class MaskedCaseResource extends JsonResource
             'need_type_label' => __('sanabel.masked.need_type.'.$case->support_type),
             'need_amount' => $coverage->needAmount($case),
             'currency' => config('sanabel.currency'),
-            'coverage_percent' => $coverage->coveragePercent($case),
-            'coverage_label' => __('sanabel.coordination.coverage_'.$coverage->coverageLabel($case)),
-            'remaining_amount' => $coverage->remainingNeed($case),
+            'coverage_percent' => $coverage->coveragePercent($case, $confirmed),
+            'coverage_label' => __('sanabel.coordination.coverage_'.$coverage->coverageLabel($case, $confirmed)),
+            'remaining_amount' => $coverage->remainingNeed($case, $confirmed),
             'urgency_label' => $this->urgencyLabel($case),
             'has_chronic_illness' => $this->hasChronicIllness($case),
             'rent_band' => $this->rentBand($case),
