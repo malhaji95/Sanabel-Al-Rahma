@@ -76,18 +76,44 @@ it('lets a managed database demand TLS', function () {
     // which is not acceptable across the internet for this data.
     expect(config('database.connections.pgsql.sslmode'))->toBe(env('DB_SSLMODE', 'prefer'));
 
-    expect(file_get_contents(base_path('render.yaml')))
-        ->toContain('DB_SSLMODE')
-        ->toContain('require');
+    // The image carries it, so it holds however the service was created.
+    expect(file_get_contents(base_path('Dockerfile')))
+        ->toContain('DB_SSLMODE=require');
 });
 
-it('keeps the demo blueprint on synthetic data and off Redis', function () {
+it('carries every runtime default in the image, not only in the blueprint', function () {
+    /*
+     | Creating a service from Render's dashboard does not read render.yaml, so
+     | anything defined only there is silently absent. That is how the first
+     | deploy ended up with no DB_CONNECTION, falling back to sqlite and trying
+     | to open a file named after the database.
+     |
+     | The image must boot correctly given nothing but the secrets.
+     */
+    $dockerfile = file_get_contents(base_path('Dockerfile'));
+
+    foreach ([
+        'DB_CONNECTION=pgsql',
+        'DB_PORT=5432',
+        'DB_SSLMODE=require',
+        'QUEUE_CONNECTION=database',
+        'CACHE_STORE=database',
+        'SESSION_DRIVER=database',
+        'SANABEL_MEDIA_DISK=media_local',
+        'DEMO_SEED=true',
+    ] as $default) {
+        expect($dockerfile)->toContain($default);
+    }
+});
+
+it('leaves only secrets for the operator to supply', function () {
     $render = file_get_contents(base_path('render.yaml'));
 
-    // Rule 11: generated families only.
-    expect($render)->toContain('DEMO_SEED')
-        // The free plan has no Redis; nothing uses the Redis facade directly.
-        ->toContain('QUEUE_CONNECTION')
-        ->toContain('database')
-        ->not->toContain('redis');
+    // Every envVar in the blueprint is a secret; nothing else belongs there,
+    // because the blueprint is not always applied.
+    preg_match_all('/- key: (\w+)/', $render, $matches);
+
+    expect($matches[1])->toEqualCanonicalizing([
+        'APP_KEY', 'APP_URL', 'DB_HOST', 'DB_DATABASE', 'DB_USERNAME', 'DB_PASSWORD',
+    ]);
 });

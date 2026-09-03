@@ -26,10 +26,16 @@ WORKDIR /build
 
 COPY composer.json composer.lock ./
 
-# --no-scripts: the artisan scripts need the full source, which is not here yet.
+# Dependencies first, so this layer is cached across source changes.
+# --no-scripts / --no-autoloader: both need the full source, copied next.
 RUN composer install \
     --no-dev --prefer-dist --no-interaction --no-progress \
-    --no-scripts --ignore-platform-reqs
+    --no-scripts --no-autoloader --ignore-platform-reqs
+
+COPY . .
+
+# Now that the source is here, the classmap can cover the application too.
+RUN composer dump-autoload --no-dev --optimize --no-scripts
 
 # ---- runtime -----------------------------------------------------------------
 FROM php:8.3-fpm-alpine
@@ -57,10 +63,7 @@ COPY . .
 COPY --from=vendor /build/vendor ./vendor
 COPY --from=assets /build/public/build ./public/build
 
-# The autoloader is optimised now that the source is in place.
-RUN composer dump-autoload --no-dev --optimize --classmap-authoritative 2>/dev/null \
-    || php -r "echo 'composer not present in runtime image; using the vendored autoloader';" \
-    ; mkdir -p storage/framework/cache/data storage/framework/sessions \
+RUN mkdir -p storage/framework/cache/data storage/framework/sessions \
         storage/framework/views storage/logs storage/app/private/media bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod +x /usr/local/bin/entrypoint
@@ -68,6 +71,22 @@ RUN composer dump-autoload --no-dev --optimize --classmap-authoritative 2>/dev/n
 # The interface is Arabic-only by design (CLAUDE.md 5): every user-facing
 # string lives in lang/ar. Without this the app falls back to English and
 # renders raw translation keys.
+# Everything the container needs to boot, so it does not depend on the host
+# having applied render.yaml — creating a service from the dashboard does not
+# read it. Only the secrets (APP_KEY, APP_URL, DB_* credentials) are left to be
+# supplied. Every value below is overridable.
+#
+#   APP_LOCALE           the interface is Arabic-only (CLAUDE.md 5); without an
+#                        explicit locale the app renders raw translation keys
+#   DB_CONNECTION        without it Laravel defaults to sqlite and tries to open
+#                        a file named after the database
+#   DB_SSLMODE           'prefer' silently falls back to plaintext, and a
+#                        managed database is reached across the internet
+#   QUEUE/CACHE/SESSION  no Redis in a single small container
+#   SANABEL_MEDIA_DISK   the container's own disk; point this at a bucket for
+#                        anything that has to survive a redeploy
+#   DEMO_SEED            40 generated families so a demo has something to show.
+#                        Rule 11: synthetic only. Set false for anything else.
 ENV APP_ENV=production \
     APP_DEBUG=false \
     APP_LOCALE=ar \
@@ -75,7 +94,16 @@ ENV APP_ENV=production \
     APP_FAKER_LOCALE=ar_SA \
     APP_TIMEZONE=Asia/Damascus \
     LOG_CHANNEL=stderr \
-    PORT=10000
+    PORT=10000 \
+    DB_CONNECTION=pgsql \
+    DB_PORT=5432 \
+    DB_SSLMODE=require \
+    QUEUE_CONNECTION=database \
+    CACHE_STORE=database \
+    SESSION_DRIVER=database \
+    SANABEL_MEDIA_DISK=media_local \
+    MAIL_MAILER=log \
+    DEMO_SEED=true
 
 EXPOSE 10000
 

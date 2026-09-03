@@ -44,11 +44,11 @@ seed is well under 10 MB.
 ## 2. The web service (Render)
 
 1. **New** → **Web Service** → connect the GitHub repository.
-2. Render reads `render.yaml` and fills most of it in. Confirm:
+2. Confirm:
    - Language: **Docker**
    - Plan: **Free**
    - Health check path: `/up`
-3. Under **Environment**, set the values marked `sync: false`:
+3. Under **Environment**, set the six secrets:
 
 | Key | Value |
 |---|---|
@@ -59,8 +59,18 @@ seed is well under 10 MB.
 | `DB_USERNAME` | the Neon user |
 | `DB_PASSWORD` | the Neon password |
 
-Everything else — `DB_SSLMODE=require`, the database queue and cache drivers,
-`SANABEL_MEDIA_DISK=media_local`, `DEMO_SEED=true` — comes from `render.yaml`.
+Those six are the only variables you have to set. Everything else —
+`DB_CONNECTION=pgsql`, `DB_PORT`, `DB_SSLMODE=require`, the database queue,
+cache and session drivers, `APP_LOCALE=ar`, `SANABEL_MEDIA_DISK=media_local`,
+`DEMO_SEED=true` — is baked into the image as `ENV` in the `Dockerfile`.
+
+> **Why they are in the image and not in `render.yaml`.** Creating a service
+> from the dashboard (**New → Web Service**) does **not** read `render.yaml`;
+> only **New → Blueprint** does. A value defined only in the blueprint is
+> silently absent on a dashboard-created service — that is how the first deploy
+> came up with no `DB_CONNECTION`, fell back to SQLite, and died trying to open
+> a file named after the database. The image now boots correctly either way, and
+> `render.yaml` carries nothing but the six secrets above.
 
 `APP_URL` is a chicken-and-egg: Render only tells you the hostname once the
 service exists. Deploy, copy the URL, set `APP_URL`, and let it redeploy.
