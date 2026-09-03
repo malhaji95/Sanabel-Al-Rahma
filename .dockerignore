@@ -1,0 +1,21 @@
+.git
+.github
+node_modules
+vendor
+public/build
+public/hot
+storage/logs/*
+storage/framework/cache/data/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/app/private/*
+storage/backups
+# Rebuilt at boot. Copied in, it would carry the dev package manifest with it.
+bootstrap/cache/*.php
+.env
+.env.*
+!.env.example
+tests
+docs
+scripts
+resources/brand/*.pdf

@@ -60,6 +60,7 @@ Demo accounts, all with the password from `SEED_DEMO_PASSWORD` (default
 | `docs/api.md` | the API contract |
 | `docs/deployment.md` | deploying, backups, the restore test |
 | `docs/deployment-cloudways.md` | step-by-step deployment on Cloudways |
+| `docs/deployment-demo.md` | free demo deployment on Render + Neon |
 | `docs/erd.md` | the schema, generated from the live database |
 | `docs/brand.md` | the visual identity: colours, typeface, logo use |
 

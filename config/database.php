@@ -94,7 +94,12 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
-            'sslmode' => 'prefer',
+            /*
+             | 'prefer' negotiates TLS but silently falls back to plaintext, which
+             | is fine over a local socket and not fine across the internet. Set
+             | DB_SSLMODE=require for a managed database (Neon, RDS, and similar).
+             */
+            'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 
         'sqlsrv' => [

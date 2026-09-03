@@ -1,0 +1,69 @@
+# Render blueprint for the DEMO deployment.
+#
+# One free web service carries the whole application: web server, queue worker
+# and scheduler, all under supervisor inside the container. See
+# docs/deployment-demo.md — in particular, the free plan sleeps after
+# inactivity, which stops the scheduler with it. This is for showing the
+# platform, not for real families or real donations.
+services:
+  - type: web
+    name: sanabel-demo
+    runtime: docker
+    plan: free
+    region: frankfurt          # closest of Render's regions to Syria
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /up
+    autoDeployTrigger: commit
+
+    envVars:
+      # Set this in the dashboard. Generate with: php artisan key:generate --show
+      #
+      # It must never change once data exists: it encrypts national IDs, phones
+      # and wallets, and keys the HMAC behind national_id_hash — the unique
+      # index that stops a second file being opened for the same person.
+      - key: APP_KEY
+        sync: false
+
+      # Neon connection details — set these in the dashboard, not here.
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_DATABASE
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      # Neon requires TLS.
+      - key: DB_SSLMODE
+        value: require
+
+      - key: APP_URL
+        sync: false
+
+      # No Redis on the free plan; the database carries queue, cache and
+      # sessions. Nothing in the application uses the Redis facade directly.
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: SESSION_DRIVER
+        value: database
+
+      # Media on the container's own disk. Render's free plan has no persistent
+      # volume, so uploads are lost on redeploy — acceptable for a demo whose
+      # data is synthetic, and the reason this is not a production setup.
+      - key: SANABEL_MEDIA_DISK
+        value: media_local
+
+      # 40 generated families, so the demo has something to show. Rule 11:
+      # synthetic only, never real families. Set to false to start empty.
+      - key: DEMO_SEED
+        value: "true"
+
+      # Notifications are queued and marked sent without leaving the server.
+      - key: MAIL_MAILER
+        value: log
