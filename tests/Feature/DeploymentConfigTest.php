@@ -106,6 +106,23 @@ it('carries every runtime default in the image, not only in the blueprint', func
     }
 });
 
+it('gives the supervised workers a HOME they can read', function () {
+    /*
+     | Supervisor runs as root and does not reset HOME when it drops a program
+     | to www-data, so the queue worker and scheduler inherited /root. libpq
+     | looks for a client certificate at $HOME/.postgresql/postgresql.crt, and
+     | on /root (0700) that open fails with EACCES rather than ENOENT -- which
+     | libpq treats as fatal. Every TLS connection from those two processes
+     | died. php-fpm survived only because clear_env wipes HOME for its workers,
+     | so the site looked healthy while the queue crash-looped.
+     */
+    expect(file_get_contents(base_path('Dockerfile')))->toContain('HOME=/app');
+
+    $supervisor = file_get_contents(base_path('docker/supervisord.conf'));
+
+    expect($supervisor)->not->toContain('HOME=/root');
+});
+
 it('leaves only secrets for the operator to supply', function () {
     $render = file_get_contents(base_path('render.yaml'));
 

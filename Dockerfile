@@ -68,9 +68,6 @@ RUN mkdir -p storage/framework/cache/data storage/framework/sessions \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod +x /usr/local/bin/entrypoint
 
-# The interface is Arabic-only by design (CLAUDE.md 5): every user-facing
-# string lives in lang/ar. Without this the app falls back to English and
-# renders raw translation keys.
 # Everything the container needs to boot, so it does not depend on the host
 # having applied render.yaml — creating a service from the dashboard does not
 # read it. Only the secrets (APP_KEY, APP_URL, DB_* credentials) are left to be
@@ -87,7 +84,16 @@ RUN mkdir -p storage/framework/cache/data storage/framework/sessions \
 #                        anything that has to survive a redeploy
 #   DEMO_SEED            40 generated families so a demo has something to show.
 #                        Rule 11: synthetic only. Set false for anything else.
-ENV APP_ENV=production \
+#   HOME                 supervisor runs as root and does not reset HOME when it
+#                        drops a program to www-data, so the queue worker and
+#                        scheduler inherited /root. libpq looks for a client
+#                        certificate at $HOME/.postgresql/postgresql.crt, and on
+#                        /root (0700) that open fails with EACCES rather than
+#                        ENOENT -- which libpq treats as fatal, so every TLS
+#                        connection died. php-fpm was unaffected only because
+#                        clear_env wipes HOME for its workers.
+ENV HOME=/app \
+    APP_ENV=production \
     APP_DEBUG=false \
     APP_LOCALE=ar \
     APP_FALLBACK_LOCALE=ar \
