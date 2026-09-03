@@ -49,6 +49,17 @@ class Assessment extends Model
     /** The score actually used for ranking: an approved, unexpired override wins. */
     public function effectiveScore(): float
     {
+        $live = fn ($override) => $override->approved_by !== null
+            && ($override->expires_at === null || $override->expires_at->isFuture());
+
+        // As in Beneficiary::currentAssessment(), use the relation when a list
+        // has already loaded it rather than querying once per assessment.
+        if ($this->relationLoaded('overrides')) {
+            $override = $this->overrides->filter($live)->sortByDesc('id')->first();
+
+            return (float) ($override?->new_score ?? $this->base_score);
+        }
+
         $override = $this->overrides()
             ->whereNotNull('approved_by')
             ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))

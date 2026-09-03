@@ -22,13 +22,16 @@ class RankingService
     public function __construct(private readonly CoverageService $coverage) {}
 
     /** @return array{remaining:float,current_score:float,waiting_bonus:int,priority:float,eligible:bool} */
-    public function rank(Beneficiary $beneficiary): array
+    public function rank(Beneficiary $beneficiary, ?int $confirmed = null): array
     {
         $assessment = $beneficiary->currentAssessment();
         $score = $assessment?->effectiveScore() ?? 0.0;
 
         $need = $this->coverage->needAmount($beneficiary);
-        $confirmed = $this->coverage->confirmedSupport($beneficiary);
+
+        // fundingList() fetches the whole list's confirmed support in one query
+        // and passes it in; on its own the call falls back to its own lookup.
+        $confirmed ??= $this->coverage->confirmedSupport($beneficiary);
 
         $remaining = $need > 0 ? max(0, ($need - $confirmed) / $need) : 0.0;
         $currentScore = $score * $remaining;
@@ -68,14 +71,21 @@ class RankingService
         $query = Beneficiary::query()
             ->published()
             ->where('support_type', $supportType)
-            ->with(['assessments', 'region']);
+            // Everything MaskedCaseResource reads, loaded once for the whole list.
+            ->with(['assessments.overrides', 'region', 'members', 'housing', 'healthRecords']);
 
         if ($regionId) {
             $query->whereIn('region_id', Region::descendantIds($regionId));
         }
 
-        return $query->get()
-            ->map(fn (Beneficiary $b) => ['beneficiary' => $b, 'ranking' => $this->rank($b)])
+        $families = $query->get();
+        $confirmed = $this->coverage->confirmedSupportForMany($families);
+
+        return $families
+            ->map(fn (Beneficiary $b) => [
+                'beneficiary' => $b,
+                'ranking' => $this->rank($b, $confirmed[$b->getKey()] ?? 0),
+            ])
             ->filter(fn (array $row) => $row['ranking']['eligible'])
             // A case past its reassessment date stays in the list but is demoted.
             ->sortByDesc(fn (array $row) => $row['ranking']['priority'] - ($this->isOverdue($row['beneficiary']) ? 100 : 0))

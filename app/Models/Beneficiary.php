@@ -120,6 +120,16 @@ class Beneficiary extends Model
 
     public function currentAssessment(): ?Assessment
     {
+        // Honour an eager-loaded relation. Lists rank every published family and
+        // ask each one for its assessment, so querying here regardless turned a
+        // single `with('assessments')` into one query per family.
+        if ($this->relationLoaded('assessments')) {
+            return $this->assessments
+                ->where('status', 'approved')
+                ->sortByDesc('id')
+                ->first();
+        }
+
         return $this->assessments()->where('status', 'approved')->latest('id')->first();
     }
 

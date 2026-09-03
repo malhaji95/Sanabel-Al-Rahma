@@ -42,7 +42,8 @@ class MaskedCaseResource extends JsonResource
         $coverage = app(CoverageService::class);
         $ranking = app(RankingService::class);
 
-        $members = $case->members()->get();
+        // The relation, not a fresh query: a list eager-loads it once for the page.
+        $members = $case->members;
 
         return [
             'file_number' => $case->file_number,
@@ -59,7 +60,7 @@ class MaskedCaseResource extends JsonResource
             'coverage_label' => __('sanabel.coordination.coverage_'.$coverage->coverageLabel($case)),
             'remaining_amount' => $coverage->remainingNeed($case),
             'urgency_label' => $this->urgencyLabel($case),
-            'has_chronic_illness' => $case->healthRecords()->where('severity_band', '>', 0)->exists(),
+            'has_chronic_illness' => $this->hasChronicIllness($case),
             'rent_band' => $this->rentBand($case),
             'is_renting' => (bool) $case->housing?->isRenting(),
             'waiting_weeks' => $ranking->waitingBonus($case),
@@ -74,6 +75,16 @@ class MaskedCaseResource extends JsonResource
             'adult' => $members->where('person_class', 'adult')->count(),
             'elderly' => $members->where('person_class', 'elderly')->count(),
         ];
+    }
+
+    /** Whether anyone in the household has a recorded chronic condition — never which. */
+    private function hasChronicIllness(Beneficiary $case): bool
+    {
+        if ($case->relationLoaded('healthRecords')) {
+            return $case->healthRecords->where('severity_band', '>', 0)->isNotEmpty();
+        }
+
+        return $case->healthRecords()->where('severity_band', '>', 0)->exists();
     }
 
     /** A label, never the raw score. */

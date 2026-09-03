@@ -42,12 +42,22 @@ class PublicController extends Controller
     /** Counts only. Nothing here identifies a family. */
     private function stats(): array
     {
-        $published = Beneficiary::published()->get();
+        // Assessments eager-loaded and the confirmed sums fetched in one query:
+        // asking per family made the homepage cost a query per published case.
+        $published = Beneficiary::published()->with('assessments')->get();
+        $confirmed = $this->coverage->confirmedSupportForMany($published);
+
+        $isCovered = function (Beneficiary $case) use ($confirmed): bool {
+            $need = $this->coverage->needAmount($case);
+
+            // No need recorded is full coverage, as in CoverageService::coverageRatio().
+            return $need <= 0 || ($confirmed[$case->getKey()] ?? 0) >= $need;
+        };
 
         return [
             'families' => $published->count(),
             'regions' => Region::where('is_active', true)->where('type', '!=', 'governorate')->count(),
-            'covered' => $published->filter(fn (Beneficiary $c) => $this->coverage->coverageRatio($c) >= 1.0)->count(),
+            'covered' => $published->filter($isCovered)->count(),
         ];
     }
 

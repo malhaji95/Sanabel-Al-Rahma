@@ -27,10 +27,52 @@ class CoverageService
             $query->where('donations.verified_at', '>=', $since);
         }
 
-        $credits = (int) (clone $query)->whereNull('donations.reversal_of_id')->sum('donation_allocations.amount');
-        $debits = (int) (clone $query)->whereNotNull('donations.reversal_of_id')->sum('donation_allocations.amount');
+        // Credits and debits in one round trip. Two separate sums doubled the
+        // query count on every list that shows coverage.
+        $row = $query->selectRaw(
+            'sum(case when donations.reversal_of_id is null'
+            .' then donation_allocations.amount else 0 end) as credits,'
+            .' sum(case when donations.reversal_of_id is not null'
+            .' then donation_allocations.amount else 0 end) as debits'
+        )->first();
 
-        return max(0, $credits - $debits);
+        return max(0, (int) ($row->credits ?? 0) - (int) ($row->debits ?? 0));
+    }
+
+    /**
+     * The same figure for many families in one query, keyed by beneficiary id.
+     * A list that asks per family issues one query per case; the homepage and
+     * the funding list both walk every published family.
+     *
+     * @param  iterable<int,Beneficiary>  $beneficiaries
+     * @return array<int,int>
+     */
+    public function confirmedSupportForMany(iterable $beneficiaries): array
+    {
+        $ids = collect($beneficiaries)->map(fn (Beneficiary $b) => $b->getKey())->all();
+
+        if ($ids === []) {
+            return [];
+        }
+
+        return DonationAllocation::query()
+            ->whereIn('donation_allocations.beneficiary_id', $ids)
+            ->join('donations', 'donations.id', '=', 'donation_allocations.donation_id')
+            ->where('donations.status', 'verified')
+            ->whereNull('donations.deleted_at')
+            ->groupBy('donation_allocations.beneficiary_id')
+            ->selectRaw(
+                'donation_allocations.beneficiary_id as beneficiary_id,'
+                .' sum(case when donations.reversal_of_id is null'
+                .' then donation_allocations.amount else 0 end) as credits,'
+                .' sum(case when donations.reversal_of_id is not null'
+                .' then donation_allocations.amount else 0 end) as debits'
+            )
+            ->get()
+            ->mapWithKeys(fn ($row) => [
+                (int) $row->beneficiary_id => max(0, (int) $row->credits - (int) $row->debits),
+            ])
+            ->all();
     }
 
     /** The funding target: what the family still needs each month before any money arrives. */

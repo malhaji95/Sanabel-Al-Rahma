@@ -34,9 +34,21 @@ without it, on purpose.
 
 ## 1. The database (Neon)
 
-1. **New Project** → name it, pick the region closest to you.
+1. **New Project** → name it, and note the region you pick. **Render's service
+   must be in the same region**, for the reason in the box below.
 2. Open **Connection Details** and read off the host, database, user and
    password. The host looks like `ep-something-123456.eu-central-1.aws.neon.tech`.
+
+> **Put the service and the database in the same region.** A page issues on the
+> order of thirty queries, each one a round trip. Within a region that is a few
+> milliseconds each and the page renders in well under a second. Across the
+> Atlantic — Render defaults new services to **Oregon**, and a Neon project made
+> from Europe lands in `eu-central-1` — each round trip is about 160 ms, and the
+> same page takes the better part of a minute. Render's port scan then times out
+> and the deploy fails with *"no open HTTP ports detected"*, even though the
+> application is running and answering. `render.yaml` pins `region: frankfurt`
+> for exactly this reason, but a service created from the dashboard does not
+> read it, so set the region yourself in the create form.
 
 The free plan gives 0.5 GB, which is far more than a demo needs — the synthetic
 seed is well under 10 MB.
@@ -46,6 +58,7 @@ seed is well under 10 MB.
 1. **New** → **Web Service** → connect the GitHub repository.
 2. Confirm:
    - Language: **Docker**
+   - **Region: the same one your Neon project is in** — see the box above
    - Plan: **Free**
    - Health check path: `/up`
 3. Under **Environment**, set the six secrets:
