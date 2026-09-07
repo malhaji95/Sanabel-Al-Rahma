@@ -4,8 +4,10 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\RegionRentReferenceResource\Pages;
 use App\Models\RegionRentReference;
+use App\Services\ReferenceImporter;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -52,6 +54,49 @@ class RegionRentReferenceResource extends Resource
                 Tables\Columns\TextColumn::make('reference_rent')->label(__('sanabel.rent_reference.amount'))->numeric()->sortable(),
                 Tables\Columns\TextColumn::make('effective_from')->label(__('sanabel.reference.effective_from'))->date()->sortable(),
                 Tables\Columns\TextColumn::make('version')->label(__('sanabel.reference.version'))->numeric()->sortable(),
+            ])
+            // The same pair as the rates screen: take the template, fill it in,
+            // bring it back. Rent references were edit-one-row-at-a-time before.
+            ->headerActions([
+                Tables\Actions\Action::make('template')
+                    ->label(__('sanabel.actions.download_template'))
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('gray')
+                    ->action(fn () => response()->streamDownload(
+                        fn () => print (app(ReferenceImporter::class)->rentTemplate()),
+                        'rent-references-template.csv',
+                        ['Content-Type' => 'text/csv; charset=UTF-8'],
+                    )),
+
+                Tables\Actions\Action::make('import')
+                    ->label(__('sanabel.actions.import'))
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->form([
+                        Forms\Components\FileUpload::make('file')
+                            ->label(__('sanabel.reference.import_file'))
+                            ->helperText(__('sanabel.rent_reference.import_help'))
+                            ->acceptedFileTypes(['text/csv', 'text/plain', 'application/csv'])
+                            ->storeFiles(false)
+                            ->required(),
+                    ])
+                    ->action(function (array $data) {
+                        try {
+                            $result = app(ReferenceImporter::class)
+                                ->importRentReferences($data['file']->getRealPath(), auth()->id());
+                        } catch (\RuntimeException $e) {
+                            Notification::make()->title($e->getMessage())->danger()->send();
+
+                            return;
+                        }
+
+                        Notification::make()
+                            ->title(__('sanabel.actions.imported'))
+                            ->body(__('sanabel.reference.import_result', [
+                                'imported' => $result['imported'],
+                                'skipped' => count($result['skipped']),
+                            ]))
+                            ->success()->send();
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

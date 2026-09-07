@@ -20,10 +20,13 @@ use Illuminate\Support\Facades\DB;
  */
 class ReferenceImporter
 {
-    /** Columns: region_name_ar,person_class,amount,effective_from */
+    public const RATE_COLUMNS = ['region_name_ar', 'person_class', 'amount', 'effective_from'];
+
+    public const RENT_COLUMNS = ['region_name_ar', 'family_size_band', 'reference_rent', 'effective_from'];
+
     public function importRates(string $path, ?int $userId = null): array
     {
-        return $this->import($path, ['region_name_ar', 'person_class', 'amount', 'effective_from'],
+        return $this->import($path, self::RATE_COLUMNS,
             function (array $row, Region $region) use ($userId) {
                 $version = 1 + (int) RegionRate::withoutGlobalScopes()
                     ->where('region_id', $region->id)
@@ -42,10 +45,9 @@ class ReferenceImporter
             });
     }
 
-    /** Columns: region_name_ar,family_size_band,reference_rent,effective_from */
     public function importRentReferences(string $path, ?int $userId = null): array
     {
-        return $this->import($path, ['region_name_ar', 'family_size_band', 'reference_rent', 'effective_from'],
+        return $this->import($path, self::RENT_COLUMNS,
             function (array $row, Region $region) use ($userId) {
                 $version = 1 + (int) RegionRentReference::withoutGlobalScopes()
                     ->where('region_id', $region->id)
@@ -62,6 +64,51 @@ class ReferenceImporter
                     'created_by' => $userId,
                 ]);
             });
+    }
+
+    /**
+     * A CSV the admin fills in and hands straight back to the importer. Every
+     * region is already on its own row, so nobody has to retype an Arabic
+     * region name and have the import skip the line for not matching.
+     */
+    public function rateTemplate(): string
+    {
+        return $this->template(self::RATE_COLUMNS, ['adult', 'child', 'elderly']);
+    }
+
+    public function rentTemplate(): string
+    {
+        return $this->template(self::RENT_COLUMNS, ['1-3', '4-6', '7+']);
+    }
+
+    /**
+     * @param  array<int,string>  $columns
+     * @param  array<int,string>  $keys  the second column's value, one row each
+     */
+    private function template(array $columns, array $keys): string
+    {
+        $handle = fopen('php://temp', 'r+');
+
+        // Excel reads a UTF-8 CSV as mojibake without a byte-order mark, and the
+        // region names are Arabic. The importer trims the mark back off.
+        fwrite($handle, "\xEF\xBB\xBF");
+        // Explicit escape: PHP 8.4 deprecates relying on the default, and an
+        // empty one is what RFC 4180 (and Excel) expects.
+        fputcsv($handle, $columns, ',', '"', '');
+
+        $from = now()->toDateString();
+
+        foreach (Region::whereIn('type', ['governorate', 'area'])->orderBy('name_ar')->get() as $region) {
+            foreach ($keys as $key) {
+                fputcsv($handle, [$region->name_ar, $key, '', $from], ',', '"', '');
+            }
+        }
+
+        rewind($handle);
+        $csv = (string) stream_get_contents($handle);
+        fclose($handle);
+
+        return $csv;
     }
 
     /** @return array{imported:int,skipped:array<int,string>} */

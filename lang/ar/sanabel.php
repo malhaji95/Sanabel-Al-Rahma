@@ -252,6 +252,7 @@ return [
         'mark_failed' => 'تسجيل فشل',
         'redeem' => 'استخدام البطاقة',
         'revoke' => 'إلغاء البطاقة',
+        'download_template' => 'تنزيل النموذج',
         'import' => 'استيراد من Excel',
         'imported' => 'تم الاستيراد',
         'executed' => 'تم تنفيذ البند',
@@ -271,13 +272,14 @@ return [
         'effective_from' => 'ساري اعتباراً من',
         'version' => 'الإصدار',
         'import_file' => 'ملف CSV',
-        'import_help' => 'الأعمدة: region_name_ar, person_class, amount, effective_from — احفظ ملف Excel بصيغة CSV.',
+        'import_help' => 'الأعمدة: region_name_ar, person_class, amount, effective_from — نزّل النموذج أولاً، املأ عمود المبلغ، ثم احفظ الملف بصيغة CSV وأعد رفعه.',
         'import_result' => 'تم استيراد :imported صف، وتخطي :skipped صف.',
     ],
     'rate' => ['singular' => 'قيمة معيشة', 'plural' => 'قيم المعيشة المرجعية', 'amount' => 'المبلغ'],
     'rent_reference' => [
         'singular' => 'إيجار مرجعي', 'plural' => 'الإيجارات المرجعية',
         'band' => 'شريحة حجم الأسرة', 'amount' => 'الإيجار المرجعي',
+        'import_help' => 'الأعمدة: region_name_ar, family_size_band, reference_rent, effective_from — نزّل النموذج أولاً، املأ عمود الإيجار، ثم احفظ الملف بصيغة CSV وأعد رفعه.',
     ],
     'adjustment' => [
         'singular' => 'بند إضافي', 'plural' => 'البنود الإضافية',

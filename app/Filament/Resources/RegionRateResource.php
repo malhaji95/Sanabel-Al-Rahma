@@ -87,6 +87,18 @@ class RegionRateResource extends Resource
                     ->options(__('sanabel.person_class')),
             ])
             ->headerActions([
+                // Template first, import second: fill in the file you are given
+                // rather than guessing the columns.
+                Tables\Actions\Action::make('template')
+                    ->label(__('sanabel.actions.download_template'))
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('gray')
+                    ->action(fn () => response()->streamDownload(
+                        fn () => print (app(ReferenceImporter::class)->rateTemplate()),
+                        'region-rates-template.csv',
+                        ['Content-Type' => 'text/csv; charset=UTF-8'],
+                    )),
+
                 Tables\Actions\Action::make('import')
                     ->label(__('sanabel.actions.import'))
                     ->icon('heroicon-o-arrow-up-tray')
