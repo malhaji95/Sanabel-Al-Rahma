@@ -6,6 +6,7 @@ use App\Models\Permission;
 use App\Models\Region;
 use App\Models\Scopes\RegionScope;
 use App\Models\User;
+use Illuminate\Support\Collection;
 
 /**
  * docs/04-permissions.md. Roles and permissions are rows, not code — adding a
@@ -39,14 +40,33 @@ class PermissionService
             return false;
         }
 
-        return $user->role->permissions()->where('key', $permissionKey)->exists();
+        return $this->permissionsFor($user)->has($permissionKey);
     }
 
     public function scopeFor(?User $user, string $permissionKey): ?string
     {
-        $permission = $user?->role?->permissions()->where('key', $permissionKey)->first();
+        if (! $user?->role) {
+            return null;
+        }
 
-        return $permission?->pivot?->scope;
+        return $this->permissionsFor($user)->get($permissionKey)?->pivot?->scope;
+    }
+
+    /**
+     * The role's permissions, loaded once and answered from memory afterwards.
+     *
+     * A panel asks the policy for every row, every column and every action on
+     * the page, and each of those used to be its own query -- a list of 25
+     * families cost roughly 300. Loading the relation once makes the whole page
+     * cost one.
+     *
+     * @return Collection<string,Permission>
+     */
+    private function permissionsFor(User $user): Collection
+    {
+        $user->role->loadMissing('permissions');
+
+        return $user->role->permissions->keyBy('key');
     }
 
     /** True when the user's region scope covers the given region. */

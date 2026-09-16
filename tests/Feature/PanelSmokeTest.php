@@ -27,6 +27,7 @@ use App\Filament\Resources\SponsorshipResource;
 use App\Filament\Resources\UserResource;
 use App\Filament\Widgets\CoverageByRegion;
 use App\Filament\Widgets\OverviewStats;
+use App\Http\Middleware\RequireTwoFactor;
 use App\Models\Campaign;
 use App\Models\Complaint;
 use App\Models\Distribution;
@@ -34,8 +35,10 @@ use App\Models\Donation;
 use App\Models\Provider;
 use App\Models\Referral;
 use App\Models\Setting;
+use App\Models\User;
 use Database\Seeders\RegionSeeder;
 use Filament\Facades\Filament;
+use Illuminate\Support\Facades\DB;
 
 /*
  | Every internal screen is loaded as a real user. A page that throws on mount
@@ -220,4 +223,43 @@ it('lets only the right roles reach each panel', function () {
         ->and(userWithRole('donor')->canAccessPanel($provider))->toBeFalse()
         // A deactivated account reaches nothing.
         ->and(userWithRole('admin', ['is_active' => false])->canAccessPanel($admin))->toBeFalse();
+});
+
+/*
+ | The admin list timed out in production with a 504. The page itself was fine:
+ | the policy was asked for every row, every column and every action, and each
+ | of those ran its own permission query -- about 300 for a page of 25 families.
+ | On a database a few hundred milliseconds away that is minutes, not seconds.
+ |
+ | What matters is not the exact number but that it does not grow with the rows.
+ */
+it('does not issue more queries as the list grows', function () {
+    $region = regionWithRates();
+    $adminId = userWithRole('admin')->getKey();
+
+    // A fresh instance each time, as a real request has -- reusing one model
+    // would carry its loaded relations over and hide the cost.
+    $load = function () use ($adminId): int {
+        $this->actingAs(User::findOrFail($adminId));
+        session()->put(RequireTwoFactor::SESSION_KEY, now());
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->get(BeneficiaryResource::getUrl('index'))->assertSuccessful();
+        $count = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        return $count;
+    };
+
+    foreach (range(1, 3) as $ignored) {
+        familyOf($region);
+    }
+    $few = $load();
+
+    foreach (range(1, 15) as $ignored) {
+        familyOf($region);
+    }
+
+    expect($load())->toBeLessThanOrEqual($few);
 });
