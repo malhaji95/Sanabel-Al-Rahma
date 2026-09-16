@@ -130,7 +130,7 @@
                 })
 
                 this.form.note_ar = ''
-                this.message = @js(__('sanabel.field.saved_offline'))
+                this.message = @js(__('sanabel.field.saved_offline'));
                 await this.refreshPending()
 
                 if (this.online) {
@@ -145,9 +145,9 @@
                     const result = await window.SanabelField.sync()
                     this.message = result.conflicts > 0
                         ? @js(__('sanabel.field.synced_with_conflicts'))
-                        : @js(__('sanabel.field.synced'))
+                        : @js(__('sanabel.field.synced'));
                 } catch (e) {
-                    this.message = @js(__('sanabel.field.sync_failed'))
+                    this.message = @js(__('sanabel.field.sync_failed'));
                 } finally {
                     this.syncing = false
                     await this.refreshPending()

@@ -122,3 +122,41 @@ it('syncs a whole queue in one request', function () {
     expect($result['synced'])->toBe(3)
         ->and(Visit::count())->toBe(3);
 });
+
+/*
+ | Two bugs shipped past this suite because it exercises the sync endpoint
+ | directly, never the browser. In a real browser the field app was dead:
+ |
+ |  1. Blade drops the newline after an @js() directive, so the next statement
+ |     was glued onto the assignment and the whole inline script failed to
+ |     parse. fieldApp() never existed, nothing on the page worked.
+ |  2. /api/visits/sync sits behind auth:sanctum, but the delegate authenticates
+ |     with a session cookie. Without statefulApi() Sanctum only looks for a
+ |     bearer token, so every sync answered 401 and the queue never drained.
+ */
+it('emits an inline script whose statements are terminated', function () {
+    $delegate = userWithRole('delegate', ['region_id' => regionWithRates()->id]);
+
+    $html = $this->actingAs($delegate)->get(route('field'))->assertSuccessful()->getContent();
+
+    preg_match('/<script>(.*?)<\/script>/s', $html, $m);
+    expect($m[1] ?? '')->not->toBeEmpty();
+
+    // Same line only: a newline between two statements is perfectly normal.
+    expect($m[1])->not->toMatch("/'[ \t]+(await|this|if|return)\b/");
+});
+
+it('lets a session-authenticated delegate reach the sync endpoint', function () {
+    // statefulApi() is what makes the session count; without it this is a 401.
+    $middleware = file_get_contents(base_path('bootstrap/app.php'));
+
+    expect($middleware)->toContain('statefulApi()');
+
+    $delegate = userWithRole('delegate', ['region_id' => regionWithRates()->id]);
+
+    // The payload is validated separately; what matters here is that the
+    // session authenticates at all, so anything but 401 proves the point.
+    $response = $this->actingAs($delegate)->postJson(route('visits.sync'), ['visits' => []]);
+
+    expect($response->status())->not->toBe(401);
+});
