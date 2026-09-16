@@ -35,6 +35,11 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->id('admin')
+            // Livewire's wire:navigate: a click swaps the content instead of
+            // reloading the page, so the stylesheet, Alpine and Livewire stay
+            // initialised. Nothing new is installed -- Livewire already drives
+            // Filament. The field PWA is a plain route and is unaffected.
+            ->spa()
             ->path('admin')
             ->login()
             ->brandName(__('sanabel.app_name'))
