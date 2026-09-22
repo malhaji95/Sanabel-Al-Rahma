@@ -3,6 +3,7 @@
 use App\Models\Beneficiary;
 use App\Models\Income;
 use App\Models\RegionRate;
+use App\Services\AssessmentService;
 use App\Services\CaseService;
 use App\Services\NeedEngine;
 use App\Services\PermissionService;
@@ -156,4 +157,28 @@ it('S63 — the dashboard figures match the data', function () {
 
     expect(Beneficiary::published()->count())->toBe(4)
         ->and(Beneficiary::where('status', 'submitted')->count())->toBe(1);
+});
+
+it('starts the reassessment clock on the path the panel actually uses', function () {
+    // The rule 10 test set next_assessment_due_at by hand, so it stayed green
+    // while nothing in the application ever wrote that column: the panel's
+    // recompute action calls create(status: 'approved'), and only approve(),
+    // which nothing calls, scheduled the reassessment.
+    $case = publishedCase(regionWithRates());
+
+    $case->forceFill(['next_assessment_due_at' => null, 'last_assessment_at' => null])->save();
+
+    app(AssessmentService::class)->create($case->refresh(), status: 'approved');
+
+    $case->refresh();
+
+    expect($case->next_assessment_due_at)->not->toBeNull()
+        ->and($case->last_assessment_at)->not->toBeNull()
+        ->and($case->next_assessment_due_at->isFuture())->toBeTrue();
+
+    // And once it falls due, the case is flagged without a hand-written date.
+    $case->forceFill(['next_assessment_due_at' => now()->subDay()])->save();
+
+    expect(app(CaseService::class)->flagOverdueReassessments())->toBe(1)
+        ->and($case->fresh()->status)->toBe('needs_reassessment');
 });

@@ -41,6 +41,13 @@ class AssessmentService
                 $beneficiary->assessments()
                     ->where('status', 'approved')
                     ->update(['status' => 'superseded']);
+
+                // An assessment that arrives approved starts the rule 10 clock
+                // here. Recomputing from the panel takes this path, not
+                // approve(), so leaving it to approve() alone meant
+                // next_assessment_due_at was never written and no case was
+                // ever flagged overdue.
+                $this->scheduleReassessment($beneficiary);
             }
 
             return Assessment::create([

@@ -259,7 +259,14 @@ class BeneficiaryResource extends Resource
                     }),
                 Tables\Columns\IconColumn::make('duplicate_review_flag')
                     ->label(__('sanabel.beneficiary.duplicate_flag'))
-                    ->boolean(),
+                    ->boolean()
+                    // A raised flag is the exception worth looking at. The
+                    // default booleans read the other way round, so a list
+                    // with nothing wrong came up a column of red crosses.
+                    ->trueIcon('heroicon-o-exclamation-triangle')
+                    ->falseIcon('heroicon-o-check-circle')
+                    ->trueColor('warning')
+                    ->falseColor('gray'),
                 Tables\Columns\TextColumn::make('next_assessment_due_at')
                     ->label(__('sanabel.beneficiary.next_assessment'))
                     ->date()
