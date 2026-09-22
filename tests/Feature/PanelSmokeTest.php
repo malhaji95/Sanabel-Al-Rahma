@@ -38,6 +38,8 @@ use App\Models\Setting;
 use App\Models\User;
 use Database\Seeders\RegionSeeder;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -262,4 +264,32 @@ it('does not issue more queries as the list grows', function () {
     }
 
     expect($load())->toBeLessThanOrEqual($few);
+});
+
+it('renders every date field with the panel picker, not the browser one', function () {
+    // A native date input is drawn by the browser in the browser's own locale
+    // and direction: on an Arabic right-to-left page it read 'mm/dd/yyyy'.
+    // The default is set once in AppServiceProvider, so this checks the
+    // mechanism rather than each of the call sites.
+    $date = DatePicker::make('effective_from');
+    $dateTime = DateTimePicker::make('expires_at');
+
+    expect($date->isNative())->toBeFalse()
+        ->and($dateTime->isNative())->toBeFalse()
+        // DatePicker extends DateTimePicker, so a single careless default
+        // would hang a '00:00' off every date-only field.
+        ->and($date->getDisplayFormat())->toBe('d/m/Y')
+        ->and($dateTime->getDisplayFormat())->toBe('d/m/Y H:i');
+
+    // Nothing may opt back in to the browser widget.
+    $offenders = [];
+
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(app_path('Filament'))) as $file) {
+        if ($file->isFile() && $file->getExtension() === 'php'
+            && str_contains(file_get_contents($file->getPathname()), 'native(true)')) {
+            $offenders[] = $file->getPathname();
+        }
+    }
+
+    expect($offenders)->toBeEmpty();
 });
