@@ -29,6 +29,20 @@ class SyntheticDataSeeder extends Seeder
 {
     private const FAMILY_NAMES = ['التجريبية', 'النموذجية', 'الافتراضية', 'التدريبية', 'الاختبارية'];
 
+    /**
+     * صلة القرابة is the kinship, which is what the form asks for. The age
+     * class it used to be filled with already has its own column,
+     * person_class, so the two were saying the same thing and the screen
+     * showed 'adult' where it asks for a relation.
+     *
+     * @var array<string,array<string,string>>
+     */
+    private const RELATIONS = [
+        'adult' => ['male' => 'زوج', 'female' => 'زوجة'],
+        'child' => ['male' => 'ابن', 'female' => 'ابنة'],
+        'elderly' => ['male' => 'والد', 'female' => 'والدة'],
+    ];
+
     public function run(): void
     {
         $this->call([RoleAndPermissionSeeder::class, FundSeeder::class, SettingSeeder::class]);
@@ -117,13 +131,15 @@ class SyntheticDataSeeder extends Seeder
                 }
 
                 $birthYear = (int) date('Y') - $age;
+                $gender = $n % 2 === 0 ? 'female' : 'male';
+                $relation = self::RELATIONS[$class][$gender];
 
                 HouseholdMember::create([
                     'beneficiary_id' => $case->id,
-                    'relation' => $class,
-                    'name_ar' => "فرد {$class} {$n}",
+                    'relation' => $relation,
+                    'name_ar' => "{$relation} {$n}",
                     'birth_year' => $birthYear,
-                    'gender' => $n % 2 === 0 ? 'female' : 'male',
+                    'gender' => $gender,
                     'person_class' => DependencyRules::personClass($age),
                     'dependent' => DependencyRules::isDependent($age, false, false),
                     'unable_to_earn' => false,
