@@ -35,7 +35,10 @@ class ScoringWeightResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\TextInput::make('factor_key')->label(__('sanabel.weight.factor'))->required(),
+            Forms\Components\Select::make('factor_key')
+                ->label(__('sanabel.weight.factor'))
+                ->options(__('sanabel.weight.factors'))
+                ->searchable()->required(),
             Forms\Components\TextInput::make('weight')->label(__('sanabel.weight.value'))->numeric()->required(),
             Forms\Components\DatePicker::make('effective_from')->label(__('sanabel.reference.effective_from'))->required(),
             Forms\Components\TextInput::make('version')->label(__('sanabel.reference.version'))->numeric()->minValue(0)->required(),
@@ -46,7 +49,12 @@ class ScoringWeightResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('factor_key')->label(__('sanabel.weight.factor'))->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('factor_key')
+                    ->label(__('sanabel.weight.factor'))
+                    ->formatStateUsing(fn (string $state) => __('sanabel.weight.factors.'.$state))
+                    // The key is what the snapshot stores, so it stays visible.
+                    ->description(fn (ScoringWeight $record) => $record->factor_key)
+                    ->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('weight')->label(__('sanabel.weight.value'))->numeric()->sortable(),
                 Tables\Columns\TextColumn::make('effective_from')->label(__('sanabel.reference.effective_from'))->date()->sortable(),
                 Tables\Columns\TextColumn::make('version')->label(__('sanabel.reference.version'))->numeric()->sortable(),

@@ -288,6 +288,34 @@ return [
     'weight' => [
         'singular' => 'وزن', 'plural' => 'أوزان الدرجة',
         'factor' => 'العامل', 'value' => 'الوزن',
+
+        // The names the association approved on the weights sheet. The key
+        // itself stays on screen: it is what an assessment snapshot records.
+        'factors' => [
+            'F' => 'العجز المالي',
+            'M' => 'الحالة الصحية',
+            'V' => 'هشاشة الأسرة',
+            'H' => 'حالة السكن',
+            'U' => 'الاستعجال',
+            'D' => 'الحرمان',
+            'B' => 'المديونية الموثَّقة',
+
+            'M_severity' => 'شدة المرض',
+            'M_economic_impact' => 'الأثر الاقتصادي',
+            'M_care_burden' => 'عبء الرعاية',
+            'M_cost_burden' => 'عبء التكلفة',
+
+            'V_dependents' => 'نسبة المعالين',
+            'V_single_caregiver' => 'معيل وحيد',
+            'V_orphans' => 'وجود أيتام',
+            'V_unsupported_elderly' => 'مسن بلا معيل',
+
+            'H_safety' => 'سلامة المسكن',
+            'H_overcrowding' => 'الاكتظاظ',
+            'H_services' => 'الخدمات',
+            'H_eviction' => 'خطر الإخلاء',
+            'H_rent_burden' => 'عبء الإيجار',
+        ],
     ],
     'settings' => [
         'title' => 'الإعدادات',

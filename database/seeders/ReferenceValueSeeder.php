@@ -6,6 +6,8 @@ use App\Models\AdjustmentCatalog;
 use App\Models\Region;
 use App\Models\RegionRate;
 use App\Models\RegionRentReference;
+use App\Models\ScoringWeight;
+use App\Services\ReferenceResolver;
 use Illuminate\Database\Seeder;
 
 /**
@@ -48,6 +50,18 @@ class ReferenceValueSeeder extends Seeder
             AdjustmentCatalog::firstOrCreate(
                 ['key' => $key, 'region_id' => null, 'effective_from' => $from],
                 ['name_ar' => $nameAr, 'amount' => $amount, 'version' => 1],
+            );
+        }
+
+        // The resolver falls back to these same numbers when no row is in
+        // force, so seeding them changes no score. It does two other things:
+        // the weights become visible and editable on the panel instead of
+        // living only in code, and every assessment snapshot then records the
+        // version of each weight it used, as rule 8 intends.
+        foreach (ReferenceResolver::DEFAULT_WEIGHTS as $factor => $weight) {
+            ScoringWeight::firstOrCreate(
+                ['factor_key' => $factor, 'effective_from' => $from],
+                ['weight' => $weight, 'version' => 1],
             );
         }
     }
