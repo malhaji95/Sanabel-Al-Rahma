@@ -188,7 +188,7 @@ return [
         'step_urgency' => 'الأولوية والدين',
     ],
 
-    'member' => [
+    'household_member' => [
         'name' => 'الاسم',
         'relation' => 'صلة القرابة',
         'birth_year' => 'سنة الميلاد',

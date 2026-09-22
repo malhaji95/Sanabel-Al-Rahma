@@ -96,10 +96,10 @@ class BeneficiaryResource extends Resource
                         ->relationship()
                         ->label(__('sanabel.beneficiary.members'))
                         ->schema([
-                            Forms\Components\TextInput::make('name_ar')->label(__('sanabel.member.name'))->required(),
-                            Forms\Components\TextInput::make('relation')->label(__('sanabel.member.relation'))->required(),
+                            Forms\Components\TextInput::make('name_ar')->label(__('sanabel.household_member.name'))->required(),
+                            Forms\Components\TextInput::make('relation')->label(__('sanabel.household_member.relation'))->required(),
                             Forms\Components\TextInput::make('birth_year')
-                                ->label(__('sanabel.member.birth_year'))
+                                ->label(__('sanabel.household_member.birth_year'))
                                 ->numeric()->minValue(1900)->maxValue((int) date('Y'))
                                 ->required()
                                 ->live(onBlur: true)
@@ -109,26 +109,26 @@ class BeneficiaryResource extends Resource
                                     }
                                 }),
                             Forms\Components\Select::make('gender')
-                                ->label(__('sanabel.member.gender'))
+                                ->label(__('sanabel.household_member.gender'))
                                 ->options(__('sanabel.gender'))->required(),
 
                             // Derived, never typed: each member falls under exactly one class.
                             Forms\Components\Select::make('person_class')
-                                ->label(__('sanabel.member.person_class'))
+                                ->label(__('sanabel.household_member.person_class'))
                                 ->options(__('sanabel.person_class'))
                                 ->required()
                                 ->disabled()
                                 ->dehydrated(),
 
-                            Forms\Components\Toggle::make('is_student')->label(__('sanabel.member.is_student'))->live(),
+                            Forms\Components\Toggle::make('is_student')->label(__('sanabel.household_member.is_student'))->live(),
                             Forms\Components\Toggle::make('has_documented_condition')
-                                ->label(__('sanabel.member.has_documented_condition'))
-                                ->helperText(__('sanabel.member.condition_help'))
+                                ->label(__('sanabel.household_member.has_documented_condition'))
+                                ->helperText(__('sanabel.household_member.condition_help'))
                                 ->live(),
 
                             // Both flags are computed from the rules, not entered by hand.
                             Forms\Components\Placeholder::make('dependent_preview')
-                                ->label(__('sanabel.member.dependent'))
+                                ->label(__('sanabel.household_member.dependent'))
                                 ->content(fn (Forms\Get $get) => DependencyRules::isDependent(
                                     (int) date('Y') - (int) ($get('birth_year') ?: date('Y')),
                                     (bool) $get('is_student'),
@@ -136,12 +136,12 @@ class BeneficiaryResource extends Resource
                                 ) ? __('sanabel.yes') : __('sanabel.no')),
 
                             Forms\Components\Placeholder::make('unable_preview')
-                                ->label(__('sanabel.member.unable_to_earn'))
+                                ->label(__('sanabel.household_member.unable_to_earn'))
                                 ->content(fn (Forms\Get $get) => DependencyRules::isUnableToEarn(
                                     (bool) $get('has_documented_condition')
                                 ) ? __('sanabel.yes') : __('sanabel.no')),
 
-                            Forms\Components\Textarea::make('notes_ar')->label(__('sanabel.member.notes'))->columnSpanFull(),
+                            Forms\Components\Textarea::make('notes_ar')->label(__('sanabel.household_member.notes'))->columnSpanFull(),
                         ])
                         ->columns(3)
                         ->mutateRelationshipDataBeforeCreateUsing(fn (array $data) => self::deriveMemberFlags($data))

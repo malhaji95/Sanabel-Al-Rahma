@@ -45,7 +45,7 @@ class RegionRateResource extends Resource
                 ->relationship('region', 'name_ar')->searchable()->required(),
 
             Forms\Components\Select::make('person_class')
-                ->label(__('sanabel.member.person_class'))
+                ->label(__('sanabel.household_member.person_class'))
                 ->options(__('sanabel.person_class'))->required(),
 
             Forms\Components\TextInput::make('amount')
@@ -71,7 +71,7 @@ class RegionRateResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('region.name_ar')->label(__('sanabel.beneficiary.region'))->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('person_class')
-                    ->label(__('sanabel.member.person_class'))
+                    ->label(__('sanabel.household_member.person_class'))
                     ->formatStateUsing(fn (string $state) => __('sanabel.person_class.'.$state))
                     ->badge(),
                 Tables\Columns\TextColumn::make('amount')->label(__('sanabel.rate.amount'))->numeric()->sortable(),
@@ -83,7 +83,7 @@ class RegionRateResource extends Resource
                     ->label(__('sanabel.beneficiary.region'))
                     ->relationship('region', 'name_ar'),
                 Tables\Filters\SelectFilter::make('person_class')
-                    ->label(__('sanabel.member.person_class'))
+                    ->label(__('sanabel.household_member.person_class'))
                     ->options(__('sanabel.person_class')),
             ])
             ->headerActions([
