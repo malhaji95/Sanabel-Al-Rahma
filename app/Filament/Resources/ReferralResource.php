@@ -66,6 +66,7 @@ class ReferralResource extends Resource
                 Tables\Columns\TextColumn::make('expires_at')->label(__('sanabel.referral.expires_at'))->dateTime(),
                 Tables\Columns\TextColumn::make('status')
                     ->label(__('sanabel.beneficiary.status'))
+                    ->formatStateUsing(fn (string $state) => __('sanabel.referral_status.'.$state))
                     ->badge()
                     ->color(fn (string $state) => match ($state) {
                         'issued' => 'success',

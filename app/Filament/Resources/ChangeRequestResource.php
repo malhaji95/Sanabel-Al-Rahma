@@ -58,11 +58,14 @@ class ChangeRequestResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('entity_type')
                     ->label(__('sanabel.change_request.entity'))
-                    ->formatStateUsing(fn (string $state) => class_basename($state)),
+                    ->formatStateUsing(fn (string $state) => __('sanabel.change_request_entity.'.class_basename($state))),
                 Tables\Columns\TextColumn::make('entity_id')->label(__('sanabel.change_request.entity_id')),
                 Tables\Columns\IconColumn::make('is_material')->label(__('sanabel.change_request.is_material'))->boolean(),
                 Tables\Columns\TextColumn::make('requester.name')->label(__('sanabel.change_request.requested_by')),
-                Tables\Columns\TextColumn::make('status')->label(__('sanabel.beneficiary.status'))->badge(),
+                Tables\Columns\TextColumn::make('status')
+                    ->label(__('sanabel.beneficiary.status'))
+                    ->formatStateUsing(fn (string $state) => __('sanabel.change_request_status.'.$state))
+                    ->badge(),
                 Tables\Columns\TextColumn::make('created_at')->label(__('sanabel.change_request.requested_at'))->dateTime(),
             ])
             ->filters([

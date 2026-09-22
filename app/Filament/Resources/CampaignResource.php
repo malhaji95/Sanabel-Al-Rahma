@@ -57,7 +57,10 @@ class CampaignResource extends Resource
                 Tables\Columns\TextColumn::make('goal_amount')->label(__('sanabel.campaign.goal'))->numeric()->sortable(),
                 Tables\Columns\TextColumn::make('collected_amount')->label(__('sanabel.campaign.collected'))->numeric()->sortable(),
                 Tables\Columns\TextColumn::make('reserved_amount')->label(__('sanabel.campaign.reserved'))->numeric()->sortable(),
-                Tables\Columns\TextColumn::make('status')->label(__('sanabel.beneficiary.status'))->badge(),
+                Tables\Columns\TextColumn::make('status')
+                    ->label(__('sanabel.beneficiary.status'))
+                    ->formatStateUsing(fn (string $state) => __('sanabel.campaign_status.'.$state))
+                    ->badge(),
                 Tables\Columns\IconColumn::make('is_published')->label(__('sanabel.campaign.is_published'))->boolean(),
             ])
             ->actions([

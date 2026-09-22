@@ -15,6 +15,7 @@ use App\Models\Region;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\AssessmentService;
+use App\Services\CaseService;
 use App\Services\DependencyRules;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -69,6 +70,8 @@ class SyntheticDataSeeder extends Seeder
         foreach (range(1, 40) as $i) {
             $this->family($i, $areas->random(), $staff);
         }
+
+        $this->changeRequests($staff);
 
         $this->command?->info('Synthetic data seeded. No real family data is present.');
     }
@@ -191,6 +194,37 @@ class SyntheticDataSeeder extends Seeder
 
             app(AssessmentService::class)->create($case->refresh(), status: 'approved');
         }
+    }
+
+    /**
+     * A published case may not be edited straight through by anyone but an
+     * admin, so the review queue is where every other edit lands. Seeding a
+     * couple of pending ones gives the queue something to show.
+     */
+    private function changeRequests(array $staff): void
+    {
+        $cases = Beneficiary::where('status', 'published')->orderBy('id')->take(2)->get();
+
+        if ($cases->count() < 2) {
+            return;
+        }
+
+        // Material: the rent feeds the housing factor, so approving this
+        // recomputes the assessment.
+        app(CaseService::class)->requestChange(
+            $cases[0],
+            $staff['delegate'],
+            ['monthly_rent' => 55_000],
+            'ارتفع الإيجار بعد تجديد العقد.',
+        );
+
+        // Not material: a corrected phone number changes no score.
+        app(CaseService::class)->requestChange(
+            $cases[1],
+            $staff['association'],
+            ['phone_encrypted' => '0900999999'],
+            'تصحيح رقم الهاتف بعد زيارة ميدانية.',
+        );
     }
 
     private function donors(): void

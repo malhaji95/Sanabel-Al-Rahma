@@ -47,7 +47,10 @@ class RegionResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name_ar')->label(__('sanabel.region.name'))->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('type')->label(__('sanabel.region.type'))->badge(),
+                Tables\Columns\TextColumn::make('type')
+                    ->label(__('sanabel.region.type'))
+                    ->formatStateUsing(fn (string $state) => __('sanabel.region_type.'.$state))
+                    ->badge(),
                 Tables\Columns\TextColumn::make('parent.name_ar')->label(__('sanabel.region.parent'))->searchable()->sortable(),
                 Tables\Columns\IconColumn::make('is_active')->label(__('sanabel.region.is_active'))->boolean(),
             ])

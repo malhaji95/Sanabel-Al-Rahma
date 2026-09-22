@@ -70,9 +70,15 @@ class ComplaintResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('reference_no')->label(__('sanabel.complaint.reference_no'))->searchable()->copyable(),
                 Tables\Columns\TextColumn::make('subject_ar')->label(__('sanabel.complaint.subject'))->searchable(),
-                Tables\Columns\TextColumn::make('category')->label(__('sanabel.complaint.category'))->badge(),
+                Tables\Columns\TextColumn::make('category')
+                    ->label(__('sanabel.complaint.category'))
+                    ->formatStateUsing(fn (string $state) => __('sanabel.complaint_category.'.$state))
+                    ->badge(),
                 Tables\Columns\TextColumn::make('owner.name')->label(__('sanabel.complaint.owner')),
-                Tables\Columns\TextColumn::make('status')->label(__('sanabel.beneficiary.status'))->badge(),
+                Tables\Columns\TextColumn::make('status')
+                    ->label(__('sanabel.beneficiary.status'))
+                    ->formatStateUsing(fn (string $state) => __('sanabel.complaint_status.'.$state))
+                    ->badge(),
                 Tables\Columns\TextColumn::make('created_at')->label(__('sanabel.complaint.created_at'))->dateTime(),
             ])
             ->filters([

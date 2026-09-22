@@ -76,6 +76,7 @@ class SponsorshipResource extends Resource
                     ->label(__('sanabel.sponsorship.installments')),
                 Tables\Columns\TextColumn::make('status')
                     ->label(__('sanabel.beneficiary.status'))
+                    ->formatStateUsing(fn (string $state) => __('sanabel.sponsorship_status.'.$state))
                     ->badge()
                     ->color(fn (string $state) => match ($state) {
                         'active' => 'success',

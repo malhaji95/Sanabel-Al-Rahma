@@ -50,7 +50,10 @@ class ProviderResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name_ar')->label(__('sanabel.provider.name'))->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('type')->label(__('sanabel.provider.type'))->badge(),
+                Tables\Columns\TextColumn::make('type')
+                    ->label(__('sanabel.provider.type'))
+                    ->formatStateUsing(fn (string $state) => __('sanabel.provider_type.'.$state))
+                    ->badge(),
                 Tables\Columns\TextColumn::make('region.name_ar')->label(__('sanabel.beneficiary.region'))->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('discount_value')->label(__('sanabel.provider.discount_value'))->numeric()->sortable(),
                 Tables\Columns\TextColumn::make('valid_until')->label(__('sanabel.provider.valid_until'))->date()->sortable(),

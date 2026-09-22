@@ -74,6 +74,7 @@ class DistributionResource extends Resource
                 Tables\Columns\TextColumn::make('total_amount')->label(__('sanabel.distribution.total'))->numeric(),
                 Tables\Columns\TextColumn::make('status')
                     ->label(__('sanabel.beneficiary.status'))
+                    ->formatStateUsing(fn (string $state) => __('sanabel.distribution_status.'.$state))
                     ->badge()
                     ->color(fn (string $state) => match ($state) {
                         'completed' => 'success',

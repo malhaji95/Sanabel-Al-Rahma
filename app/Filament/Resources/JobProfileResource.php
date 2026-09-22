@@ -51,7 +51,10 @@ class JobProfileResource extends Resource
                 Tables\Columns\TextColumn::make('beneficiary.file_number')->label(__('sanabel.beneficiary.file_number'))->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('trade_key')->label(__('sanabel.job_profile.trade'))->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('region.name_ar')->label(__('sanabel.beneficiary.region'))->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('status')->label(__('sanabel.beneficiary.status'))->badge(),
+                Tables\Columns\TextColumn::make('status')
+                    ->label(__('sanabel.beneficiary.status'))
+                    ->formatStateUsing(fn (string $state) => __('sanabel.job_profile_status.'.$state))
+                    ->badge(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

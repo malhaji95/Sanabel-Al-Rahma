@@ -50,7 +50,10 @@ class MemberResource extends Resource
                 Tables\Columns\TextColumn::make('membership_no')->label(__('sanabel.member.number'))->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('name_ar')->label(__('sanabel.member.name'))->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('category')->label(__('sanabel.member.category'))->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('status')->label(__('sanabel.beneficiary.status'))->badge(),
+                Tables\Columns\TextColumn::make('status')
+                    ->label(__('sanabel.beneficiary.status'))
+                    ->formatStateUsing(fn (string $state) => __('sanabel.member_status.'.$state))
+                    ->badge(),
                 Tables\Columns\TextColumn::make('joined_at')->label(__('sanabel.member.joined_at'))->date()->sortable(),
             ])
             ->actions([

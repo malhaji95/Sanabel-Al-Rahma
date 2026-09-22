@@ -400,6 +400,13 @@ return [
         'not_found' => 'لا توجد بطاقة بهذا الرمز صادرة لكم.',
         'redeemed' => 'تم تسجيل استخدام البطاقة.',
     ],
+    // draft|approved|executing|completed|partial, as the distributions table declares.
+    'distribution_status' => [
+        'draft' => 'مسودة', 'approved' => 'معتمد', 'executing' => 'قيد التنفيذ',
+        'completed' => 'منجز', 'partial' => 'منجز جزئياً',
+    ],
+    // The only state the system ever writes. Nothing suspends a provider yet.
+    'provider_status' => ['active' => 'نشط'],
     'referral_status' => [
         'issued' => 'صادرة', 'used' => 'مستخدمة', 'expired' => 'منتهية', 'revoked' => 'ملغاة',
     ],
@@ -428,6 +435,8 @@ return [
         'is_material' => 'تعديل جوهري',
         'requested_by' => 'مقدم الطلب', 'requested_at' => 'تاريخ الطلب',
     ],
+    // The only entity a change request is ever raised against today.
+    'change_request_entity' => ['Beneficiary' => 'ملف مستفيد'],
     'change_request_status' => ['pending' => 'قيد المراجعة', 'approved' => 'معتمد', 'rejected' => 'مرفوض'],
     'user' => [
         'singular' => 'مستخدم', 'plural' => 'المستخدمون',

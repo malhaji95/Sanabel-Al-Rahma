@@ -57,7 +57,10 @@ class OfferResource extends Resource
                 Tables\Columns\TextColumn::make('name_ar')->label(__('sanabel.provider.name')),
                 Tables\Columns\TextColumn::make('discount_value')->label(__('sanabel.provider.discount_value'))->numeric(),
                 Tables\Columns\TextColumn::make('valid_until')->label(__('sanabel.provider.valid_until'))->date(),
-                Tables\Columns\TextColumn::make('status')->label(__('sanabel.beneficiary.status'))->badge(),
+                Tables\Columns\TextColumn::make('status')
+                    ->label(__('sanabel.beneficiary.status'))
+                    ->formatStateUsing(fn (string $state) => __('sanabel.provider_status.'.$state))
+                    ->badge(),
             ])
             ->actions([Tables\Actions\EditAction::make()]);
     }
