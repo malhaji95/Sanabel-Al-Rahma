@@ -5,9 +5,11 @@ use App\Http\Resources\ReferralCardResource;
 use App\Models\Beneficiary;
 use App\Models\Donation;
 use App\Models\JobProfile;
+use App\Models\Post;
 use App\Models\Provider;
 use App\Models\Referral;
 use App\Models\Region;
+use App\Models\User;
 use App\Services\CaseService;
 use App\Services\PermissionService;
 
@@ -204,4 +206,33 @@ it('never hard-deletes a case or a donation', function () {
 
     expect(Beneficiary::withTrashed()->find($case->id))->not->toBeNull()
         ->and(Beneficiary::withTrashed()->find($case->id)->deleted_at)->not->toBeNull();
+});
+
+it('gives the finance role the payment queue and nothing about the family', function () {
+    $finance = userWithRole('finance');
+
+    expect($finance->can('viewAny', Donation::class))->toBeTrue()
+        ->and($finance->can('viewAny', Beneficiary::class))->toBeFalse()
+        ->and($finance->can('viewAny', User::class))->toBeFalse();
+});
+
+it('lets the content manager run the site without opening a family file', function () {
+    $content = userWithRole('content_manager');
+
+    expect($content->can('viewAny', Post::class))->toBeTrue()
+        ->and($content->can('create', Post::class))->toBeTrue()
+        // The whole point of the role: managing content is not a way in.
+        ->and($content->can('viewAny', Beneficiary::class))->toBeFalse()
+        ->and($content->can('viewAny', Donation::class))->toBeFalse();
+});
+
+it('does not treat the user list as a report', function () {
+    // view_reports is held by almost every staff role; it must not double as a
+    // key to every account's email and role.
+    foreach (['delegate', 'area_supervisor', 'case_officer', 'association'] as $roleKey) {
+        expect(userWithRole($roleKey)->can('viewAny', User::class))
+            ->toBeFalse("{$roleKey} can list every user");
+    }
+
+    expect(userWithRole('admin')->can('viewAny', User::class))->toBeTrue();
 });

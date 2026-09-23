@@ -89,6 +89,14 @@ class BeneficiaryResource extends Resource
                         ->label(__('sanabel.beneficiary.support_type'))
                         ->options(__('sanabel.masked.need_type'))
                         ->required(),
+
+                    // Recorded, never computed from: the need engine does not
+                    // read it, so a note here cannot move a score.
+                    Forms\Components\Textarea::make('previous_aid_ar')
+                        ->label(__('sanabel.beneficiary.previous_aid'))
+                        ->helperText(__('sanabel.beneficiary.previous_aid_help'))
+                        ->rows(2)
+                        ->columnSpanFull(),
                 ])->columns(2),
 
                 Forms\Components\Wizard\Step::make(__('sanabel.beneficiary.step_members'))->schema([

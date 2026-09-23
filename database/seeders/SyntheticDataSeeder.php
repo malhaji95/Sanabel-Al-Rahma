@@ -98,6 +98,8 @@ class SyntheticDataSeeder extends Seeder
             'council' => $make('council', 'council@sanabel.local', 'عضو مجلس الإدارة'),
             'provider' => $make('service_provider', 'provider@sanabel.local', 'مركز طبي'),
             'donor' => $make('donor', 'donor@sanabel.local', 'متبرع تجريبي'),
+            'finance' => $make('finance', 'finance@sanabel.local', 'مسؤول المالية'),
+            'content' => $make('content_manager', 'content@sanabel.local', 'مسؤول المحتوى'),
         ];
     }
 

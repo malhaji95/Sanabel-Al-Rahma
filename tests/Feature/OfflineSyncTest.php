@@ -160,3 +160,35 @@ it('lets a session-authenticated delegate reach the sync endpoint', function () 
 
     expect($response->status())->not->toBe(401);
 });
+
+it('never writes a visit to the device in the clear', function () {
+    // The encryption itself is browser-side and was proved in a real browser:
+    // the stored row holds only client_uuid, synced, queued_at, iv and sealed,
+    // and the note inside it does not appear in the raw record. This guards the
+    // source against someone putting the plain visit back.
+    $source = file_get_contents(resource_path('js/field.js'));
+
+    expect($source)->toContain('AES-GCM')
+        // Non-extractable: no script on the origin can read the key's bytes.
+        // Non-extractable: no script on the origin can read the key's bytes.
+        ->and($source)->toContain("{ name: 'AES-GCM', length: 256 }, false")
+        ->and($source)->toContain('crypto.subtle.encrypt')
+        ->and($source)->toContain('crypto.subtle.decrypt');
+
+    // What the queue writer actually stores. markSynced re-puts the same
+    // sealed row with its flag flipped, which is why this looks at queueVisit
+    // rather than at every put() in the file.
+    preg_match('/export async function queueVisit\(.*?\n\}/s', $source, $writer);
+    preg_match("/tx\(db, 'readwrite'\)\.put\(\{(.*?)\}\)/s", $writer[0], $written);
+
+    $fields = collect(explode(',', $written[1]))
+        ->map(fn ($line) => trim(explode(':', $line)[0]))
+        ->filter()
+        ->values()
+        ->all();
+
+    // Exactly the row proved in the browser: two index fields, a timestamp,
+    // and the sealed blob. Nothing from the visit itself.
+    expect($writer[0])->toContain('seal(db, body)')
+        ->and($fields)->toBe(['client_uuid', 'synced', 'queued_at', 'iv', 'sealed']);
+});

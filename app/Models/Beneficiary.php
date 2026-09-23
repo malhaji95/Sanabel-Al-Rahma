@@ -25,7 +25,7 @@ class Beneficiary extends Model
     protected $fillable = [
         'file_number', 'national_id_encrypted', 'national_id_hash', 'first_name', 'father_name',
         'family_name', 'phone_encrypted', 'region_id', 'marital_status', 'wallet_encrypted',
-        'support_type', 'urgency_deadline_at', 'documented_debt', 'status', 'last_assessment_at', 'next_assessment_due_at', 'source',
+        'support_type', 'previous_aid_ar', 'urgency_deadline_at', 'documented_debt', 'status', 'last_assessment_at', 'next_assessment_due_at', 'source',
         'merged_into_id', 'duplicate_review_flag', 'approved_by', 'approved_at', 'reject_reason_ar',
         'published_at', 'created_by',
     ];

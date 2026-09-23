@@ -11,7 +11,9 @@ class UserPolicy
 
     public function viewAny(User $user): bool
     {
-        return $this->canRead($user, 'view_reports') || $user->isAdmin() || $user->hasRole('council');
+        // Not a report: a delegate holding view_reports could list every
+        // account in the system, with its email and role.
+        return $this->canWrite($user, 'manage_users') || $user->hasRole('council');
     }
 
     public function view(User $user, User $model): bool

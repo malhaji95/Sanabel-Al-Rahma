@@ -12,7 +12,11 @@ class PagePolicy
 
     public function viewAny(User $user): bool
     {
-        return $this->canRead($user, 'view_reports') || $user->isAdmin() || $user->hasRole('council');
+        // manage_cms is what the content manager holds; without it here the
+        // role could create a post but not open the list it lives in.
+        return $this->canWrite($user, 'manage_cms')
+            || $this->canRead($user, 'view_reports')
+            || $user->isAdmin() || $user->hasRole('council');
     }
 
     public function view(User $user, Page $model): bool

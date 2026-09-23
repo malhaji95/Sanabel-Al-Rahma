@@ -8,8 +8,9 @@ use App\Services\PermissionService;
 use Illuminate\Database\Seeder;
 
 /**
- * docs/04-permissions.md. Nine active roles, as data.
- * Adding a role later is an insert, not a rewrite.
+ * docs/04-permissions.md, plus the two launch roles the phases document names
+ * separately: basic finance and content/media. Roles are data, so adding one
+ * is an insert, not a rewrite.
  */
 class RoleAndPermissionSeeder extends Seeder
 {
@@ -54,6 +55,20 @@ class RoleAndPermissionSeeder extends Seeder
             'file_complaint' => 'own', 'view_reports' => 'own',
         ],
         'admin' => 'all',
+        // Money only. Verifying a transfer needs the file number and the
+        // amount, never the family behind it, so this role reads the masked
+        // case and never the full one.
+        'finance' => [
+            'verify_payment' => 'all', 'view_masked_case' => 'all',
+            'view_reports' => 'all', 'file_complaint' => 'own',
+        ],
+        // Publishes news, pages and banners. Deliberately has no
+        // view_full_case and no upload_media: managing content must not open
+        // a family's documents.
+        'content_manager' => [
+            'manage_cms' => 'all', 'view_masked_case' => 'all',
+            'file_complaint' => 'own',
+        ],
         // Hard rule 1 — council is read-only. It holds read permissions only, and
         // PermissionService denies every write key regardless of what is stored.
         'council' => [
@@ -66,6 +81,7 @@ class RoleAndPermissionSeeder extends Seeder
         'beneficiary' => 'مستفيد', 'delegate' => 'مندوب', 'area_supervisor' => 'مشرف منطقة',
         'case_officer' => 'مسؤول الحالات', 'association' => 'جمعية', 'donor' => 'متبرع',
         'service_provider' => 'مزود خدمة', 'admin' => 'مدير النظام', 'council' => 'مجلس الإدارة',
+        'finance' => 'المالية', 'content_manager' => 'مدير المحتوى',
     ];
 
     public function run(): void

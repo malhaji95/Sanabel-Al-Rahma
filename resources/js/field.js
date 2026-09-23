@@ -10,8 +10,10 @@ import Alpine from 'alpinejs'
  */
 
 const DB_NAME = 'sanabel-field'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const STORE = 'visits'
+const KEYS = 'keys'
+const KEY_ID = 'queue'
 
 function openDb() {
     return new Promise((resolve, reject) => {
@@ -24,6 +26,10 @@ function openDb() {
                 const store = db.createObjectStore(STORE, { keyPath: 'client_uuid' })
                 store.createIndex('synced', 'synced', { unique: false })
             }
+
+            if (!db.objectStoreNames.contains(KEYS)) {
+                db.createObjectStore(KEYS, { keyPath: 'id' })
+            }
         }
 
         request.onsuccess = () => resolve(request.result)
@@ -31,8 +37,8 @@ function openDb() {
     })
 }
 
-function tx(db, mode) {
-    return db.transaction(STORE, mode).objectStore(STORE)
+function tx(db, mode, store = STORE) {
+    return db.transaction(store, mode).objectStore(store)
 }
 
 function promisify(request) {
@@ -42,26 +48,74 @@ function promisify(request) {
     })
 }
 
+/*
+ | A phone carried into the field is lost or taken far more easily than a server
+ | is breached, so a queued visit is encrypted before it is written.
+ |
+ | The key is generated in the browser and kept non-extractable: it is stored as
+ | a CryptoKey, so no script on this origin can read its bytes back out. That is
+ | not protection against someone holding the unlocked device, who can call our
+ | own decrypt path; it removes the plaintext at rest, which is what a browser
+ | can honestly offer without a passphrase the delegate would have to re-enter
+ | with no network to check it against.
+ */
+async function queueKey(db) {
+    const existing = await promisify(tx(db, 'readonly', KEYS).get(KEY_ID))
+
+    if (existing?.key) {
+        return existing.key
+    }
+
+    const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt'])
+    await promisify(tx(db, 'readwrite', KEYS).put({ id: KEY_ID, key }))
+
+    return key
+}
+
+async function seal(db, visit) {
+    const iv = crypto.getRandomValues(new Uint8Array(12))
+    const body = new TextEncoder().encode(JSON.stringify(visit))
+
+    return {
+        iv,
+        sealed: new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await queueKey(db), body)),
+    }
+}
+
+async function unseal(db, record) {
+    const body = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: record.iv },
+        await queueKey(db),
+        record.sealed,
+    )
+
+    return JSON.parse(new TextDecoder().decode(body))
+}
+
 export async function queueVisit(visit) {
     const db = await openDb()
 
-    const record = {
-        ...visit,
-        client_uuid: visit.client_uuid || crypto.randomUUID(),
+    const body = { ...visit, client_uuid: visit.client_uuid || crypto.randomUUID() }
+    const { iv, sealed } = await seal(db, body)
+
+    // client_uuid and synced stay in the clear: one is the key, the other the
+    // index the queue is read by. Neither says anything about a family.
+    await promisify(tx(db, 'readwrite').put({
+        client_uuid: body.client_uuid,
         synced: 0,
         queued_at: new Date().toISOString(),
-    }
+        iv,
+        sealed,
+    }))
 
-    await promisify(tx(db, 'readwrite').put(record))
-
-    return record
+    return body
 }
 
 export async function pendingVisits() {
     const db = await openDb()
     const all = await promisify(tx(db, 'readonly').getAll())
 
-    return all.filter((visit) => visit.synced === 0)
+    return Promise.all(all.filter((record) => record.synced === 0).map((record) => unseal(db, record)))
 }
 
 async function markSynced(clientUuids) {
@@ -98,9 +152,7 @@ export async function sync() {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
         },
         credentials: 'same-origin',
-        body: JSON.stringify({
-            visits: queue.map(({ synced, queued_at, ...visit }) => visit),
-        }),
+        body: JSON.stringify({ visits: queue }),
     })
 
     if (!response.ok) {

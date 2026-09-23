@@ -12,12 +12,15 @@ class DonationPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->isAdmin() || $user->hasRole('council') || $user->hasRole('donor');
+        // Whoever may verify a transfer must be able to open the queue of
+        // transfers waiting for it.
+        return $this->canWrite($user, 'verify_payment')
+            || $user->isAdmin() || $user->hasRole('council') || $user->hasRole('donor');
     }
 
     public function view(User $user, Donation $donation): bool
     {
-        if ($user->isAdmin() || $user->hasRole('council')) {
+        if ($user->isAdmin() || $user->hasRole('council') || $this->canWrite($user, 'verify_payment')) {
             return true;
         }
 
