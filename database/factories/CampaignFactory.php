@@ -15,8 +15,6 @@ class CampaignFactory extends Factory
         return [
             'title_ar' => 'حملة '.fake()->unique()->numberBetween(1, 99999),
             'goal_amount' => 100000,
-            'collected_amount' => 0,
-            'reserved_amount' => 0,
             'currency' => 'SYP',
             'status' => 'active',
             'is_published' => false,

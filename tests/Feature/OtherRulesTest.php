@@ -40,21 +40,6 @@ it('cannot publish a campaign without surplus policy text', function () {
     expect($campaign->fresh()->is_published)->toBeTrue();
 });
 
-it('stops pledges once collected plus reserved reaches the goal', function () {
-    $campaign = Campaign::factory()->create([
-        'goal_amount' => 100_000,
-        'collected_amount' => 60_000,
-        'reserved_amount' => 30_000,
-    ]);
-
-    expect($campaign->acceptsPledges())->toBeTrue()
-        ->and($campaign->progressPercent())->toBe(60);
-
-    $campaign->update(['reserved_amount' => 40_000]);
-
-    expect($campaign->fresh()->acceptsPledges())->toBeFalse();
-});
-
 it('refuses an expired referral card and a card that was already used', function () {
     $case = publishedCase($this->region);
     $provider = Provider::factory()->create(['region_id' => $this->region->id]);

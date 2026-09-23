@@ -1,6 +1,6 @@
 @props(['campaign'])
 
-@php $progress = $campaign->progressPercent(); @endphp
+@php $collected = $campaign->collectedAmount(); $progress = $campaign->progressPercent($collected); @endphp
 
 <article class="card-interactive flex h-full flex-col">
     <h3 class="text-base">{{ $campaign->title_ar }}</h3>
@@ -31,7 +31,7 @@
         </div>
 
         <p class="tabular mt-2.5 text-sm">
-            <span class="font-bold">{{ number_format($campaign->collected_amount) }}</span>
+            <span class="font-bold">{{ number_format($collected) }}</span>
             <span style="color: var(--text-muted);">/ {{ number_format($campaign->goal_amount) }} {{ $campaign->currency }}</span>
         </p>
     </div>
@@ -46,9 +46,11 @@
         </p>
     </details>
 
-    @unless ($campaign->acceptsPledges())
+    @if ($campaign->acceptsPledges($collected) && auth()->user()?->donor)
+        <livewire:pledge-to-campaign :campaign="$campaign" :key="'pledge-' . $campaign->id" />
+    @elseif (! $campaign->acceptsPledges($collected))
         <p class="mt-auto pt-4 text-sm" style="color: var(--text-muted);">
             {{ __('sanabel.public.campaign_closed') }}
         </p>
-    @endunless
+    @endif
 </article>

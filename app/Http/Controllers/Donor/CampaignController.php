@@ -30,16 +30,18 @@ class CampaignController extends Controller
 
     private function present(Campaign $campaign): array
     {
+        $collected = $campaign->collectedAmount();
+
         return [
             'id' => $campaign->id,
             'title_ar' => $campaign->title_ar,
             'body_ar' => $campaign->body_ar,
             'goal_amount' => $campaign->goal_amount,
-            'collected_amount' => $campaign->collected_amount,
-            'reserved_amount' => $campaign->reserved_amount,
+            'collected_amount' => $collected,
+            'reserved_amount' => $campaign->reservedAmount(),
             'currency' => $campaign->currency,
-            'progress_percent' => $campaign->progressPercent(),
-            'accepts_pledges' => $campaign->acceptsPledges(),
+            'progress_percent' => $campaign->progressPercent($collected),
+            'accepts_pledges' => $campaign->acceptsPledges($collected),
             'status' => $campaign->status,
             // Shown to the donor before payment (docs/03-rules.md §7).
             'surplus_policy_text_ar' => $campaign->surplus_policy_text_ar,

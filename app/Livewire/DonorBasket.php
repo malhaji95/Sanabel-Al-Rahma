@@ -97,13 +97,17 @@ class DonorBasket extends Component
     public function render()
     {
         $basket = $this->basket();
-        $items = $basket->items()->with('beneficiary')->get();
+        $items = $basket->items()->with(['beneficiary', 'campaign'])->get();
 
         return view('livewire.donor-basket', [
             'basket' => $basket,
             'items' => $items->map(fn (BasketItem $item) => [
                 'id' => $item->id,
                 'amount' => $item->amount,
+                // A campaign is published under its own title, so naming it
+                // here reveals nothing the donor cannot already read. The
+                // family behind it stays masked either way.
+                'campaign' => $item->campaign?->title_ar,
                 'case' => (new MaskedCaseResource($item->beneficiary))->resolve(),
             ]),
             'total' => $basket->total(),

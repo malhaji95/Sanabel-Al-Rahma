@@ -6,6 +6,7 @@ use App\Exceptions\ReservationUnavailable;
 use App\Models\Basket;
 use App\Models\BasketItem;
 use App\Models\Beneficiary;
+use App\Models\Campaign;
 use App\Models\Donor;
 use App\Models\Setting;
 use Illuminate\Support\Facades\DB;
@@ -49,8 +50,25 @@ class BasketService
     public function addItem(Basket $basket, Beneficiary $beneficiary, int $amount): BasketItem
     {
         return BasketItem::updateOrCreate(
-            ['basket_id' => $basket->getKey(), 'beneficiary_id' => $beneficiary->getKey()],
+            ['basket_id' => $basket->getKey(), 'beneficiary_id' => $beneficiary->getKey(), 'campaign_id' => null],
             ['amount' => $amount, 'currency' => config('sanabel.currency')],
+        );
+    }
+
+    /**
+     * A pledge to a campaign rides the same basket and the same 24h hold as a
+     * pledge to a family. The campaign carries the beneficiary it was opened
+     * for, so the money still lands on that file when the transfer is verified.
+     */
+    public function addCampaign(Basket $basket, Campaign $campaign, int $amount): BasketItem
+    {
+        return BasketItem::updateOrCreate(
+            ['basket_id' => $basket->getKey(), 'campaign_id' => $campaign->getKey()],
+            [
+                'beneficiary_id' => $campaign->beneficiary_id,
+                'amount' => $amount,
+                'currency' => config('sanabel.currency'),
+            ],
         );
     }
 
@@ -86,7 +104,31 @@ class BasketService
                 ->get()
                 ->keyBy('id');
 
+            $campaigns = Campaign::query()
+                ->whereIn('id', $items->pluck('campaign_id')->filter())
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+
             foreach ($items as $item) {
+                // A campaign has its own ceiling — the goal — and the family's
+                // remaining need does not bound it: a campaign may be opened
+                // for a one-off cost the monthly need says nothing about.
+                if ($item->campaign_id) {
+                    $campaign = $campaigns[$item->campaign_id];
+
+                    if (! $campaign->acceptsPledges()) {
+                        throw ReservationUnavailable::campaignClosed($campaign->title_ar);
+                    }
+
+                    if ($item->amount > $this->coverage->campaignRemaining($campaign)) {
+                        throw ReservationUnavailable::exceedsCampaignGoal($campaign->title_ar);
+                    }
+
+                    continue;
+                }
+
                 $beneficiary = $beneficiaries[$item->beneficiary_id];
 
                 // Computed while the row is locked, so it accounts for every

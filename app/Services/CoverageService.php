@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Beneficiary;
+use App\Models\Campaign;
 use App\Models\DonationAllocation;
 use App\Models\Setting;
 use Illuminate\Support\Carbon;
@@ -85,6 +86,82 @@ class CoverageService
         }
 
         return max(0, $assessment->monthly_need - $assessment->stable_income);
+    }
+
+    /**
+     * What a campaign has actually raised: its verified allocations, less any
+     * that were reversed. Derived rather than stored, like a family's coverage,
+     * so no counter can drift away from the allocations it is meant to total.
+     */
+    public function campaignConfirmed(Campaign $campaign): int
+    {
+        $row = DonationAllocation::query()
+            ->where('donation_allocations.campaign_id', $campaign->getKey())
+            ->join('donations', 'donations.id', '=', 'donation_allocations.donation_id')
+            ->where('donations.status', 'verified')
+            ->whereNull('donations.deleted_at')
+            ->selectRaw(
+                'sum(case when donations.reversal_of_id is null'
+                .' then donation_allocations.amount else 0 end) as credits,'
+                .' sum(case when donations.reversal_of_id is not null'
+                .' then donation_allocations.amount else 0 end) as debits'
+            )
+            ->first();
+
+        return max(0, (int) ($row->credits ?? 0) - (int) ($row->debits ?? 0));
+    }
+
+    /** The same figure for many campaigns in one query, keyed by campaign id. */
+    public function campaignConfirmedForMany(iterable $campaigns): array
+    {
+        $ids = collect($campaigns)->map(fn ($c) => $c instanceof Campaign ? $c->getKey() : (int) $c)->all();
+
+        if ($ids === []) {
+            return [];
+        }
+
+        return DonationAllocation::query()
+            ->whereIn('donation_allocations.campaign_id', $ids)
+            ->join('donations', 'donations.id', '=', 'donation_allocations.donation_id')
+            ->where('donations.status', 'verified')
+            ->whereNull('donations.deleted_at')
+            ->groupBy('donation_allocations.campaign_id')
+            ->selectRaw(
+                'donation_allocations.campaign_id,'
+                .' sum(case when donations.reversal_of_id is null'
+                .' then donation_allocations.amount else 0 end) as credits,'
+                .' sum(case when donations.reversal_of_id is not null'
+                .' then donation_allocations.amount else 0 end) as debits'
+            )
+            ->get()
+            ->mapWithKeys(fn ($row) => [
+                (int) $row->campaign_id => max(0, (int) $row->credits - (int) $row->debits),
+            ])
+            ->all();
+    }
+
+    /** Money held against a campaign by a live basket reservation. */
+    public function campaignReserved(Campaign $campaign): int
+    {
+        if ($campaign->relationLoaded('basketItems')) {
+            return (int) $campaign->basketItems
+                ->filter(fn ($item) => (bool) $item->basket?->isLive())
+                ->sum('amount');
+        }
+
+        return (int) $campaign->basketItems()
+            ->whereHas('basket', fn ($q) => $q
+                ->where('status', 'reserved')
+                ->where('reserved_until', '>', now()))
+            ->sum('amount');
+    }
+
+    /** What a new pledge may still claim: goal − raised − already held. */
+    public function campaignRemaining(Campaign $campaign, ?int $confirmed = null): int
+    {
+        return max(0, $campaign->goal_amount
+            - ($confirmed ?? $this->campaignConfirmed($campaign))
+            - $this->campaignReserved($campaign));
     }
 
     /** Verified money currently held against this family by a live basket reservation. */

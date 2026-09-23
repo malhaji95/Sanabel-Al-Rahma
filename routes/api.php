@@ -22,6 +22,7 @@ Route::middleware(['auth:sanctum'])->prefix('donor')->name('donor.')->group(func
 
     Route::get('basket', [BasketController::class, 'show'])->name('basket.show');
     Route::post('basket/items', [BasketController::class, 'addItem'])->name('basket.add');
+    Route::post('basket/campaigns', [BasketController::class, 'addCampaign'])->name('basket.add_campaign');
     Route::post('basket/reserve', [BasketController::class, 'reserve'])->name('basket.reserve');
 
     Route::get('donations', [MyDonationsController::class, 'index'])->name('donations.index');

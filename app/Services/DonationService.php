@@ -138,9 +138,11 @@ class DonationService
                     'currency' => $allocation->currency,
                 ]);
 
-                if ($allocation->campaign) {
-                    $allocation->campaign->decrement('collected_amount', $allocation->amount);
-                }
+                // Nothing to decrement — what a campaign raised is derived from
+                // its allocations, and the mirrored row above already cancels
+                // this one out. Only the status has to be revisited, in case
+                // the reversal takes it back below its goal.
+                $allocation->campaign?->closeFundingIfMet();
             }
 
             // The only edit a verified donation ever takes: its status.
@@ -166,7 +168,7 @@ class DonationService
             return;
         }
 
-        $items = $basket->items()->with('beneficiary')->get();
+        $items = $basket->items()->with(['beneficiary', 'campaign'])->get();
         $total = (int) $items->sum('amount');
 
         if ($total <= 0) {
@@ -188,6 +190,9 @@ class DonationService
             DonationAllocation::create([
                 'donation_id' => $donation->getKey(),
                 'beneficiary_id' => $item->beneficiary_id,
+                // Set when the donor pledged through a campaign, so the campaign
+                // can total what it raised from its own allocations.
+                'campaign_id' => $item->campaign_id,
                 'amount' => $amount,
                 'currency' => $donation->currency,
             ]);
@@ -200,6 +205,12 @@ class DonationService
         }
 
         $basket->forceFill(['status' => 'paid', 'reserved_until' => null])->save();
+
+        // Reaching the goal closes funding. It never completes the campaign:
+        // the money still has to be moved and its delivery proved.
+        foreach ($items->pluck('campaign')->filter()->unique('id') as $campaign) {
+            $campaign->closeFundingIfMet();
+        }
     }
 
     private function isUniqueViolation(QueryException $e, string $column): bool

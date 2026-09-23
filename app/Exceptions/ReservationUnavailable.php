@@ -11,4 +11,14 @@ class ReservationUnavailable extends RuntimeException
     {
         return new self(__('sanabel.basket.exceeds_remaining').' ('.$fileNumber.')');
     }
+
+    public static function exceedsCampaignGoal(string $title): self
+    {
+        return new self(__('sanabel.basket.exceeds_goal').' ('.$title.')');
+    }
+
+    public static function campaignClosed(string $title): self
+    {
+        return new self(__('sanabel.basket.campaign_closed').' ('.$title.')');
+    }
 }

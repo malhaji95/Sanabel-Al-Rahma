@@ -55,8 +55,15 @@ class CampaignResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('title_ar')->label(__('sanabel.campaign.title'))->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('goal_amount')->label(__('sanabel.campaign.goal'))->numeric()->sortable(),
-                Tables\Columns\TextColumn::make('collected_amount')->label(__('sanabel.campaign.collected'))->numeric()->sortable(),
-                Tables\Columns\TextColumn::make('reserved_amount')->label(__('sanabel.campaign.reserved'))->numeric()->sortable(),
+                // Derived, not stored, so neither is sortable in SQL.
+                Tables\Columns\TextColumn::make('collected')
+                    ->label(__('sanabel.campaign.collected'))
+                    ->state(fn (Campaign $record) => $record->collectedAmount())
+                    ->numeric(),
+                Tables\Columns\TextColumn::make('reserved')
+                    ->label(__('sanabel.campaign.reserved'))
+                    ->state(fn (Campaign $record) => $record->reservedAmount())
+                    ->numeric(),
                 Tables\Columns\TextColumn::make('status')
                     ->label(__('sanabel.beneficiary.status'))
                     ->formatStateUsing(fn (string $state) => __('sanabel.campaign_status.'.$state))
@@ -65,6 +72,27 @@ class CampaignResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+
+                // Funding closes by itself when the goal is met. Moving the
+                // money and proving it arrived are human steps, which is why a
+                // funded campaign never completes on its own.
+                Tables\Actions\Action::make('execute')
+                    ->label(__('sanabel.campaign.start_execution'))
+                    ->icon('heroicon-o-truck')
+                    ->visible(fn (Campaign $record) => $record->status === 'funded')
+                    ->authorize(fn (Campaign $record) => auth()->user()->can('update', $record))
+                    ->requiresConfirmation()
+                    ->action(fn (Campaign $record) => $record->forceFill(['status' => 'awaiting_execution'])->save()),
+
+                Tables\Actions\Action::make('complete')
+                    ->label(__('sanabel.campaign.complete'))
+                    ->icon('heroicon-o-check-badge')
+                    ->color('success')
+                    ->visible(fn (Campaign $record) => $record->status === 'awaiting_execution')
+                    ->authorize(fn (Campaign $record) => auth()->user()->can('update', $record))
+                    ->requiresConfirmation()
+                    ->modalDescription(__('sanabel.campaign.complete_help'))
+                    ->action(fn (Campaign $record) => $record->forceFill(['status' => 'completed'])->save()),
             ])
             ->defaultSort('id', 'desc')
             ->paginated([25, 50, 100]);

@@ -3,7 +3,9 @@
 namespace Database\Seeders;
 
 use App\Models\Beneficiary;
+use App\Models\Campaign;
 use App\Models\Donor;
+use App\Models\Fund;
 use App\Models\HealthRecord;
 use App\Models\HouseholdMember;
 use App\Models\Housing;
@@ -72,6 +74,7 @@ class SyntheticDataSeeder extends Seeder
         }
 
         $this->changeRequests($staff);
+        $this->campaign();
 
         $this->command?->info('Synthetic data seeded. No real family data is present.');
     }
@@ -227,6 +230,28 @@ class SyntheticDataSeeder extends Seeder
             ['phone_encrypted' => '0900999999'],
             'تصحيح رقم الهاتف بعد زيارة ميدانية.',
         );
+    }
+
+    /** One published campaign, so the funding path has something to show. */
+    private function campaign(): void
+    {
+        $case = Beneficiary::where('status', 'published')->orderBy('id')->first();
+
+        if (! $case || Campaign::exists()) {
+            return;
+        }
+
+        Campaign::create([
+            'beneficiary_id' => $case->id,
+            'title_ar' => 'عملية جراحية عاجلة',
+            'body_ar' => 'تحتاج الأسرة إلى تغطية تكلفة عملية جراحية لا يشملها الدعم الشهري.',
+            'goal_amount' => 100_000,
+            'currency' => config('sanabel.currency'),
+            'status' => 'active',
+            'is_published' => true,
+            'surplus_policy_text_ar' => 'يوجَّه الفائض إلى حملة صحية مماثلة في المنطقة نفسها.',
+            'fund_id' => Fund::byKey(Fund::RESTRICTED)->id,
+        ]);
     }
 
     private function donors(): void
