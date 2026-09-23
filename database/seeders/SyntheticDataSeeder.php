@@ -88,6 +88,7 @@ class SyntheticDataSeeder extends Seeder
         $this->changeRequests($staff);
         $this->campaign();
         $this->money($staff);
+        $this->fundCampaign($staff);
         $this->services($staff);
 
         $this->command?->info('Synthetic data seeded. No real family data is present.');
@@ -338,6 +339,57 @@ class SyntheticDataSeeder extends Seeder
         app(DistributionService::class)->approve($distribution->refresh(), $staff['admin']);
     }
 
+    /** A campaign part way to its goal, so the progress bar shows real money. */
+    private function fundCampaign(array $staff): void
+    {
+        $campaign = Campaign::where('status', 'active')->first();
+        $donor = Donor::orderBy('id')->skip(2)->first();
+
+        if (! $campaign || ! $donor) {
+            return;
+        }
+
+        $baskets = app(BasketService::class);
+        $basket = $baskets->openFor($donor);
+        $amount = (int) ($campaign->goal_amount * 0.4);
+
+        $baskets->addCampaign($basket, $campaign, $amount);
+        $baskets->reserve($basket);
+
+        $donation = app(DonationService::class)->record([
+            'donor_id' => $donor->id,
+            'basket_id' => $basket->id,
+            'amount' => $amount,
+            'fund_id' => $campaign->fund_id,
+            'transaction_ref' => 'DEMO-CAMP-0001',
+        ]);
+
+        app(DonationService::class)->verify($donation, $staff['admin']->id);
+
+        // A second campaign taken all the way, so the closed state is visible
+        // beside the one still collecting.
+        $met = Campaign::where('status', 'active')->where('id', '!=', $campaign->id)->first();
+
+        if (! $met) {
+            return;
+        }
+
+        $closingDonor = Donor::orderBy('id')->skip(3)->first() ?? $donor;
+        $closingBasket = $baskets->openFor($closingDonor);
+        $baskets->addCampaign($closingBasket, $met, $met->goal_amount);
+        $baskets->reserve($closingBasket);
+
+        $closing = app(DonationService::class)->record([
+            'donor_id' => $closingDonor->id,
+            'basket_id' => $closingBasket->id,
+            'amount' => $met->goal_amount,
+            'fund_id' => $met->fund_id,
+            'transaction_ref' => 'DEMO-CAMP-0002',
+        ]);
+
+        app(DonationService::class)->verify($closing, $staff['admin']->id);
+    }
+
     /** The service modules: referral, job market, memberships, a complaint. */
     private function services(array $staff): void
     {
@@ -402,6 +454,22 @@ class SyntheticDataSeeder extends Seeder
             return;
         }
 
+        $second = Beneficiary::where('status', 'published')->orderBy('id')->skip(1)->first();
+
+        if ($second) {
+            Campaign::create([
+                'beneficiary_id' => $second->id,
+                'title_ar' => 'ترميم سقف منزل قبل الشتاء',
+                'body_ar' => 'سقف المنزل غير صالح، والترميم لا يحتمل التأجيل إلى ما بعد الشتاء.',
+                'goal_amount' => 60_000,
+                'currency' => config('sanabel.currency'),
+                'status' => 'active',
+                'is_published' => true,
+                'surplus_policy_text_ar' => 'يوجَّه الفائض إلى ترميم منزل آخر في المنطقة نفسها.',
+                'fund_id' => Fund::byKey(Fund::RESTRICTED)->id,
+            ]);
+        }
+
         Campaign::create([
             'beneficiary_id' => $case->id,
             'title_ar' => 'عملية جراحية عاجلة',
@@ -453,11 +521,19 @@ class SyntheticDataSeeder extends Seeder
             'is_published' => true,
         ]);
 
-        Post::firstOrCreate(['slug' => 'launch'], [
-            'title_ar' => 'إطلاق المنصة',
-            'body_ar' => 'خبر تجريبي.',
-            'is_published' => true,
-            'published_at' => now(),
-        ]);
+        $posts = [
+            ['launch', 'إطلاق المنصة', 'بدأ العمل بالمنصة في درعا، وفُتحت أولى الملفات للتقييم الميداني.'],
+            ['coverage', 'تغطية أولى عشر أسر', 'اكتملت تغطية الحاجة الشهرية لعشر أسر خلال الأسبوع الأول من التشغيل.'],
+            ['health', 'توسيع الشبكة الصحية', 'انضم مركز طبي جديد إلى شبكة الخصومات، وبدأ استقبال بطاقات الإحالة.'],
+        ];
+
+        foreach ($posts as $i => [$slug, $title, $body]) {
+            Post::firstOrCreate(['slug' => $slug], [
+                'title_ar' => $title,
+                'body_ar' => $body,
+                'is_published' => true,
+                'published_at' => now()->subDays($i * 5),
+            ]);
+        }
     }
 }
