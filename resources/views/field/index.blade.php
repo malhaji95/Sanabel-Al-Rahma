@@ -63,6 +63,14 @@
         <label class="block">
             <span class="field-label">{{ __('sanabel.field.visited_at') }}</span>
             <input type="datetime-local" x-model="form.visited_at" class="field" required>
+            {{--
+                A native datetime input is drawn by the browser in the browser's
+                own UI language, which the page cannot set: on a device running
+                in English it reads 09/23/2026 under an Arabic label. The value
+                is repeated here in Arabic so the delegate is never guessing
+                which number is the day.
+            --}}
+            <span class="mt-1 block text-xs" style="color: var(--text-muted);" x-text="readableVisitedAt()"></span>
         </label>
 
         <label class="block">
@@ -115,6 +123,20 @@
 
             async refreshPending() {
                 this.pending = (await window.SanabelField.pendingVisits()).length
+            },
+
+            /** The chosen moment, spelled out in Arabic under the native input. */
+            readableVisitedAt() {
+                const at = new Date(this.form.visited_at)
+
+                if (Number.isNaN(at.getTime())) {
+                    return ''
+                }
+
+                return at.toLocaleString('ar', {
+                    weekday: 'long', year: 'numeric', month: 'long',
+                    day: 'numeric', hour: '2-digit', minute: '2-digit',
+                })
             },
 
             async save() {
