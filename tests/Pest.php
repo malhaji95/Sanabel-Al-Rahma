@@ -13,11 +13,23 @@ use Database\Seeders\FundSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Database\Seeders\SettingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->in('Feature', 'Unit');
+
+/*
+ | A test that moves the clock must not leave it moved. Resetting at the end of
+ | the test body is not enough: a failed assertion throws before reaching it,
+ | and every test after it in the process then runs at the wrong date — which
+ | is how a privacy test started failing about once in five runs, its case
+ | having aged out of the funding list.
+ */
+pest()->afterEach(function () {
+    Carbon::setTestNow();
+})->in('Feature', 'Unit');
 
 /*
  | Helpers shared by the tests listed in docs/06-tests.md.
