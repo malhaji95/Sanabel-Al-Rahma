@@ -11,9 +11,9 @@ class DonationAllocation extends Model
 {
     use Auditable, HasFactory;
 
-    protected $fillable = ['donation_id', 'beneficiary_id', 'campaign_id', 'amount', 'currency'];
+    protected $fillable = ['donation_id', 'beneficiary_id', 'campaign_id', 'coverage_month', 'amount', 'currency'];
 
-    protected $casts = ['amount' => 'integer'];
+    protected $casts = ['amount' => 'integer', 'coverage_month' => 'date'];
 
     public function donation(): BelongsTo
     {

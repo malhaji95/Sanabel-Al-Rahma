@@ -105,15 +105,29 @@ class BeneficiaryResource extends Resource
                         ->label(__('sanabel.beneficiary.members'))
                         ->schema([
                             Forms\Components\TextInput::make('name_ar')->label(__('sanabel.household_member.name'))->required(),
-                            Forms\Components\TextInput::make('relation')->label(__('sanabel.household_member.relation'))->required(),
+                            Forms\Components\Select::make('relation')
+                                ->label(__('sanabel.household_member.relation'))
+                                ->options(__('sanabel.relation'))
+                                ->required()
+                                ->live()
+                                ->afterStateUpdated(fn ($state, Forms\Get $get, Forms\Set $set) => $set(
+                                    'person_class',
+                                    DependencyRules::personClass(
+                                        (int) date('Y') - (int) ($get('birth_year') ?: date('Y')),
+                                        $state,
+                                    ),
+                                )),
                             Forms\Components\TextInput::make('birth_year')
                                 ->label(__('sanabel.household_member.birth_year'))
                                 ->numeric()->minValue(1900)->maxValue((int) date('Y'))
                                 ->required()
                                 ->live(onBlur: true)
-                                ->afterStateUpdated(function ($state, Forms\Set $set) {
+                                ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
                                     if ($state) {
-                                        $set('person_class', DependencyRules::personClass((int) date('Y') - (int) $state));
+                                        $set('person_class', DependencyRules::personClass(
+                                            (int) date('Y') - (int) $state,
+                                            $get('relation'),
+                                        ));
                                     }
                                 }),
                             Forms\Components\Select::make('gender')
@@ -168,7 +182,21 @@ class BeneficiaryResource extends Resource
                                 ->suffix(config('sanabel.currency')),
                             Forms\Components\Toggle::make('is_stable')
                                 ->label(__('sanabel.income.is_stable'))
-                                ->helperText(__('sanabel.income.stable_help')),
+                                ->helperText(__('sanabel.income.stable_help'))
+                                ->live(),
+
+                            // Approved 24 Sep 2026. Asked for only when the
+                            // income is unstable, because a stable income has
+                            // no recurrence to record. It is documentation:
+                            // an unstable income is never deducted from the
+                            // need, whatever it says.
+                            Forms\Components\Select::make('recurrence')
+                                ->label(__('sanabel.income.recurrence'))
+                                ->helperText(__('sanabel.income.recurrence_help'))
+                                ->options(__('sanabel.income_recurrence'))
+                                ->visible(fn (Forms\Get $get) => ! $get('is_stable'))
+                                ->required(fn (Forms\Get $get) => ! $get('is_stable'))
+                                ->columnSpanFull(),
                         ])->columns(3),
                 ]),
 
@@ -303,7 +331,7 @@ class BeneficiaryResource extends Resource
     {
         $age = (int) date('Y') - (int) ($data['birth_year'] ?? date('Y'));
 
-        $data['person_class'] = DependencyRules::personClass($age);
+        $data['person_class'] = DependencyRules::personClass($age, $data['relation'] ?? null);
         $data['dependent'] = DependencyRules::isDependent($age, (bool) ($data['is_student'] ?? false), false);
         $data['unable_to_earn'] = DependencyRules::isUnableToEarn((bool) ($data['has_documented_condition'] ?? false));
 

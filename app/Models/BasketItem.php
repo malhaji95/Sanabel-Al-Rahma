@@ -10,9 +10,9 @@ class BasketItem extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['basket_id', 'beneficiary_id', 'campaign_id', 'amount', 'currency'];
+    protected $fillable = ['basket_id', 'beneficiary_id', 'campaign_id', 'coverage_month', 'amount', 'currency'];
 
-    protected $casts = ['amount' => 'integer'];
+    protected $casts = ['amount' => 'integer', 'coverage_month' => 'date'];
 
     public function basket(): BelongsTo
     {

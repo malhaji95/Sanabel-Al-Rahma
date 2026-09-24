@@ -2,6 +2,17 @@
     @if ($remaining <= 0)
         <p class="text-sm" style="color: var(--text-muted);">{{ __('sanabel.public.fully_covered') }}</p>
     @else
+        @if (count($openMonths) > 1)
+            <label class="mb-2 block text-xs" for="month-{{ $fileNumber }}">
+                <span style="color: var(--text-muted);">{{ __('sanabel.basket.coverage_month') }}</span>
+                <select id="month-{{ $fileNumber }}" wire:model="coverageMonth" class="field mt-1">
+                    @foreach ($openMonths as $value => $label)
+                        <option value="{{ $value }}">{{ $label }}</option>
+                    @endforeach
+                </select>
+            </label>
+        @endif
+
         <form wire:submit="add" class="flex gap-2">
             <label class="sr-only" for="amount-{{ $fileNumber }}">{{ __('sanabel.public.amount') }}</label>
             <input

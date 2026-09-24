@@ -9,6 +9,7 @@ use App\Models\Beneficiary;
 use App\Models\Campaign;
 use App\Models\Donor;
 use App\Models\Setting;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -47,10 +48,30 @@ class BasketService
         return $reserved ?? $this->openFor($donor);
     }
 
-    public function addItem(Basket $basket, Beneficiary $beneficiary, int $amount): BasketItem
-    {
+    /**
+     * A pledge answers one calendar month. The month defaults to the current
+     * one; the next opens for funding a configurable number of days before this
+     * one ends, so a family is not left with a gap at the turn of the month.
+     */
+    public function addItem(
+        Basket $basket,
+        Beneficiary $beneficiary,
+        int $amount,
+        ?Carbon $month = null,
+    ): BasketItem {
+        $month = ($month ?? $this->coverage->currentMonth())->copy()->startOfMonth();
+
+        if (! $this->coverage->monthIsOpen($month)) {
+            throw ReservationUnavailable::monthNotOpen($month);
+        }
+
         return BasketItem::updateOrCreate(
-            ['basket_id' => $basket->getKey(), 'beneficiary_id' => $beneficiary->getKey(), 'campaign_id' => null],
+            [
+                'basket_id' => $basket->getKey(),
+                'beneficiary_id' => $beneficiary->getKey(),
+                'campaign_id' => null,
+                'coverage_month' => $month->toDateString(),
+            ],
             ['amount' => $amount, 'currency' => config('sanabel.currency')],
         );
     }
@@ -132,8 +153,12 @@ class BasketService
                 $beneficiary = $beneficiaries[$item->beneficiary_id];
 
                 // Computed while the row is locked, so it accounts for every
-                // reservation that committed before this transaction started.
-                $remaining = $this->coverage->remainingNeed($beneficiary);
+                // reservation that committed before this transaction started —
+                // and for the month this item answers, not for all time.
+                $remaining = $this->coverage->remainingNeed(
+                    $beneficiary,
+                    month: $item->coverage_month ?? $this->coverage->currentMonth(),
+                );
 
                 if ($item->amount > $remaining) {
                     throw ReservationUnavailable::exceedsRemaining($beneficiary->file_number);

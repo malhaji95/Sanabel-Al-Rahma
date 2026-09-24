@@ -31,7 +31,7 @@ class RankingService
 
         // fundingList() fetches the whole list's confirmed support in one query
         // and passes it in; on its own the call falls back to its own lookup.
-        $confirmed ??= $this->coverage->confirmedSupport($beneficiary);
+        $confirmed ??= $this->coverage->confirmedForMonth($beneficiary);
 
         $remaining = $need > 0 ? max(0, ($need - $confirmed) / $need) : 0.0;
         $currentScore = $score * $remaining;
@@ -79,7 +79,7 @@ class RankingService
         }
 
         $families = $query->get();
-        $confirmed = $this->coverage->confirmedSupportForMany($families);
+        $confirmed = $this->coverage->confirmedForMonthForMany($families);
 
         return $families
             ->map(fn (Beneficiary $b) => [

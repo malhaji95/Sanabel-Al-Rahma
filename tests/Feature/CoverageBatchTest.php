@@ -48,7 +48,7 @@ it('sums coverage in one query exactly as it does one family at a time', functio
 
     $coverage = app(CoverageService::class);
     $families = collect([$paid, $reversed, $untouched])->map->fresh();
-    $batch = $coverage->confirmedSupportForMany($families);
+    $batch = $coverage->confirmedForMonthForMany($families);
 
     foreach ($families as $family) {
         expect($batch[$family->getKey()] ?? 0)

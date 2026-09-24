@@ -52,10 +52,15 @@ class SyntheticDataSeeder extends Seeder
      *
      * @var array<string,array<string,string>>
      */
+    /**
+     * The kinship keys the association approved. The first adult is the head
+     * of the household and the second the spouse, which is what puts her in
+     * the wife money class.
+     */
     private const RELATIONS = [
-        'adult' => ['male' => 'زوج', 'female' => 'زوجة'],
-        'child' => ['male' => 'ابن', 'female' => 'ابنة'],
-        'elderly' => ['male' => 'والد', 'female' => 'والدة'],
+        'adult' => ['male' => 'head', 'female' => 'spouse'],
+        'child' => ['male' => 'son', 'female' => 'daughter'],
+        'elderly' => ['male' => 'father', 'female' => 'mother'],
     ];
 
     public function run(): void
@@ -156,26 +161,31 @@ class SyntheticDataSeeder extends Seeder
                 $birthYear = (int) date('Y') - $age;
                 $gender = $n % 2 === 0 ? 'female' : 'male';
                 $relation = self::RELATIONS[$class][$gender];
+                $personClass = DependencyRules::personClass($birthYear ? (int) date('Y') - $birthYear : $age, $relation);
 
                 HouseholdMember::create([
                     'beneficiary_id' => $case->id,
                     'relation' => $relation,
-                    'name_ar' => "{$relation} {$n}",
+                    'name_ar' => __('sanabel.relation.'.$relation)." {$n}",
                     'birth_year' => $birthYear,
                     'gender' => $gender,
-                    'person_class' => DependencyRules::personClass($age),
+                    'person_class' => $personClass,
                     'dependent' => DependencyRules::isDependent($age, false, false),
                     'unable_to_earn' => false,
                 ]);
             }
         }
 
+        $stable = $index % 3 !== 0;
+
         Income::create([
             'beneficiary_id' => $case->id,
             'source_type' => 'work',
             'amount' => $index % 3 === 0 ? 0 : 2_000 * ($index % 5),
             'currency' => config('sanabel.currency'),
-            'is_stable' => $index % 3 !== 0,
+            'is_stable' => $stable,
+            // Recorded only for an unstable income, as the form asks.
+            'recurrence' => $stable ? null : ['monthly', 'seasonal', 'intermittent'][$index % 3],
         ]);
 
         $renting = $index % 2 === 0;

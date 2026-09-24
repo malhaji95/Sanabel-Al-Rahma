@@ -39,7 +39,11 @@ class RegionRentReferenceResource extends Resource
         return $form->schema([
             Forms\Components\Select::make('region_id')->label(__('sanabel.beneficiary.region'))->relationship('region', 'name_ar')->searchable()->required(),
             Forms\Components\Select::make('family_size_band')->label(__('sanabel.rent_reference.band'))->options(['1-3' => '1-3', '4-6' => '4-6', '7+' => '7+'])->required(),
-            Forms\Components\TextInput::make('reference_rent')->label(__('sanabel.rent_reference.amount'))->numeric()->minValue(0)->required()->suffix(config('sanabel.currency')),
+            Forms\Components\TextInput::make('reference_rent')
+                ->label(__('sanabel.rent_reference.amount'))
+                ->helperText(__('sanabel.reference.not_approved_help'))
+                ->numeric()->minValue(0)
+                ->suffix(config('sanabel.currency')),
             Forms\Components\DatePicker::make('effective_from')->label(__('sanabel.reference.effective_from'))->required(),
             Forms\Components\TextInput::make('version')->label(__('sanabel.reference.version'))->numeric()->minValue(0)->required(),
         ])->columns(2);
@@ -51,7 +55,10 @@ class RegionRentReferenceResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('region.name_ar')->label(__('sanabel.beneficiary.region'))->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('family_size_band')->label(__('sanabel.rent_reference.band'))->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('reference_rent')->label(__('sanabel.rent_reference.amount'))->numeric()->sortable(),
+                Tables\Columns\TextColumn::make('reference_rent')
+                    ->label(__('sanabel.rent_reference.amount'))
+                    ->placeholder(__('sanabel.reference.not_approved'))
+                    ->numeric()->sortable(),
                 Tables\Columns\TextColumn::make('effective_from')->label(__('sanabel.reference.effective_from'))->date()->sortable(),
                 Tables\Columns\TextColumn::make('version')->label(__('sanabel.reference.version'))->numeric()->sortable(),
             ])

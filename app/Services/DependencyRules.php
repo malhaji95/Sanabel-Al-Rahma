@@ -33,12 +33,26 @@ class DependencyRules
         return $hasDocumentedCondition;
     }
 
-    /** adult | child | elderly — every member falls under exactly one. */
-    public static function personClass(int $age): string
+    /** The kinship value that carries its own money class. */
+    public const SPOUSE = 'spouse';
+
+    /**
+     * adult | wife | child | elderly — every member falls under exactly one.
+     *
+     * The association approved the wife as a money class of its own on
+     * 24 Sep 2026. Age still decides the two objective boundaries: a spouse
+     * under 18 is a child and one of 65 or over is elderly, because those
+     * classes describe the person rather than the marriage. Between them, a
+     * spouse is a wife. That precedence is an assumption — the decision sheet
+     * does not say which class an elderly spouse falls under — and it is
+     * flagged for the association rather than buried.
+     */
+    public static function personClass(int $age, ?string $relation = null): string
     {
         return match (true) {
             $age < 18 => 'child',
             $age >= 65 => 'elderly',
+            $relation === self::SPOUSE => 'wife',
             default => 'adult',
         };
     }

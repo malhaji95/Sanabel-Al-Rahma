@@ -31,11 +31,16 @@ function seedCore(): void
 }
 
 /** A region with adult/child/elderly rates and a rent reference in force. */
-function regionWithRates(int $adult = 5000, int $child = 2000, int $elderly = 6000, int $rent = 40000): Region
-{
+function regionWithRates(
+    int $adult = 5000,
+    int $child = 2000,
+    int $elderly = 6000,
+    int $rent = 40000,
+    int $wife = 4000,
+): Region {
     $region = Region::factory()->governorate()->create();
 
-    foreach (['adult' => $adult, 'child' => $child, 'elderly' => $elderly] as $class => $amount) {
+    foreach (['adult' => $adult, 'wife' => $wife, 'child' => $child, 'elderly' => $elderly] as $class => $amount) {
         RegionRate::factory()->create([
             'region_id' => $region->id,
             'person_class' => $class,

@@ -48,9 +48,12 @@ class RegionRateResource extends Resource
                 ->label(__('sanabel.household_member.person_class'))
                 ->options(__('sanabel.person_class'))->required(),
 
+            // Left empty when the association has not approved the value yet.
+            // Empty is not zero: no assessment that needs it will be computed.
             Forms\Components\TextInput::make('amount')
                 ->label(__('sanabel.rate.amount'))
-                ->numeric()->minValue(0)->required()
+                ->helperText(__('sanabel.reference.not_approved_help'))
+                ->numeric()->minValue(0)
                 ->suffix(config('sanabel.currency')),
 
             Forms\Components\DatePicker::make('effective_from')
@@ -74,7 +77,10 @@ class RegionRateResource extends Resource
                     ->label(__('sanabel.household_member.person_class'))
                     ->formatStateUsing(fn (string $state) => __('sanabel.person_class.'.$state))
                     ->badge(),
-                Tables\Columns\TextColumn::make('amount')->label(__('sanabel.rate.amount'))->numeric()->sortable(),
+                Tables\Columns\TextColumn::make('amount')
+                    ->label(__('sanabel.rate.amount'))
+                    ->placeholder(__('sanabel.reference.not_approved'))
+                    ->numeric()->sortable(),
                 Tables\Columns\TextColumn::make('effective_from')->label(__('sanabel.reference.effective_from'))->date()->sortable(),
                 Tables\Columns\TextColumn::make('version')->label(__('sanabel.reference.version'))->numeric(),
             ])

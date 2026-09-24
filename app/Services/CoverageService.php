@@ -41,15 +41,79 @@ class CoverageService
     }
 
     /**
-     * The same figure for many families in one query, keyed by beneficiary id.
-     * A list that asks per family issues one query per case; the homepage and
-     * the funding list both walk every published family.
-     *
-     * @param  iterable<int,Beneficiary>  $beneficiaries
-     * @return array<int,int>
+     * The coverage cycle the association approved on 24 Sep 2026: the Gregorian
+     * calendar month, starting at the beginning of each month.
      */
-    public function confirmedSupportForMany(iterable $beneficiaries): array
+    public function currentMonth(): Carbon
     {
+        return Carbon::now()->startOfMonth();
+    }
+
+    /**
+     * The months a donor may fund right now. The next one opens a configurable
+     * number of days before this one ends, so a family is not left with a gap
+     * while the turn of the month is being funded.
+     *
+     * @return array<int,Carbon>
+     */
+    public function openMonths(): array
+    {
+        $current = $this->currentMonth();
+        $lead = (int) Setting::value(
+            'next_month_opens_days_before',
+            config('sanabel.setting_defaults.next_month_opens_days_before')
+        );
+
+        $opensOn = $current->copy()->endOfMonth()->startOfDay()->subDays(max(0, $lead - 1));
+
+        return Carbon::now()->startOfDay()->greaterThanOrEqualTo($opensOn)
+            ? [$current, $current->copy()->addMonth()]
+            : [$current];
+    }
+
+    public function monthIsOpen(Carbon $month): bool
+    {
+        return collect($this->openMonths())->contains(
+            fn (Carbon $open) => $open->isSameMonth($month)
+        );
+    }
+
+    /**
+     * Verified money answering one month's need, net of reversals.
+     *
+     * Rows written before the cycle was defined carry no month; they are read
+     * as belonging to the month the donation was verified in, so an existing
+     * file does not suddenly read as uncovered.
+     */
+    public function confirmedForMonth(Beneficiary $beneficiary, ?Carbon $month = null): int
+    {
+        $month = ($month ?? $this->currentMonth())->copy()->startOfMonth();
+
+        $row = DonationAllocation::query()
+            ->where('donation_allocations.beneficiary_id', $beneficiary->getKey())
+            ->join('donations', 'donations.id', '=', 'donation_allocations.donation_id')
+            ->where('donations.status', 'verified')
+            ->whereNull('donations.deleted_at')
+            ->where(fn ($q) => $q
+                ->whereDate('donation_allocations.coverage_month', $month->toDateString())
+                ->orWhere(fn ($legacy) => $legacy
+                    ->whereNull('donation_allocations.coverage_month')
+                    ->whereBetween('donations.verified_at', [$month, $month->copy()->endOfMonth()])))
+            ->selectRaw(
+                'sum(case when donations.reversal_of_id is null'
+                .' then donation_allocations.amount else 0 end) as credits,'
+                .' sum(case when donations.reversal_of_id is not null'
+                .' then donation_allocations.amount else 0 end) as debits'
+            )
+            ->first();
+
+        return max(0, (int) ($row->credits ?? 0) - (int) ($row->debits ?? 0));
+    }
+
+    /** The same figure for many families in one query, keyed by beneficiary id. */
+    public function confirmedForMonthForMany(iterable $beneficiaries, ?Carbon $month = null): array
+    {
+        $month = ($month ?? $this->currentMonth())->copy()->startOfMonth();
         $ids = collect($beneficiaries)->map(fn (Beneficiary $b) => $b->getKey())->all();
 
         if ($ids === []) {
@@ -61,6 +125,11 @@ class CoverageService
             ->join('donations', 'donations.id', '=', 'donation_allocations.donation_id')
             ->where('donations.status', 'verified')
             ->whereNull('donations.deleted_at')
+            ->where(fn ($q) => $q
+                ->whereDate('donation_allocations.coverage_month', $month->toDateString())
+                ->orWhere(fn ($legacy) => $legacy
+                    ->whereNull('donation_allocations.coverage_month')
+                    ->whereBetween('donations.verified_at', [$month, $month->copy()->endOfMonth()])))
             ->groupBy('donation_allocations.beneficiary_id')
             ->selectRaw(
                 'donation_allocations.beneficiary_id as beneficiary_id,'
@@ -165,29 +234,38 @@ class CoverageService
     }
 
     /** Verified money currently held against this family by a live basket reservation. */
-    public function reservedAmount(Beneficiary $beneficiary): int
+    public function reservedAmount(Beneficiary $beneficiary, ?Carbon $month = null): int
     {
+        $month = ($month ?? $this->currentMonth())->copy()->startOfMonth();
+
         // As elsewhere, use the relation when a list has loaded it. Basket::isLive()
         // is the same condition the query below expresses.
         if ($beneficiary->relationLoaded('basketItems')) {
             return (int) $beneficiary->basketItems
-                ->filter(fn ($item) => (bool) $item->basket?->isLive())
+                ->filter(fn ($item) => (bool) $item->basket?->isLive()
+                    && (string) $item->coverage_month?->format('Y-m') === $month->format('Y-m'))
                 ->sum('amount');
         }
 
         return (int) $beneficiary->basketItems()
+            ->whereDate('coverage_month', $month->toDateString())
             ->whereHas('basket', fn ($q) => $q
                 ->where('status', 'reserved')
                 ->where('reserved_until', '>', now()))
             ->sum('amount');
     }
 
-    /** What a new reservation may still claim: need − confirmed − already reserved. */
-    public function remainingNeed(Beneficiary $beneficiary, ?int $confirmed = null): int
+    /**
+     * What a new reservation may still claim for one month: need − what that
+     * month has already received − what is held against it.
+     */
+    public function remainingNeed(Beneficiary $beneficiary, ?int $confirmed = null, ?Carbon $month = null): int
     {
+        $month = ($month ?? $this->currentMonth())->copy()->startOfMonth();
+
         return max(0, $this->needAmount($beneficiary)
-            - ($confirmed ?? $this->confirmedSupport($beneficiary))
-            - $this->reservedAmount($beneficiary));
+            - ($confirmed ?? $this->confirmedForMonth($beneficiary, $month))
+            - $this->reservedAmount($beneficiary, $month));
     }
 
     /** 0.0 – 1.0 */
@@ -196,22 +274,25 @@ class CoverageService
      * pass it in. A card shows the percent, the label and the remaining amount,
      * which is three identical sums per case unless they share one lookup.
      */
-    public function coverageRatio(Beneficiary $beneficiary, ?int $confirmed = null): float
+    public function coverageRatio(Beneficiary $beneficiary, ?int $confirmed = null, ?Carbon $month = null): float
     {
         $need = $this->needAmount($beneficiary);
-        $confirmed ??= $this->confirmedSupport($beneficiary);
+        // One month's need against that month's money. Comparing it against
+        // everything the family ever received was the bug this replaces: a
+        // family funded once read as covered for ever.
+        $confirmed ??= $this->confirmedForMonth($beneficiary, $month);
 
         return $need > 0 ? min(1.0, $confirmed / $need) : 1.0;
     }
 
-    public function coveragePercent(Beneficiary $beneficiary, ?int $confirmed = null): int
+    public function coveragePercent(Beneficiary $beneficiary, ?int $confirmed = null, ?Carbon $month = null): int
     {
-        return (int) round(100 * $this->coverageRatio($beneficiary, $confirmed));
+        return (int) round(100 * $this->coverageRatio($beneficiary, $confirmed, $month));
     }
 
-    public function coverageLabel(Beneficiary $beneficiary, ?int $confirmed = null): string
+    public function coverageLabel(Beneficiary $beneficiary, ?int $confirmed = null, ?Carbon $month = null): string
     {
-        $ratio = $this->coverageRatio($beneficiary, $confirmed);
+        $ratio = $this->coverageRatio($beneficiary, $confirmed, $month);
 
         return match (true) {
             $ratio <= 0.0 => 'none',

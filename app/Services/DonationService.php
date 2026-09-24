@@ -134,6 +134,7 @@ class DonationService
                     'donation_id' => $reversal->getKey(),
                     'beneficiary_id' => $allocation->beneficiary_id,
                     'campaign_id' => $allocation->campaign_id,
+                    'coverage_month' => $allocation->coverage_month,
                     'amount' => $allocation->amount,
                     'currency' => $allocation->currency,
                 ]);
@@ -193,6 +194,8 @@ class DonationService
                 // Set when the donor pledged through a campaign, so the campaign
                 // can total what it raised from its own allocations.
                 'campaign_id' => $item->campaign_id,
+                // The month this money answers, carried from the basket item.
+                'coverage_month' => $item->coverage_month,
                 'amount' => $amount,
                 'currency' => $donation->currency,
             ]);

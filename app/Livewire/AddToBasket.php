@@ -4,6 +4,8 @@ namespace App\Livewire;
 
 use App\Models\Beneficiary;
 use App\Services\BasketService;
+use App\Services\CoverageService;
+use Illuminate\Support\Carbon;
 use Livewire\Component;
 
 /** Adds one family to the donor's open basket. Reserving happens on the basket page. */
@@ -15,6 +17,12 @@ class AddToBasket extends Component
 
     public ?int $amount = null;
 
+    /** The month this pledge answers, as Y-m. */
+    public string $coverageMonth = '';
+
+    /** @var array<string,string> */
+    public array $openMonths = [];
+
     // Named `notice`, not `message`: Blade's @error directive binds $message.
     public ?string $notice = null;
 
@@ -23,6 +31,14 @@ class AddToBasket extends Component
         $this->fileNumber = $fileNumber;
         $this->remaining = $remaining;
         $this->amount = $remaining > 0 ? $remaining : null;
+
+        // The current month, plus the next one once it opens — which is what
+        // keeps a family from falling into a gap at the turn of the month.
+        $this->openMonths = collect(app(CoverageService::class)->openMonths())
+            ->mapWithKeys(fn ($month) => [$month->format('Y-m') => $month->translatedFormat('F Y')])
+            ->all();
+
+        $this->coverageMonth = (string) array_key_first($this->openMonths);
     }
 
     public function add(): void
@@ -43,7 +59,12 @@ class AddToBasket extends Component
         $case = Beneficiary::published()->where('file_number', $this->fileNumber)->firstOrFail();
 
         $basket = app(BasketService::class)->openFor($donor);
-        app(BasketService::class)->addItem($basket, $case, (int) $this->amount);
+        app(BasketService::class)->addItem(
+            $basket,
+            $case,
+            (int) $this->amount,
+            Carbon::createFromFormat('Y-m', $this->coverageMonth)->startOfMonth(),
+        );
 
         $this->notice = __('sanabel.public.added_to_basket');
         $this->dispatch('basket-updated');

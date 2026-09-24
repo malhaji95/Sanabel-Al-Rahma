@@ -45,7 +45,7 @@ class Region extends Model
         $frontier = [$rootId];
 
         while ($frontier) {
-            $frontier = static::withoutGlobalScopes()
+            $frontier = static::withoutGlobalScope(RegionScope::class)
                 ->whereIn('parent_id', $frontier)
                 ->pluck('id')
                 ->all();

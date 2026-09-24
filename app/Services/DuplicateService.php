@@ -125,7 +125,7 @@ class DuplicateService
             'registered' => true,
             'has_active_assessment' => $assessment !== null
                 && (! $assessment->valid_until || $assessment->valid_until->isFuture()),
-            'supported_this_period' => $coverage->confirmedSupport($case, now()->startOfMonth()) > 0,
+            'supported_this_period' => $coverage->confirmedForMonth($case) > 0,
             'coverage' => $coverage->coverageLabel($case),
         ];
     }

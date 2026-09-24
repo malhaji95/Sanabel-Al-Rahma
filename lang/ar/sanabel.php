@@ -13,8 +13,31 @@ return [
         'system' => 'النظام',
     ],
 
+    // Sheet 6 of the association's decisions: a controlled list, editable as
+    // data. `spouse` is what makes a member the wife money class.
+    'relation' => [
+        'head' => 'رب الأسرة',
+        'spouse' => 'زوجة',
+        'son' => 'ابن',
+        'daughter' => 'ابنة',
+        'father' => 'أب',
+        'mother' => 'أم',
+        'brother' => 'أخ',
+        'sister' => 'أخت',
+        'other' => 'أخرى',
+    ],
+    // Approved 24 Sep 2026. Recorded for the caseworker to read; an unstable
+    // income is never deducted from the need whatever its recurrence.
+    'income_recurrence' => [
+        'monthly' => 'شهري',
+        'seasonal' => 'موسمي',
+        'intermittent' => 'متقطع',
+    ],
     'person_class' => [
         'adult' => 'بالغ',
+        // Approved 24 Sep 2026 as a money class of its own, set by kinship
+        // rather than by age.
+        'wife' => 'زوجة',
         'child' => 'طفل',
         'elderly' => 'مسن',
     ],
@@ -50,6 +73,8 @@ return [
         'empty' => 'السلة فارغة.',
         'exceeds_goal' => 'المبلغ يتجاوز ما تبقّى من هدف الحملة.',
         'campaign_closed' => 'الحملة لم تعد تقبل التعهدات.',
+        'month_not_open' => 'تغطية :month غير مفتوحة بعد.',
+        'coverage_month' => 'شهر التغطية',
     ],
 
     'campaigns' => [
@@ -211,6 +236,8 @@ return [
         'amount' => 'المبلغ',
         'is_stable' => 'دخل ثابت',
         'stable_help' => 'الدخل الثابت فقط يخصم من الحاجة.',
+        'recurrence' => 'تكرار الدخل غير المستقر',
+        'recurrence_help' => 'إلزامي عند عدم استقرار الدخل. يُسجَّل للتوثيق ولا يُخصم من الحاجة.',
     ],
 
     'housing' => [
@@ -278,6 +305,10 @@ return [
         'import_file' => 'ملف CSV',
         'import_help' => 'الأعمدة: region_name_ar, person_class, amount, effective_from — نزّل النموذج أولاً، املأ عمود المبلغ، ثم احفظ الملف بصيغة CSV وأعد رفعه.',
         'import_result' => 'تم استيراد :imported صف، وتخطي :skipped صف.',
+        'missing_values' => 'لا يمكن احتساب التقييم: لا توجد قيمة مرجعية معتمدة في منطقة :region لـ :values. القيمة غير المعتمدة تبقى فارغة ولا تُعامل كصفر.',
+        'rent_for_band' => 'الإيجار المرجعي لشريحة :band',
+        'not_approved' => 'غير معتمدة',
+        'not_approved_help' => 'اتركه فارغًا إن لم تُعتمد القيمة بعد. الفراغ ليس صفرًا: لن يُحتسب أي تقييم يحتاجها.',
     ],
     'rate' => ['singular' => 'قيمة معيشة', 'plural' => 'قيم المعيشة المرجعية', 'amount' => 'المبلغ'],
     'rent_reference' => [
@@ -327,6 +358,7 @@ return [
         'saved' => 'تم حفظ الإعدادات',
         'keys' => [
             'basket_hold_hours' => 'مدة حجز السلة (ساعة)',
+            'next_month_opens_days_before' => 'فتح تغطية الشهر التالي قبل نهاية الشهر بـ (يوم)',
             'sponsorship_grace_days' => 'مهلة سداد الكفالة (يوم)',
             'sponsorship_lapse_after_unpaid' => 'عدد الأقساط غير المسددة قبل إيقاف الكفالة',
             'reassessment_days_stable' => 'إعادة التقييم — حالة مستقرة (يوم)',

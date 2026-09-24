@@ -45,7 +45,7 @@ class PublicController extends Controller
         // Assessments eager-loaded and the confirmed sums fetched in one query:
         // asking per family made the homepage cost a query per published case.
         $published = Beneficiary::published()->with('assessments')->get();
-        $confirmed = $this->coverage->confirmedSupportForMany($published);
+        $confirmed = $this->coverage->confirmedForMonthForMany($published);
 
         $isCovered = function (Beneficiary $case) use ($confirmed): bool {
             $need = $this->coverage->needAmount($case);

@@ -24,6 +24,9 @@ return [
      */
     'setting_defaults' => [
         'basket_hold_hours' => 24,
+        // Days before the current month ends when the next month opens for
+        // funding, so a family is not left with a gap at the turn of the month.
+        'next_month_opens_days_before' => 7,
         'sponsorship_grace_days' => 7,
         'sponsorship_lapse_after_unpaid' => 2,
         'reassessment_days_stable' => 180,

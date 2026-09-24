@@ -24,7 +24,7 @@ class ReferenceValueSeeder extends Seeder
         $from = now()->startOfYear()->toDateString();
 
         foreach (Region::whereIn('type', ['governorate', 'area'])->get() as $region) {
-            foreach (['adult' => 5000, 'child' => 2000, 'elderly' => 6000] as $class => $amount) {
+            foreach (['adult' => 5000, 'wife' => 4000, 'child' => 2000, 'elderly' => 6000] as $class => $amount) {
                 RegionRate::firstOrCreate(
                     ['region_id' => $region->id, 'person_class' => $class, 'effective_from' => $from],
                     ['amount' => $amount, 'version' => 1],

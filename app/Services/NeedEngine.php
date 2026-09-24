@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Exceptions\ReferenceValueMissing;
 use App\Models\Beneficiary;
+use App\Models\Scopes\RegionScope;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 
@@ -37,7 +39,7 @@ class NeedEngine
     public function compute(Beneficiary $beneficiary, ?CarbonInterface $asOf = null, int $manualAdjustment = 0): array
     {
         $asOf = $asOf ? Carbon::instance($asOf->toDateTime()) : Carbon::now();
-        $region = $beneficiary->region()->withoutGlobalScopes()->firstOrFail();
+        $region = $beneficiary->region()->withoutGlobalScope(RegionScope::class)->firstOrFail();
 
         $members = $beneficiary->members()->get();
         $housing = $beneficiary->housing()->first();
@@ -53,8 +55,20 @@ class NeedEngine
             $perClass[$class] = ($perClass[$class] ?? 0) + 1;
         }
 
+        // A reference the association has not approved is null, never zero.
+        // Anything missing is collected and the assessment is refused below,
+        // rather than quietly computing a need on a number nobody chose.
+        $missing = [];
+
         foreach ($perClass as $class => $count) {
             $rate = $this->references->rate($region, $class, $asOf);
+
+            if ($rate['amount'] === null) {
+                $missing[] = __('sanabel.person_class.'.$class);
+
+                continue;
+            }
+
             $membersTotal += $rate['amount'] * $count;
             $rateSnapshot[$class] = $rate + ['count' => $count];
         }
@@ -70,10 +84,19 @@ class NeedEngine
             ? $this->references->rentReference($region, $members->count(), $asOf)
             : ['amount' => 0, 'version' => null, 'id' => null, 'band' => null];
 
+        if ($isRenting && $rent['amount'] === null) {
+            $missing[] = __('sanabel.reference.rent_for_band', ['band' => $rent['band']]);
+        }
+
+        if ($missing !== []) {
+            throw new ReferenceValueMissing($missing, $region->name_ar);
+        }
+
         $monthlyNeed = $membersTotal + $adjustmentsTotal + $rent['amount'] + $manualAdjustment;
 
         $stableIncome = (int) $incomes->where('is_stable', true)->sum('amount');
-        $received = $this->coverage->confirmedSupport($beneficiary);
+        // This month's money against this month's need (approved 24 Sep 2026).
+        $received = $this->coverage->confirmedForMonth($beneficiary);
 
         $gap = max(0, $monthlyNeed - $stableIncome - $received);
 
