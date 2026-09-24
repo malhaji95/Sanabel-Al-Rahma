@@ -6,6 +6,7 @@ use App\Models\Beneficiary;
 use App\Models\ChangeRequest;
 use App\Models\Delivery;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -130,19 +131,59 @@ class CaseService
     /**
      * Rule 7 (backlog T-13) — after approval, edits go through review.
      * A material field triggers a recompute when the change is applied.
+     *
+     * The request targets the record that actually holds the field. Fifteen of
+     * the seventeen material fields live on the housing row, an income, a
+     * member or a health record rather than on the case itself; pointing every
+     * request at the beneficiary meant the before/after was empty and the
+     * approved change was filled into a model that does not have the column,
+     * so it was silently never applied.
      */
-    public function requestChange(Beneficiary $case, User $requester, array $payload, string $reasonAr): ChangeRequest
-    {
+    public function requestChange(
+        Beneficiary $case,
+        User $requester,
+        array $payload,
+        string $reasonAr,
+        ?Model $target = null,
+    ): ChangeRequest {
+        $target ??= $this->resolveChangeTarget($case, $payload);
+
         return ChangeRequest::create([
-            'entity_type' => Beneficiary::class,
-            'entity_id' => $case->getKey(),
+            'entity_type' => $target::class,
+            'entity_id' => $target->getKey(),
+            'beneficiary_id' => $case->getKey(),
             'payload_json' => $payload,
-            'old_json' => array_intersect_key($case->getAttributes(), $payload),
+            'old_json' => array_intersect_key($target->getAttributes(), $payload),
             'reason_ar' => $reasonAr,
             'is_material' => ChangeRequest::isMaterial($payload),
             'requested_by' => $requester->getKey(),
             'status' => 'pending',
         ]);
+    }
+
+    /**
+     * Which record a payload belongs to. The case and its housing row are the
+     * two a payload can name on its own; a family may have several incomes,
+     * members or health records, so one of those has to be passed explicitly
+     * rather than guessed at.
+     */
+    private function resolveChangeTarget(Beneficiary $case, array $payload): Model
+    {
+        $fields = array_keys($payload);
+
+        if ($fields === array_values(array_intersect($fields, array_keys($case->getAttributes())))) {
+            return $case;
+        }
+
+        $housing = $case->housing()->first();
+
+        if ($housing && $fields === array_values(array_intersect($fields, array_keys($housing->getAttributes())))) {
+            return $housing;
+        }
+
+        throw new \InvalidArgumentException(
+            'A change to '.implode(', ', $fields).' must name the record it belongs to.'
+        );
     }
 
     public function approveChange(ChangeRequest $request, User $reviewer): ChangeRequest

@@ -59,6 +59,9 @@ class ChangeRequestResource extends Resource
                 Tables\Columns\TextColumn::make('entity_type')
                     ->label(__('sanabel.change_request.entity'))
                     ->formatStateUsing(fn (string $state) => __('sanabel.change_request_entity.'.class_basename($state))),
+                Tables\Columns\TextColumn::make('beneficiary.file_number')
+                    ->label(__('sanabel.beneficiary.file_number'))
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('entity_id')->label(__('sanabel.change_request.entity_id')),
                 Tables\Columns\IconColumn::make('is_material')->label(__('sanabel.change_request.is_material'))->boolean(),
                 Tables\Columns\TextColumn::make('requester.name')->label(__('sanabel.change_request.requested_by')),

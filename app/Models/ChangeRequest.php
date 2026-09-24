@@ -22,7 +22,7 @@ class ChangeRequest extends Model
     ];
 
     protected $fillable = [
-        'entity_type', 'entity_id', 'payload_json', 'old_json', 'reason_ar', 'is_material',
+        'entity_type', 'entity_id', 'beneficiary_id', 'payload_json', 'old_json', 'reason_ar', 'is_material',
         'requested_by', 'status', 'reviewed_by', 'reviewed_at', 'review_note_ar', 'created_by',
     ];
 
@@ -36,6 +36,11 @@ class ChangeRequest extends Model
     public function requester(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    public function beneficiary(): BelongsTo
+    {
+        return $this->belongsTo(Beneficiary::class);
     }
 
     public static function isMaterial(array $payload): bool
