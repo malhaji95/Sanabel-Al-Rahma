@@ -312,15 +312,22 @@ class SyntheticDataSeeder extends Seeder
         }
 
         // One waiting in the queue, so the verification screen is not empty.
-        $pendingBasket = $baskets->openFor($donors[0]);
-        $baskets->addItem($pendingBasket, $cases[4], 10_000);
-        $baskets->reserve($pendingBasket);
-        $donations->record([
-            'donor_id' => $donors[0]->id,
-            'basket_id' => $pendingBasket->id,
-            'amount' => 10_000,
-            'transaction_ref' => 'DEMO-TRX-0003',
-        ]);
+        // The amount follows the family's remaining need rather than a fixed
+        // figure: a reference value the association edits moves every need, and
+        // a seeded amount larger than the need is refused by the reservation.
+        $pendingAmount = (int) floor($coverage->remainingNeed($cases[4]) / 2);
+
+        if ($pendingAmount > 0) {
+            $pendingBasket = $baskets->openFor($donors[0]);
+            $baskets->addItem($pendingBasket, $cases[4], $pendingAmount);
+            $baskets->reserve($pendingBasket);
+            $donations->record([
+                'donor_id' => $donors[0]->id,
+                'basket_id' => $pendingBasket->id,
+                'amount' => $pendingAmount,
+                'transaction_ref' => 'DEMO-TRX-0003',
+            ]);
+        }
 
         app(SponsorshipService::class)->create([
             'donor_id' => $donors[1]->id,

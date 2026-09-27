@@ -476,7 +476,15 @@ return [
         'requested_by' => 'مقدم الطلب', 'requested_at' => 'تاريخ الطلب',
     ],
     // The only entity a change request is ever raised against today.
-    'change_request_entity' => ['Beneficiary' => 'ملف مستفيد'],
+    // A request points at the record that actually holds the field, so the
+    // list has to name five kinds of record, not just the family file.
+    'change_request_entity' => [
+        'Beneficiary' => 'ملف مستفيد',
+        'Housing' => 'السكن',
+        'Income' => 'الدخل',
+        'HouseholdMember' => 'فرد من الأسرة',
+        'HealthRecord' => 'السجل الصحي',
+    ],
     'change_request_status' => ['pending' => 'قيد المراجعة', 'approved' => 'معتمد', 'rejected' => 'مرفوض'],
     'user' => [
         'singular' => 'مستخدم', 'plural' => 'المستخدمون',
