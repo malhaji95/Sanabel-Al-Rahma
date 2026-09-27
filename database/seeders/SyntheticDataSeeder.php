@@ -20,6 +20,7 @@ use App\Models\Post;
 use App\Models\Provider;
 use App\Models\Region;
 use App\Models\Role;
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\AssessmentService;
 use App\Services\BasketService;
@@ -112,7 +113,7 @@ class SyntheticDataSeeder extends Seeder
             ]);
         };
 
-        return [
+        $staff = [
             'admin' => $make('admin', 'admin@sanabel.local', 'مدير النظام'),
             'officer' => $make('case_officer', 'officer@sanabel.local', 'مسؤول الحالات'),
             'supervisor' => $make('area_supervisor', 'supervisor@sanabel.local', 'مشرف المنطقة', $areas->first()->id),
@@ -124,6 +125,20 @@ class SyntheticDataSeeder extends Seeder
             'finance' => $make('finance', 'finance@sanabel.local', 'مسؤول المالية'),
             'content' => $make('content_manager', 'content@sanabel.local', 'مسؤول المحتوى'),
         ];
+
+        // The partner association routes its families' donations to its own
+        // wallet by default, and the platform answers for everyone else.
+        $staff['association']->forceFill([
+            'wallet_encrypted' => '0944555666',
+            'transfer_mode' => 'association',
+        ])->save();
+
+        Setting::put('platform_wallet', [
+            'number' => '0933000111',
+            'holder' => 'جمعية سنابل الرحمة',
+        ]);
+
+        return $staff;
     }
 
     private function family(int $index, Region $region, array $staff): void
@@ -143,6 +158,11 @@ class SyntheticDataSeeder extends Seeder
             'support_type' => $index % 3 === 0 ? 'one_time' : 'monthly',
             'status' => 'draft',
             'source' => $index % 5 === 0 ? 'association' : 'delegate',
+            'association_id' => $index % 5 === 0 ? $staff['association']->id : null,
+            // Every third family of the association is excepted and takes its
+            // donations directly, so all three routes appear on the demo.
+            'transfer_mode' => $index % 15 === 0 ? 'both' : null,
+            'wallet_encrypted' => $index % 5 === 0 ? '0955'.str_pad((string) $index, 6, '0', STR_PAD_LEFT) : null,
             'documented_debt' => $index % 6 === 0 ? 150_000 : 0,
             'urgency_deadline_at' => $index % 7 === 0 ? now()->addDays(20) : null,
             'created_by' => $staff['delegate']->id,
