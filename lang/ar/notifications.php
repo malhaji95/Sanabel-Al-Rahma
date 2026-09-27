@@ -9,6 +9,12 @@ return [
         'subject' => 'تم التحقق من تبرعكم',
         'body' => 'تم التحقق من تبرعكم رقم :ref. شكراً لدعمكم. للاطلاع على التفاصيل يرجى تسجيل الدخول.',
     ],
+    // A direct transfer bypasses the association's account, so it is told the
+    // moment the donor records one against one of its files.
+    'direct_transfer_recorded' => [
+        'subject' => 'تحويل مباشر إلى إحدى أسركم',
+        'body' => 'سجّل متبرع تحويلاً مباشراً إلى الملف رقم :file_number بالحوالة رقم :ref. يرجى تسجيل الدخول للمتابعة وتأكيد الاستلام.',
+    ],
     'donation_rejected' => [
         'subject' => 'تعذر التحقق من التبرع',
         'body' => 'تعذر التحقق من التبرع رقم :ref. السبب: :reason. يرجى تسجيل الدخول للمراجعة.',

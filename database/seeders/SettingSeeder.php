@@ -14,6 +14,13 @@ class SettingSeeder extends Seeder
             Setting::firstOrCreate(['key' => $key], ['value_json' => $value]);
         }
 
+        // The association's own wallet, shown to a donor when a family has no
+        // association of its own. Left empty until the association supplies it.
+        Setting::firstOrCreate(['key' => 'platform_wallet'], ['value_json' => [
+            'number' => null,
+            'holder' => null,
+        ]]);
+
         Setting::firstOrCreate(['key' => 'membership_categories'], ['value_json' => [
             'basic' => ['name_ar' => 'عضوية أساسية', 'amount' => 0, 'cycle' => 'monthly'],
         ]]);

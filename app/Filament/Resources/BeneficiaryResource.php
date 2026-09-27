@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\BeneficiaryResource\Pages;
 use App\Models\Beneficiary;
 use App\Models\Region;
+use App\Models\User;
 use App\Services\CoverageService;
 use App\Services\DependencyRules;
 use Filament\Forms;
@@ -74,6 +75,22 @@ class BeneficiaryResource extends Resource
                     Forms\Components\TextInput::make('wallet_encrypted')
                         ->label(__('sanabel.beneficiary.wallet'))
                         ->helperText(__('sanabel.beneficiary.wallet_optional')),
+
+                    Forms\Components\Select::make('association_id')
+                        ->label(__('sanabel.beneficiary.association'))
+                        ->options(fn () => User::query()
+                            ->whereHas('role', fn ($q) => $q->where('key', 'association'))
+                            ->pluck('name', 'id'))
+                        ->searchable()
+                        ->helperText(__('sanabel.beneficiary.association_help')),
+
+                    // Left empty the family follows its association, and an
+                    // association with nothing set follows the platform default.
+                    Forms\Components\Select::make('transfer_mode')
+                        ->label(__('sanabel.transfer.mode'))
+                        ->options(__('sanabel.transfer.modes'))
+                        ->placeholder(__('sanabel.transfer.inherit'))
+                        ->helperText(__('sanabel.transfer.case_help')),
 
                     Forms\Components\Select::make('region_id')
                         ->label(__('sanabel.beneficiary.region'))

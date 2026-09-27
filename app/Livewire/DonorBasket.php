@@ -8,6 +8,7 @@ use App\Http\Resources\MaskedCaseResource;
 use App\Models\BasketItem;
 use App\Payments\PaymentGateway;
 use App\Services\BasketService;
+use App\Services\TransferRouting;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -111,6 +112,9 @@ class DonorBasket extends Component
                 'case' => (new MaskedCaseResource($item->beneficiary))->resolve(),
             ]),
             'total' => $basket->total(),
+            // Where the donor actually sends the money — the association's
+            // wallet, the family's, or both, as the association decided.
+            'transferRoutes' => app(TransferRouting::class)->routesForBasket($basket),
         ])->layout('layouts.app');
     }
 }

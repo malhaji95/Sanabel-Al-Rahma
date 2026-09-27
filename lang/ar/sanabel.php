@@ -128,6 +128,7 @@ return [
         'age_band' => [
             'child' => 'أطفال',
             'adult' => 'بالغون',
+            'wife' => 'زوجة',
             'elderly' => 'مسنون',
         ],
     ],
@@ -191,6 +192,8 @@ return [
         'phone' => 'رقم الهاتف',
         'wallet' => 'المحفظة',
         'wallet_optional' => 'اختياري — المساعدة قد تدفع لمشفى أو دائن أو مدرسة.',
+        'association' => 'الجمعية التابعة لها',
+        'association_help' => 'اتركه فارغًا إن كانت الأسرة لا تتبع أي جمعية.',
         'region' => 'المنطقة',
         'marital_status' => 'الحالة الاجتماعية',
         'support_type' => 'نوع الدعم',
@@ -370,6 +373,9 @@ return [
             'deprivation_window_days' => 'نافذة احتساب الحرمان (يوم)',
             'assessment_valid_days' => 'صلاحية التقييم (يوم)',
             'referral_validity_days' => 'صلاحية بطاقة الإحالة (يوم)',
+            'default_transfer_mode' => 'وجهة التحويل الافتراضية',
+            'platform_wallet_number' => 'محفظة سنابل الرحمة (شام كاش)',
+            'platform_wallet_holder' => 'اسم صاحب المحفظة',
         ],
     ],
     'donation' => [
@@ -478,6 +484,30 @@ return [
     // The only entity a change request is ever raised against today.
     // A request points at the record that actually holds the field, so the
     // list has to name five kinds of record, not just the family file.
+    'transfer' => [
+        'mode' => 'وجهة التحويل',
+        'modes' => [
+            'direct' => 'تحويل مباشر للأسرة',
+            'association' => 'تحويل إلى الجمعية',
+            'both' => 'الخياران معًا',
+        ],
+        'inherit' => 'حسب الجمعية',
+        'mode_help' => 'يحدد ما يظهر للمتبرع في صفحة التبرع لأسر هذه الجمعية.',
+        'case_help' => 'استثناء لهذه الأسرة وحدها. اتركه فارغًا لتتبع وضع جمعيتها.',
+        'heading' => 'وجهة التحويل',
+        'choose' => 'حوّل إلى إحدى الوجهتين، ثم أدخل رقم الحوالة أدناه.',
+        'single' => 'حوّل إلى الوجهة التالية، ثم أدخل رقم الحوالة أدناه.',
+        'route' => [
+            'direct' => 'محفظة الأسرة مباشرة',
+            'association' => 'محفظة الجمعية',
+            'platform' => 'محفظة سنابل الرحمة',
+        ],
+        'holder' => 'باسم',
+        'copy' => 'نسخ الرقم',
+        'copied' => 'نُسخ',
+        'none' => 'لم تُحدَّد وجهة تحويل بعد — راجع الإدارة قبل التحويل.',
+    ],
+
     'change_request_entity' => [
         'Beneficiary' => 'ملف مستفيد',
         'Housing' => 'السكن',
@@ -491,6 +521,8 @@ return [
         'name' => 'الاسم', 'email' => 'البريد الإلكتروني', 'password' => 'كلمة المرور',
         'role' => 'الدور', 'is_active' => 'فعّال',
         'region_help' => 'يحدد نطاق المناطق التي يراها المستخدم.',
+        'wallet' => 'محفظة الجمعية (شام كاش)',
+        'wallet_help' => 'اختياري — تظهر للمتبرع حين تعتمد الجمعية التحويل إليها. اتركه فارغًا إن لم يكن لها حساب.',
     ],
     'page' => ['singular' => 'صفحة', 'plural' => 'الصفحات', 'slug' => 'المعرّف', 'title' => 'العنوان', 'body' => 'المحتوى', 'is_published' => 'منشورة', 'sort_order' => 'الترتيب'],
     'post' => ['singular' => 'خبر', 'plural' => 'الأخبار', 'slug' => 'المعرّف', 'title' => 'العنوان', 'body' => 'المحتوى', 'is_published' => 'منشور', 'sort_order' => 'الترتيب'],

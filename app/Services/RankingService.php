@@ -72,7 +72,7 @@ class RankingService
             ->published()
             ->where('support_type', $supportType)
             // Everything MaskedCaseResource reads, loaded once for the whole list.
-            ->with(['assessments.overrides', 'region', 'members', 'housing', 'healthRecords', 'basketItems.basket']);
+            ->with(['assessments.overrides', 'region', 'members', 'housing', 'healthRecords', 'basketItems.basket', 'association']);
 
         if ($regionId) {
             $query->whereIn('region_id', Region::descendantIds($regionId));

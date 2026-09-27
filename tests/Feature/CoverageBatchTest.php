@@ -86,6 +86,11 @@ it('costs the same number of queries however many families are published', funct
     foreach (range(1, 3) as $ignored) {
         publishedCase($region);
     }
+
+    // The routing settings are read once and held for the request. Measuring
+    // that one-off read in the first pass and not the second would compare two
+    // different things; this test is about growth, so warm it first.
+    $render();
     $few = $render();
 
     foreach (range(1, 12) as $ignored) {

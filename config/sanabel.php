@@ -38,5 +38,8 @@ return [
         'deprivation_window_days' => 90,
         'assessment_valid_days' => 180,
         'referral_validity_days' => 30,
+        // Where a donor sends the money when neither the family nor its
+        // association says otherwise: direct|association|both.
+        'default_transfer_mode' => 'association',
     ],
 ];

@@ -6,6 +6,7 @@ use App\Models\Beneficiary;
 use App\Services\CoverageService;
 use App\Services\RankingService;
 use App\Services\ScoreService;
+use App\Services\TransferRouting;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -13,9 +14,15 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * Rule 2 — donors are served exclusively by this class.
  *
  * Shown:       file number, area (not village), family size, need type,
- *              need amount, coverage %, urgency label.
- * Never shown: any name, national ID, phone, address, wallet, landlord,
- *              media, diagnosis, exact age, exact rent, raw score.
+ *              need amount, coverage %, urgency label, and the transfer
+ *              route the association set for this family.
+ * Never shown: any name, national ID, phone, address, landlord, media,
+ *              diagnosis, exact age, exact rent, raw score.
+ *
+ * The wallet is the one exception, added on 27 Sep 2026: when the association
+ * routes a family's donations directly, the donor is shown the wallet to pay
+ * into — and nothing else. No name travels with it; the account is labelled by
+ * file number. Every other masked field stands.
  *
  * Age becomes a band, illness becomes "chronic illness", rent becomes a band.
  * Nothing identifying a child is ever published.
@@ -32,6 +39,7 @@ class MaskedCaseResource extends JsonResource
         'file_number', 'area_ar', 'family_size', 'age_bands', 'need_type', 'need_type_label',
         'need_amount', 'currency', 'coverage_percent', 'coverage_label', 'remaining_amount',
         'urgency_label', 'has_chronic_illness', 'rent_band', 'is_renting', 'waiting_weeks',
+        'transfer_routes',
     ];
 
     /**
@@ -76,6 +84,7 @@ class MaskedCaseResource extends JsonResource
             'rent_band' => $this->rentBand($case),
             'is_renting' => (bool) $case->housing?->isRenting(),
             'waiting_weeks' => $ranking->waitingBonus($case),
+            'transfer_routes' => app(TransferRouting::class)->routesFor($case),
         ];
     }
 
@@ -85,6 +94,7 @@ class MaskedCaseResource extends JsonResource
         return [
             'child' => $members->where('person_class', 'child')->count(),
             'adult' => $members->where('person_class', 'adult')->count(),
+            'wife' => $members->where('person_class', 'wife')->count(),
             'elderly' => $members->where('person_class', 'elderly')->count(),
         ];
     }

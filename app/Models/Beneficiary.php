@@ -24,7 +24,7 @@ class Beneficiary extends Model
 
     protected $fillable = [
         'file_number', 'national_id_encrypted', 'national_id_hash', 'first_name', 'father_name',
-        'family_name', 'phone_encrypted', 'region_id', 'marital_status', 'wallet_encrypted',
+        'family_name', 'phone_encrypted', 'region_id', 'association_id', 'marital_status', 'wallet_encrypted', 'transfer_mode',
         'support_type', 'previous_aid_ar', 'urgency_deadline_at', 'documented_debt', 'status', 'last_assessment_at', 'next_assessment_due_at', 'source',
         'merged_into_id', 'duplicate_review_flag', 'approved_by', 'approved_at', 'reject_reason_ar',
         'published_at', 'created_by',
@@ -61,6 +61,16 @@ class Beneficiary extends Model
     public function housing(): HasOne
     {
         return $this->hasOne(Housing::class);
+    }
+
+    /**
+     * The association this family belongs to, if any. An association is a user
+     * row with the `association` role, as `users.association_id` already
+     * assumes. A family a delegate opened has none.
+     */
+    public function association(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'association_id');
     }
 
     public function healthRecords(): HasMany

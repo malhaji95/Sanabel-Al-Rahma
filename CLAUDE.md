@@ -35,7 +35,7 @@ npm run dev
 ## 4. Rules that are never relaxed
 
 1. **`transaction_ref` unique** — database-level unique index on `donations`. A duplicate is rejected with a message asking for review.
-2. **Donor output is masked** — donors are served exclusively by `MaskedCaseResource`. It never contains name, national ID, phone, address, wallet, landlord, media, or the raw score. Every donor-facing route uses it.
+2. **Donor output is masked** — donors are served exclusively by `MaskedCaseResource`. It never contains name, national ID, phone, address, landlord, media, or the raw score. Every donor-facing route uses it. **One exception, decided 27 Sep 2026:** a wallet number may appear when the association has routed that family's donations directly, and only as a destination to pay into — labelled by file number, never by a name. Every other masked field stands, and a wallet never appears under any other route.
 3. **No hard delete** — `SoftDeletes` on beneficiaries, cases, donations. No `forceDelete` anywhere.
 4. **Audit writes** — an `Auditable` trait on beneficiary, case, donation, assessment, payment, permission change. Logs actor, action, entity, before/after, timestamp. Writes only; reads are not logged in phase 1.
 5. **Verified money is immutable** — a `verified` donation is never updated. Corrections create a linked reversal row.

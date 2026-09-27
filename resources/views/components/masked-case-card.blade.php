@@ -49,7 +49,7 @@
             {{-- Each band stays on one line: a bare digit beside Arabic text breaks
                  badly across a line in a bidirectional layout. --}}
             <dd class="mt-1.5 flex flex-wrap gap-1.5">
-                @foreach (['child', 'adult', 'elderly'] as $band)
+                @foreach (['child', 'adult', 'wife', 'elderly'] as $band)
                     @if ($case['age_bands'][$band] > 0)
                         <span
                             class="badge whitespace-nowrap"

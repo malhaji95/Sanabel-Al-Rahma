@@ -45,25 +45,45 @@ class ManageSettings extends Page implements HasForms
 
     public function mount(): void
     {
-        $this->form->fill(
+        $wallet = Setting::value('platform_wallet', []);
+
+        $this->form->fill(array_merge(
             collect(config('sanabel.setting_defaults'))
                 ->mapWithKeys(fn ($default, $key) => [$key => Setting::value($key, $default)])
-                ->all()
-        );
+                ->all(),
+            [
+                'platform_wallet_number' => $wallet['number'] ?? null,
+                'platform_wallet_holder' => $wallet['holder'] ?? null,
+            ],
+        ));
     }
 
     public function form(Forms\Form $form): Forms\Form
     {
+        // Every numeric default draws itself. The routing settings are a mode
+        // and two wallet fields, so they are written out rather than generated.
+        $numeric = collect(config('sanabel.setting_defaults'))
+            ->filter(fn ($default) => is_int($default))
+            ->map(fn ($default, $key) => Forms\Components\TextInput::make($key)
+                ->label(__('sanabel.settings.keys.'.$key))
+                ->numeric()
+                ->required())
+            ->values()
+            ->all();
+
         return $form
-            ->schema(
-                collect(config('sanabel.setting_defaults'))
-                    ->map(fn ($default, $key) => Forms\Components\TextInput::make($key)
-                        ->label(__('sanabel.settings.keys.'.$key))
-                        ->numeric()
-                        ->required())
-                    ->values()
-                    ->all()
-            )
+            ->schema(array_merge($numeric, [
+                Forms\Components\Select::make('default_transfer_mode')
+                    ->label(__('sanabel.settings.keys.default_transfer_mode'))
+                    ->options(__('sanabel.transfer.modes'))
+                    ->required(),
+
+                Forms\Components\TextInput::make('platform_wallet_number')
+                    ->label(__('sanabel.settings.keys.platform_wallet_number')),
+
+                Forms\Components\TextInput::make('platform_wallet_holder')
+                    ->label(__('sanabel.settings.keys.platform_wallet_holder')),
+            ]))
             ->columns(2)
             ->statePath('data');
     }
@@ -72,7 +92,22 @@ class ManageSettings extends Page implements HasForms
     {
         abort_unless(auth()->user()->can_('edit_config'), 403);
 
-        foreach ($this->form->getState() as $key => $value) {
+        $state = $this->form->getState();
+
+        Setting::put('platform_wallet', [
+            'number' => filled($state['platform_wallet_number'] ?? null)
+                ? trim((string) $state['platform_wallet_number'])
+                : null,
+            'holder' => filled($state['platform_wallet_holder'] ?? null)
+                ? trim((string) $state['platform_wallet_holder'])
+                : null,
+        ]);
+
+        Setting::put('default_transfer_mode', $state['default_transfer_mode']);
+
+        unset($state['platform_wallet_number'], $state['platform_wallet_holder'], $state['default_transfer_mode']);
+
+        foreach ($state as $key => $value) {
             Setting::put($key, (int) $value);
         }
 

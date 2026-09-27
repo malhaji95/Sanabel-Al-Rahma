@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Payments\ManualDriver;
 use App\Payments\PaymentGateway;
+use App\Services\TransferRouting;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
@@ -22,6 +23,10 @@ class AppServiceProvider extends ServiceProvider
     {
         // Rule 7 — one PaymentGateway interface, one ManualDriver.
         $this->app->bind(PaymentGateway::class, ManualDriver::class);
+
+        // Shared so the two routing settings are read once for a whole donor
+        // list rather than once per card.
+        $this->app->singleton(TransferRouting::class);
     }
 
     /**

@@ -29,7 +29,11 @@ class DonationService
         $payload['status'] = 'pending';
 
         try {
-            return DB::transaction(fn () => Donation::create($payload));
+            $donation = DB::transaction(fn () => Donation::create($payload));
+
+            $this->notifyAssociationsOfDirectTransfers($donation);
+
+            return $donation;
         } catch (QueryException $e) {
             // Rule 1 — the unique index is the guard; this only turns it into a message.
             if ($this->isUniqueViolation($e, 'transaction_ref')) {
@@ -37,6 +41,42 @@ class DonationService
             }
 
             throw $e;
+        }
+    }
+
+    /**
+     * A direct transfer never touches the association's account, so the
+     * association is told at the moment the donor records it: which of its
+     * files, and the reference. The amount is deliberately left out — the
+     * verified figure is what counts, and it is not known yet.
+     */
+    private function notifyAssociationsOfDirectTransfers(Donation $donation): void
+    {
+        if (! $donation->basket_id) {
+            return;
+        }
+
+        $routing = app(TransferRouting::class);
+        $told = [];
+
+        foreach ($donation->basket->items()->with('beneficiary.association')->get() as $item) {
+            $case = $item->beneficiary;
+            $association = $case?->association_id;
+
+            if (! $case || ! $association || in_array([$association, $case->id], $told, true)) {
+                continue;
+            }
+
+            if (! in_array($routing->modeFor($case), ['direct', 'both'], true)) {
+                continue;
+            }
+
+            $told[] = [$association, $case->id];
+
+            $this->notifications->send($association, 'direct_transfer_recorded', [
+                'file_number' => $case->file_number,
+                'ref' => $donation->transaction_ref,
+            ]);
         }
     }
 

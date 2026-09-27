@@ -18,10 +18,10 @@ class User extends Authenticatable implements FilamentUser
 
     protected $fillable = [
         'name', 'email', 'password', 'role_id', 'region_id', 'association_id', 'phone_encrypted', 'is_active',
-        'two_factor_secret', 'two_factor_confirmed_at',
+        'two_factor_secret', 'two_factor_confirmed_at', 'wallet_encrypted', 'transfer_mode',
     ];
 
-    protected $hidden = ['password', 'remember_token', 'phone_encrypted', 'two_factor_secret'];
+    protected $hidden = ['password', 'remember_token', 'phone_encrypted', 'two_factor_secret', 'wallet_encrypted'];
 
     /** Roles that must pass a second factor before reaching a panel (T-38). */
     public const TWO_FACTOR_ROLES = ['admin', 'council'];
@@ -32,6 +32,7 @@ class User extends Authenticatable implements FilamentUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'phone_encrypted' => 'encrypted',
+            'wallet_encrypted' => 'encrypted',
             'two_factor_secret' => 'encrypted',
             'two_factor_confirmed_at' => 'datetime',
             'is_active' => 'boolean',
