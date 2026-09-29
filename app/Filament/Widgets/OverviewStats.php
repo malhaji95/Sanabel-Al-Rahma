@@ -23,6 +23,12 @@ class OverviewStats extends BaseWidget
 
         $pending = Donation::where('status', 'pending')->count();
 
+        $thisMonth = fn (string $designation) => (int) Donation::where('status', 'verified')
+            ->whereNull('reversal_of_id')
+            ->where('designation', $designation)
+            ->where('verified_at', '>=', now()->startOfMonth())
+            ->sum('amount');
+
         $breaching = Donation::where('status', 'pending')
             ->where('created_at', '<', now()->subHours($targetHours))
             ->count();
@@ -45,12 +51,17 @@ class OverviewStats extends BaseWidget
                 ->description(__('sanabel.dashboard.over_target', ['count' => $breaching, 'hours' => $targetHours]))
                 ->color($breaching > 0 ? 'danger' : 'success'),
 
-            Stat::make(__('sanabel.dashboard.verified_this_month'),
-                number_format((int) Donation::where('status', 'verified')
-                    ->whereNull('reversal_of_id')
-                    ->where('verified_at', '>=', now()->startOfMonth())
-                    ->sum('amount')))
-                ->description(config('sanabel.currency')),
+            // Split by kind: money already tied to named files, and money the
+            // association still has to decide about. One total hid the second.
+            Stat::make(__('sanabel.dashboard.earmarked_this_month'),
+                number_format($thisMonth('earmarked')))
+                ->description(config('sanabel.currency'))
+                ->color('success'),
+
+            Stat::make(__('sanabel.dashboard.general_this_month'),
+                number_format($thisMonth('general')))
+                ->description(__('sanabel.dashboard.general_help'))
+                ->color('warning'),
 
             Stat::make(__('sanabel.dashboard.overdue_installments'),
                 SponsorshipInstallment::where('status', 'overdue')->count())

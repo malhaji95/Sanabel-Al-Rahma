@@ -44,14 +44,22 @@
     </section>
 
     @foreach ($banners as $banner)
-        <section class="alert-warning mt-6" role="note">
-            <div>
+        @php($destination = $banner->destination())
+        <section class="card mt-6 overflow-hidden !p-0" role="note">
+            @if ($banner->imageUrl())
+                <img src="{{ $banner->imageUrl() }}" alt="{{ $banner->title_ar }}"
+                     class="h-auto w-full object-cover" loading="lazy">
+            @endif
+
+            <div class="p-5">
                 <p class="font-semibold">{{ $banner->title_ar }}</p>
                 @if ($banner->body_ar)
-                    <p class="mt-1">{{ $banner->body_ar }}</p>
+                    <p class="mt-1 text-sm leading-relaxed" style="color: var(--text-muted);">{{ $banner->body_ar }}</p>
                 @endif
-                @if ($banner->link)
-                    <a href="{{ $banner->link }}" class="mt-2 inline-block font-medium">{{ __('sanabel.public.more') }}</a>
+                @if ($destination)
+                    <a href="{{ $destination }}" class="btn-secondary mt-3 inline-block no-underline">
+                        {{ __('sanabel.public.more') }}
+                    </a>
                 @endif
             </div>
         </section>

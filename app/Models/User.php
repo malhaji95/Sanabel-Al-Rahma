@@ -18,7 +18,7 @@ class User extends Authenticatable implements FilamentUser
 
     protected $fillable = [
         'name', 'email', 'password', 'role_id', 'region_id', 'association_id', 'phone_encrypted', 'is_active',
-        'two_factor_secret', 'two_factor_confirmed_at', 'wallet_encrypted', 'transfer_mode',
+        'two_factor_secret', 'two_factor_confirmed_at', 'wallet_encrypted',
     ];
 
     protected $hidden = ['password', 'remember_token', 'phone_encrypted', 'two_factor_secret', 'wallet_encrypted'];

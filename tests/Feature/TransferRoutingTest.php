@@ -1,17 +1,19 @@
 <?php
 
 use App\Http\Resources\MaskedCaseResource;
-use App\Models\AppNotification;
+use App\Models\Donation;
 use App\Models\Donor;
 use App\Models\Setting;
+use App\Payments\PaymentGateway;
 use App\Services\BasketService;
+use App\Services\CoverageService;
 use App\Services\DonationService;
 use App\Services\TransferRouting;
 
 /*
- | The association's decision of 27 Sep 2026: a donor transfers to the family
- | directly, to the association, or is offered both — and which it is, is set
- | on the association with an exception per family.
+ | The association settled it on 29 Sep 2026: a donor never transfers to a
+ | family. Money reaches the association — earmarked for named files, or
+ | general money the association may spend at its discretion.
  */
 
 beforeEach(function () {
@@ -22,88 +24,58 @@ beforeEach(function () {
     Setting::put('platform_wallet', ['number' => '0900000000', 'holder' => 'سنابل الرحمة']);
 });
 
-function associationWith(string $mode, ?string $wallet = '0911111111')
+function associationWith(?string $wallet = '0911111111')
 {
     return userWithRole('association', [
         'name' => 'جمعية الاختبار',
-        'transfer_mode' => $mode,
         'wallet_encrypted' => $wallet,
     ]);
 }
 
-it('follows the association when the family says nothing', function () {
-    $association = associationWith('direct');
+it('sends a donor to the wallet of the association the family belongs to', function () {
+    $association = associationWith();
     $case = publishedCase($this->region);
     $case->update(['association_id' => $association->id, 'wallet_encrypted' => '0922222222']);
 
-    expect($this->routing->modeFor($case->refresh()))->toBe('direct');
-});
-
-it('lets one family be excepted from its association', function () {
-    $association = associationWith('association');
-    $case = publishedCase($this->region);
-    $case->update([
-        'association_id' => $association->id,
-        'transfer_mode' => 'direct',
-        'wallet_encrypted' => '0922222222',
-    ]);
-
     $routes = $this->routing->routesFor($case->refresh());
 
-    expect($this->routing->modeFor($case))->toBe('direct')
-        ->and($routes)->toHaveCount(1)
-        ->and($routes[0]['wallet'])->toBe('0922222222');
+    expect($routes)->toHaveCount(1)
+        ->and($routes[0]['route'])->toBe('association')
+        ->and($routes[0]['wallet'])->toBe('0911111111')
+        ->and($routes[0]['holder'])->toBe('جمعية الاختبار');
 });
 
-it('falls back to the platform default for a family with no association', function () {
-    Setting::put('default_transfer_mode', 'association');
+it('sends a donor to the platform wallet when the family has no association', function () {
     $case = publishedCase($this->region);
+    $case->update(['wallet_encrypted' => '0922222222']);
 
-    $routes = $this->routing->routesFor($case);
+    $routes = $this->routing->routesFor($case->refresh());
 
     expect($routes)->toHaveCount(1)
         ->and($routes[0]['route'])->toBe('platform')
         ->and($routes[0]['wallet'])->toBe('0900000000');
 });
 
-it('offers both wallets when the association says both', function () {
-    $association = associationWith('both');
+it('falls back to the platform when the association entered no wallet', function () {
+    $association = associationWith(wallet: null);
+    $case = publishedCase($this->region);
+    $case->update(['association_id' => $association->id]);
+
+    expect($this->routing->routesFor($case->refresh())[0]['route'])->toBe('platform');
+});
+
+it('never puts a family wallet in front of a donor', function () {
+    $association = associationWith();
     $case = publishedCase($this->region);
     $case->update(['association_id' => $association->id, 'wallet_encrypted' => '0922222222']);
 
-    $routes = collect($this->routing->routesFor($case->refresh()));
+    $masked = json_encode((new MaskedCaseResource($case->refresh()))->resolve());
 
-    expect($routes)->toHaveCount(2)
-        ->and($routes->pluck('route')->all())->toBe(['direct', 'association'])
-        ->and($routes->pluck('wallet')->all())->toBe(['0922222222', '0911111111']);
-});
-
-it('drops a route whose wallet was never entered', function () {
-    // The association routes directly but the family has no wallet: showing
-    // "transfer directly" with no number to transfer to is worse than nothing.
-    $association = associationWith('both', wallet: null);
-    $case = publishedCase($this->region);
-    $case->update(['association_id' => $association->id, 'wallet_encrypted' => null]);
-
-    $routes = $this->routing->routesFor($case->refresh());
-
-    expect($routes)->toHaveCount(1)
-        ->and($routes[0]['route'])->toBe('platform');
-});
-
-it('labels a family wallet by file number, never by name', function () {
-    $association = associationWith('direct');
-    $case = publishedCase($this->region);
-    $case->update(['association_id' => $association->id, 'wallet_encrypted' => '0922222222']);
-
-    $routes = $this->routing->routesFor($case->refresh());
-
-    expect($routes[0]['holder'])->toBe($case->file_number)
-        ->and($routes[0]['holder'])->not->toContain($case->family_name);
+    expect($masked)->not->toContain('0922222222');
 });
 
 it('shows one wallet once for two families of the same association', function () {
-    $association = associationWith('association');
+    $association = associationWith();
     $donor = Donor::factory()->create();
     $baskets = app(BasketService::class);
     $basket = $baskets->openFor($donor);
@@ -121,59 +93,93 @@ it('shows one wallet once for two families of the same association', function ()
         ->and($routes[0]['files'])->toHaveCount(2);
 });
 
-it('tells the association when a donor records a direct transfer to its family', function () {
-    $association = associationWith('direct');
+it('marks a basket donation as earmarked for the files it names', function () {
     $donor = Donor::factory()->create();
     $case = publishedCase($this->region);
-    $case->update(['association_id' => $association->id, 'wallet_encrypted' => '0922222222']);
-
     $baskets = app(BasketService::class);
     $basket = $baskets->openFor($donor);
-    $baskets->addItem($basket, $case->refresh(), 1_000);
+    $baskets->addItem($basket, $case, 1_000);
+
+    $donation = app(DonationService::class)->record([
+        'donor_id' => $donor->id,
+        'basket_id' => $basket->id,
+        'amount' => 1_000,
+        'transaction_ref' => 'TRX-EARMARKED',
+    ]);
+
+    expect($donation->designation)->toBe('earmarked')
+        ->and($donation->route)->toBe('platform');
+});
+
+it('records a general donation that names no family at all', function () {
+    $donor = Donor::factory()->create();
+
+    $donation = app(PaymentGateway::class)->record([
+        'donor_id' => $donor->id,
+        'amount' => 50_000,
+        'transaction_ref' => 'TRX-GENERAL',
+        'designation' => 'general',
+    ]);
+
+    expect($donation->designation)->toBe('general')
+        ->and($donation->basket_id)->toBeNull()
+        ->and($donation->allocations)->toBeEmpty();
+});
+
+it('refuses general money that arrives tied to a basket', function () {
+    $donor = Donor::factory()->create();
+    $case = publishedCase($this->region);
+    $baskets = app(BasketService::class);
+    $basket = $baskets->openFor($donor);
+    $baskets->addItem($basket, $case, 1_000);
 
     app(DonationService::class)->record([
         'donor_id' => $donor->id,
         'basket_id' => $basket->id,
         'amount' => 1_000,
-        'transaction_ref' => 'TRX-DIRECT-1',
+        'transaction_ref' => 'TRX-CONTRADICTION',
+        'designation' => 'general',
     ]);
+})->throws(InvalidArgumentException::class);
 
-    $sent = AppNotification::where('recipient_id', $association->id)
-        ->where('template_key', 'direct_transfer_recorded')
-        ->get();
-
-    expect($sent)->not->toBeEmpty()
-        ->and($sent->first()->payload_json['file_number'])->toBe($case->file_number)
-        // Rule 10 still stands: no name, no wallet in a notification body.
-        ->and($sent->first()->payload_json)->not->toHaveKey('wallet');
-});
-
-it('says nothing to the association when the transfer goes to the association', function () {
-    $association = associationWith('association');
+it('refuses earmarked money that names no files', function () {
     $donor = Donor::factory()->create();
-    $case = publishedCase($this->region);
-    $case->update(['association_id' => $association->id]);
-
-    $baskets = app(BasketService::class);
-    $basket = $baskets->openFor($donor);
-    $baskets->addItem($basket, $case->refresh(), 1_000);
 
     app(DonationService::class)->record([
         'donor_id' => $donor->id,
-        'basket_id' => $basket->id,
         'amount' => 1_000,
-        'transaction_ref' => 'TRX-ASSOC-1',
+        'transaction_ref' => 'TRX-NO-FILES',
+        'designation' => 'earmarked',
+    ]);
+})->throws(InvalidArgumentException::class);
+
+it('never stores a donation as paid straight to a family', function () {
+    $donor = Donor::factory()->create();
+
+    app(DonationService::class)->record([
+        'donor_id' => $donor->id,
+        'amount' => 1_000,
+        'transaction_ref' => 'TRX-FORCED-DIRECT',
+        'designation' => 'general',
+        // Even asked for outright, the direct route is not written.
+        'route' => 'direct',
     ]);
 
-    expect(AppNotification::where('template_key', 'direct_transfer_recorded')->count())->toBe(0);
+    expect(Donation::where('transaction_ref', 'TRX-FORCED-DIRECT')->value('route'))->toBe('platform');
 });
 
-it('keeps the family wallet out of donor output unless the route is direct', function () {
-    $association = associationWith('association');
+it('leaves a general donation out of every family coverage figure', function () {
+    $donor = Donor::factory()->create();
     $case = publishedCase($this->region);
-    $case->update(['association_id' => $association->id, 'wallet_encrypted' => '0922222222']);
 
-    $masked = (new MaskedCaseResource($case->refresh()))->resolve();
+    $donation = app(DonationService::class)->record([
+        'donor_id' => $donor->id,
+        'amount' => 50_000,
+        'transaction_ref' => 'TRX-GENERAL-2',
+        'designation' => 'general',
+    ]);
 
-    expect(json_encode($masked))->not->toContain('0922222222');
+    app(DonationService::class)->verify($donation, userWithRole('admin')->id);
+
+    expect(app(CoverageService::class)->confirmedForMonth($case))->toBe(0);
 });

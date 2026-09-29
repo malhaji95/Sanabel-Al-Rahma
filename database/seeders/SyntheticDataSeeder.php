@@ -128,10 +128,7 @@ class SyntheticDataSeeder extends Seeder
 
         // The partner association routes its families' donations to its own
         // wallet by default, and the platform answers for everyone else.
-        $staff['association']->forceFill([
-            'wallet_encrypted' => '0944555666',
-            'transfer_mode' => 'association',
-        ])->save();
+        $staff['association']->forceFill(['wallet_encrypted' => '0944555666'])->save();
 
         Setting::put('platform_wallet', [
             'number' => '0933000111',
@@ -159,9 +156,7 @@ class SyntheticDataSeeder extends Seeder
             'status' => 'draft',
             'source' => $index % 5 === 0 ? 'association' : 'delegate',
             'association_id' => $index % 5 === 0 ? $staff['association']->id : null,
-            // Every third family of the association is excepted and takes its
-            // donations directly, so all three routes appear on the demo.
-            'transfer_mode' => $index % 15 === 0 ? 'both' : null,
+            // A wallet is recorded for disbursement, never shown to a donor.
             'wallet_encrypted' => $index % 5 === 0 ? '0955'.str_pad((string) $index, 6, '0', STR_PAD_LEFT) : null,
             'documented_debt' => $index % 6 === 0 ? 150_000 : 0,
             'urgency_deadline_at' => $index % 7 === 0 ? now()->addDays(20) : null,

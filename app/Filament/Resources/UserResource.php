@@ -68,11 +68,6 @@ class UserResource extends Resource
                 ->helperText(__('sanabel.user.wallet_help'))
                 ->visible(fn (Forms\Get $get) => self::isAssociation($get('role_id'))),
 
-            Forms\Components\Select::make('transfer_mode')
-                ->label(__('sanabel.transfer.mode'))
-                ->options(__('sanabel.transfer.modes'))
-                ->helperText(__('sanabel.transfer.mode_help'))
-                ->visible(fn (Forms\Get $get) => self::isAssociation($get('role_id'))),
         ])->columns(2);
     }
 

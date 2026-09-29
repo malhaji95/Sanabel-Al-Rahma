@@ -21,19 +21,30 @@ class DonationService
     /**
      * Records a donation the donor says they have transferred.
      * Nothing about coverage changes here — only verification moves money.
+     *
+     * Two kinds, and no third: money earmarked for the files in a basket, or
+     * general money the association may spend at its discretion. Both reach
+     * the association's own wallet; a donor never pays a household directly,
+     * so a payload claiming otherwise is refused rather than quietly stored.
      */
     public function record(array $payload): Donation
     {
         $payload['fund_id'] ??= Fund::byKey(Fund::OPERATIONAL)->id;
         $payload['currency'] ??= config('sanabel.currency');
         $payload['status'] = 'pending';
+        $payload['route'] = 'platform';
+        $payload['designation'] ??= empty($payload['basket_id']) ? 'general' : 'earmarked';
+
+        if ($payload['designation'] === 'earmarked' && empty($payload['basket_id'])) {
+            throw new \InvalidArgumentException('Earmarked money must name the files it is for.');
+        }
+
+        if ($payload['designation'] === 'general' && ! empty($payload['basket_id'])) {
+            throw new \InvalidArgumentException('General money is not tied to a basket.');
+        }
 
         try {
-            $donation = DB::transaction(fn () => Donation::create($payload));
-
-            $this->notifyAssociationsOfDirectTransfers($donation);
-
-            return $donation;
+            return DB::transaction(fn () => Donation::create($payload));
         } catch (QueryException $e) {
             // Rule 1 — the unique index is the guard; this only turns it into a message.
             if ($this->isUniqueViolation($e, 'transaction_ref')) {
@@ -41,42 +52,6 @@ class DonationService
             }
 
             throw $e;
-        }
-    }
-
-    /**
-     * A direct transfer never touches the association's account, so the
-     * association is told at the moment the donor records it: which of its
-     * files, and the reference. The amount is deliberately left out — the
-     * verified figure is what counts, and it is not known yet.
-     */
-    private function notifyAssociationsOfDirectTransfers(Donation $donation): void
-    {
-        if (! $donation->basket_id) {
-            return;
-        }
-
-        $routing = app(TransferRouting::class);
-        $told = [];
-
-        foreach ($donation->basket->items()->with('beneficiary.association')->get() as $item) {
-            $case = $item->beneficiary;
-            $association = $case?->association_id;
-
-            if (! $case || ! $association || in_array([$association, $case->id], $told, true)) {
-                continue;
-            }
-
-            if (! in_array($routing->modeFor($case), ['direct', 'both'], true)) {
-                continue;
-            }
-
-            $told[] = [$association, $case->id];
-
-            $this->notifications->send($association, 'direct_transfer_recorded', [
-                'file_number' => $case->file_number,
-                'ref' => $donation->transaction_ref,
-            ]);
         }
     }
 

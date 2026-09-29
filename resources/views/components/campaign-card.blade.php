@@ -2,7 +2,7 @@
 
 @php $collected = $campaign->collectedAmount(); $progress = $campaign->progressPercent($collected); @endphp
 
-<article class="card-interactive flex h-full flex-col">
+<article id="campaign-{{ $campaign->id }}" class="card-interactive flex h-full flex-col scroll-mt-24">
     <h3 class="text-base">{{ $campaign->title_ar }}</h3>
 
     @if ($campaign->body_ar)

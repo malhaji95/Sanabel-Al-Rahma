@@ -373,7 +373,6 @@ return [
             'deprivation_window_days' => 'نافذة احتساب الحرمان (يوم)',
             'assessment_valid_days' => 'صلاحية التقييم (يوم)',
             'referral_validity_days' => 'صلاحية بطاقة الإحالة (يوم)',
-            'default_transfer_mode' => 'وجهة التحويل الافتراضية',
             'platform_wallet_number' => 'محفظة سنابل الرحمة (شام كاش)',
             'platform_wallet_holder' => 'اسم صاحب المحفظة',
         ],
@@ -485,27 +484,25 @@ return [
     // A request points at the record that actually holds the field, so the
     // list has to name five kinds of record, not just the family file.
     'transfer' => [
-        'mode' => 'وجهة التحويل',
-        'modes' => [
-            'direct' => 'تحويل مباشر للأسرة',
-            'association' => 'تحويل إلى الجمعية',
-            'both' => 'الخياران معًا',
-        ],
-        'inherit' => 'حسب الجمعية',
-        'mode_help' => 'يحدد ما يظهر للمتبرع في صفحة التبرع لأسر هذه الجمعية.',
-        'case_help' => 'استثناء لهذه الأسرة وحدها. اتركه فارغًا لتتبع وضع جمعيتها.',
         'heading' => 'وجهة التحويل',
         'choose' => 'حوّل إلى إحدى الوجهتين، ثم أدخل رقم الحوالة أدناه.',
         'single' => 'حوّل إلى الوجهة التالية، ثم أدخل رقم الحوالة أدناه.',
         'route' => [
-            'direct' => 'محفظة الأسرة مباشرة',
             'association' => 'محفظة الجمعية',
             'platform' => 'محفظة سنابل الرحمة',
         ],
         'holder' => 'باسم',
-        'copy' => 'نسخ الرقم',
-        'copied' => 'نُسخ',
         'none' => 'لم تُحدَّد وجهة تحويل بعد — راجع الإدارة قبل التحويل.',
+    ],
+
+    // Two kinds of donation, and no third: the donor names the files, or
+    // leaves the association to decide. Both reach the association's wallet.
+    'designation' => [
+        'label' => 'نوع التبرع',
+        'earmarked' => 'مخصص لملفات محددة',
+        'general' => 'تبرع عام',
+        'earmarked_help' => 'يصل إلى محفظة الجمعية ويُخصَّص لأرقام الملفات التي اخترتها.',
+        'general_help' => 'يصل إلى محفظة الجمعية، وللجمعية أن تصرفه حيث تراه الأولوية.',
     ],
 
     'change_request_entity' => [
@@ -526,7 +523,15 @@ return [
     ],
     'page' => ['singular' => 'صفحة', 'plural' => 'الصفحات', 'slug' => 'المعرّف', 'title' => 'العنوان', 'body' => 'المحتوى', 'is_published' => 'منشورة', 'sort_order' => 'الترتيب'],
     'post' => ['singular' => 'خبر', 'plural' => 'الأخبار', 'slug' => 'المعرّف', 'title' => 'العنوان', 'body' => 'المحتوى', 'is_published' => 'منشور', 'sort_order' => 'الترتيب'],
-    'banner' => ['singular' => 'بانر', 'plural' => 'البانرات', 'title' => 'العنوان', 'body' => 'النص', 'is_published' => 'منشور', 'sort_order' => 'الترتيب', 'link' => 'الرابط'],
+    'banner' => [
+        'singular' => 'بانر', 'plural' => 'البانرات', 'title' => 'العنوان', 'body' => 'النص',
+        'is_published' => 'منشور', 'sort_order' => 'الترتيب', 'link' => 'الرابط',
+        'image' => 'الصورة',
+        'image_help' => 'صورة البانر كما تظهر في الصفحة الرئيسية. الحد الأقصى ٤ ميغابايت.',
+        'campaign' => 'الحملة المرتبطة',
+        'campaign_help' => 'اختر حملة منشورة ليفتح البانر عليها. يتجاوز الرابط اليدوي إن حُدِّد.',
+        'link_help' => 'رابط يدوي، يُستعمل فقط إن لم تُختَر حملة.',
+    ],
     'dashboard' => [
         'published_cases' => 'الملفات المنشورة',
         'published_help' => 'متاحة للمتبرعين',
@@ -534,6 +539,9 @@ return [
         'needs_reassessment' => 'تحتاج إعادة تقييم',
         'pending_verification' => 'تبرعات بانتظار التحقق',
         'over_target' => ':count تجاوزت :hours ساعة',
+        'earmarked_this_month' => 'المحصّل هذا الشهر — مخصص',
+        'general_this_month' => 'المحصّل هذا الشهر — عام',
+        'general_help' => 'بتصرّف الجمعية',
         'verified_this_month' => 'المحصّل هذا الشهر',
         'overdue_installments' => 'أقساط كفالة متأخرة',
         'coverage_by_region' => 'التغطية حسب المنطقة',

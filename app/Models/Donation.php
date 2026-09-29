@@ -18,7 +18,7 @@ class Donation extends Model
     private const REVERSAL_SAFE_FIELDS = ['status', 'updated_at'];
 
     protected $fillable = [
-        'donor_id', 'route', 'amount', 'currency', 'transaction_ref', 'receipt_media_id',
+        'donor_id', 'route', 'designation', 'amount', 'currency', 'transaction_ref', 'receipt_media_id',
         'status', 'verified_by', 'verified_at', 'reject_reason', 'fund_id', 'basket_id',
         'reversal_of_id', 'created_by',
     ];

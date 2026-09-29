@@ -73,11 +73,6 @@ class ManageSettings extends Page implements HasForms
 
         return $form
             ->schema(array_merge($numeric, [
-                Forms\Components\Select::make('default_transfer_mode')
-                    ->label(__('sanabel.settings.keys.default_transfer_mode'))
-                    ->options(__('sanabel.transfer.modes'))
-                    ->required(),
-
                 Forms\Components\TextInput::make('platform_wallet_number')
                     ->label(__('sanabel.settings.keys.platform_wallet_number')),
 
@@ -103,9 +98,7 @@ class ManageSettings extends Page implements HasForms
                 : null,
         ]);
 
-        Setting::put('default_transfer_mode', $state['default_transfer_mode']);
-
-        unset($state['platform_wallet_number'], $state['platform_wallet_holder'], $state['default_transfer_mode']);
+        unset($state['platform_wallet_number'], $state['platform_wallet_holder']);
 
         foreach ($state as $key => $value) {
             Setting::put($key, (int) $value);

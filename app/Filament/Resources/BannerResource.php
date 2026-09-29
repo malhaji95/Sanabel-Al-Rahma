@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\BannerResource\Pages;
 use App\Models\Banner;
+use App\Models\Campaign;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -38,7 +39,28 @@ class BannerResource extends Resource
             Forms\Components\Textarea::make('body_ar')->label(__('sanabel.banner.body'))->columnSpanFull(),
             Forms\Components\Toggle::make('is_published')->label(__('sanabel.banner.is_published')),
             Forms\Components\TextInput::make('sort_order')->label(__('sanabel.banner.sort_order'))->numeric()->minValue(0),
-            Forms\Components\TextInput::make('link')->label(__('sanabel.banner.link')),
+            // Marketing artwork on the public disk — deliberately not the media
+            // disk, which holds family documents behind signed URLs.
+            Forms\Components\FileUpload::make('image')
+                ->label(__('sanabel.banner.image'))
+                ->helperText(__('sanabel.banner.image_help'))
+                ->image()
+                ->disk('public')
+                ->directory('banners')
+                ->maxSize(4096)
+                ->columnSpanFull(),
+
+            // Chosen by name so the editor never builds a URL by hand, and the
+            // link survives the campaign being renamed.
+            Forms\Components\Select::make('campaign_id')
+                ->label(__('sanabel.banner.campaign'))
+                ->options(fn () => Campaign::where('is_published', true)->pluck('title_ar', 'id'))
+                ->searchable()
+                ->helperText(__('sanabel.banner.campaign_help')),
+
+            Forms\Components\TextInput::make('link')
+                ->label(__('sanabel.banner.link'))
+                ->helperText(__('sanabel.banner.link_help')),
         ])->columns(2);
     }
 

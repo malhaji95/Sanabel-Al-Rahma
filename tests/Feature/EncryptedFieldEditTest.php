@@ -59,7 +59,6 @@ it('opens an association account with the wallet it already has', function () {
     $association = userWithRole('association', [
         'name' => 'جمعية الاختبار',
         'wallet_encrypted' => '0933333333',
-        'transfer_mode' => 'association',
     ]);
 
     $this->actingAs($this->admin);

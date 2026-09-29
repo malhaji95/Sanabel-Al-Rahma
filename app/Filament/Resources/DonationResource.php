@@ -90,6 +90,11 @@ class DonationResource extends Resource
                 Tables\Columns\TextColumn::make('transaction_ref')->label(__('sanabel.donation.transaction_ref'))->searchable()->copyable(),
                 Tables\Columns\TextColumn::make('donor.name_ar')->label(__('sanabel.donation.donor'))->searchable(),
                 Tables\Columns\TextColumn::make('amount')->label(__('sanabel.donation.amount'))->numeric()->sortable(),
+                Tables\Columns\TextColumn::make('designation')
+                    ->label(__('sanabel.designation.label'))
+                    ->formatStateUsing(fn (string $state) => __('sanabel.designation.'.$state))
+                    ->badge()
+                    ->color(fn (string $state) => $state === 'general' ? 'warning' : 'success'),
                 Tables\Columns\TextColumn::make('fund.name_ar')->label(__('sanabel.donation.fund')),
                 Tables\Columns\TextColumn::make('status')
                     ->label(__('sanabel.beneficiary.status'))
@@ -114,6 +119,12 @@ class DonationResource extends Resource
                         'reversed' => __('sanabel.donations.reversed'),
                     ])
                     ->default('pending'),
+                Tables\Filters\SelectFilter::make('designation')
+                    ->label(__('sanabel.designation.label'))
+                    ->options(fn () => [
+                        'earmarked' => __('sanabel.designation.earmarked'),
+                        'general' => __('sanabel.designation.general'),
+                    ]),
                 Tables\Filters\SelectFilter::make('fund_id')
                     ->label(__('sanabel.donation.fund'))
                     ->options(fn () => Fund::pluck('name_ar', 'id')),

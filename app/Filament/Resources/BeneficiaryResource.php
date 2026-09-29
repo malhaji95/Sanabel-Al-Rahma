@@ -84,14 +84,6 @@ class BeneficiaryResource extends Resource
                         ->searchable()
                         ->helperText(__('sanabel.beneficiary.association_help')),
 
-                    // Left empty the family follows its association, and an
-                    // association with nothing set follows the platform default.
-                    Forms\Components\Select::make('transfer_mode')
-                        ->label(__('sanabel.transfer.mode'))
-                        ->options(__('sanabel.transfer.modes'))
-                        ->placeholder(__('sanabel.transfer.inherit'))
-                        ->helperText(__('sanabel.transfer.case_help')),
-
                     Forms\Components\Select::make('region_id')
                         ->label(__('sanabel.beneficiary.region'))
                         ->options(fn () => Region::where('is_active', true)->pluck('name_ar', 'id'))

@@ -29,6 +29,60 @@
         <a href="{{ route('donor.basket') }}" class="btn-secondary no-underline">{{ __('sanabel.public.basket') }}</a>
     </div>
 
+    {{-- The second kind of donation: no file named, the association decides. --}}
+    <div class="card space-y-4">
+        <div>
+            <h2 class="text-lg font-semibold">{{ __('sanabel.designation.general') }}</h2>
+            <p class="mt-1 text-sm" style="color: var(--text-muted);">{{ __('sanabel.designation.general_help') }}</p>
+        </div>
+
+        @if ($generalRoute)
+            <div class="rounded-lg border p-4" style="border-color: var(--border);">
+                <p class="text-sm font-semibold" style="color: var(--brand-primary);">
+                    {{ __('sanabel.transfer.route.' . $generalRoute['route']) }}
+                </p>
+                <p class="mt-2 text-lg font-bold tabular" dir="ltr">{{ $generalRoute['wallet'] }}</p>
+                <p class="mt-1 text-xs" style="color: var(--text-muted);">
+                    {{ __('sanabel.transfer.holder') }}: {{ $generalRoute['holder'] }}
+                </p>
+            </div>
+        @else
+            <p class="text-sm" style="color: var(--text-muted);">{{ __('sanabel.transfer.none') }}</p>
+        @endif
+
+        @if ($notice)
+            <div class="alert-success" role="status">{{ $notice }}</div>
+        @endif
+        @if ($error)
+            <div class="alert-warning" role="alert">{{ $error }}</div>
+        @endif
+
+        <form wire:submit="recordGeneral" class="grid gap-4 sm:grid-cols-2">
+            <div>
+                <label class="field-label" for="general-amount">{{ __('sanabel.public.amount') }}</label>
+                <input id="general-amount" type="number" min="1" wire:model="generalAmount" class="field tabular" dir="ltr">
+                @error('generalAmount')
+                    <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div>
+                <label class="field-label" for="general-ref">{{ __('sanabel.donation.transaction_ref') }}</label>
+                <input id="general-ref" type="text" wire:model="generalRef" class="field tabular" dir="ltr">
+                @error('generalRef')
+                    <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="sm:col-span-2">
+                <button type="submit" class="btn-primary">
+                    <span wire:loading.remove wire:target="recordGeneral">{{ __('sanabel.public.record_transfer') }}</span>
+                    <span wire:loading wire:target="recordGeneral">…</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
     @if ($donations->isEmpty())
         <x-empty-state :title="__('sanabel.public.no_donations')" :body="__('sanabel.public.no_donations_help')">
             <a href="{{ route('cases.browse') }}" class="btn-primary mt-2 no-underline">
@@ -42,6 +96,7 @@
                     <tr>
                         <th class="px-4 py-3 text-start font-medium">{{ __('sanabel.donation.transaction_ref') }}</th>
                         <th class="px-4 py-3 text-start font-medium">{{ __('sanabel.donation.amount') }}</th>
+                        <th class="px-4 py-3 text-start font-medium">{{ __('sanabel.designation.label') }}</th>
                         <th class="px-4 py-3 text-start font-medium">{{ __('sanabel.beneficiary.status') }}</th>
                         <th class="px-4 py-3 text-start font-medium">{{ __('sanabel.public.covered_files') }}</th>
                         <th class="px-4 py-3 text-start font-medium">{{ __('sanabel.donation.received_at') }}</th>
@@ -52,6 +107,7 @@
                         <tr>
                             <td class="tabular px-4 py-3 text-xs" dir="ltr">{{ $donation['transaction_ref'] }}</td>
                             <td class="tabular px-4 py-3 font-medium">{{ number_format($donation['amount']) }}</td>
+                            <td class="px-4 py-3 text-xs" style="color: var(--text-muted);">{{ $donation['designation_label'] }}</td>
                             <td class="px-4 py-3">
                                 <span @class([
                                     'badge',

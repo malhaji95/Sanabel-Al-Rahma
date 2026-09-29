@@ -14,15 +14,13 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * Rule 2 — donors are served exclusively by this class.
  *
  * Shown:       file number, area (not village), family size, need type,
- *              need amount, coverage %, urgency label, and the transfer
- *              route the association set for this family.
- * Never shown: any name, national ID, phone, address, landlord, media,
- *              diagnosis, exact age, exact rent, raw score.
+ *              need amount, coverage %, urgency label, and the association
+ *              wallet the transfer goes to.
+ * Never shown: any name, national ID, phone, address, wallet, landlord,
+ *              media, diagnosis, exact age, exact rent, raw score.
  *
- * The wallet is the one exception, added on 27 Sep 2026: when the association
- * routes a family's donations directly, the donor is shown the wallet to pay
- * into — and nothing else. No name travels with it; the account is labelled by
- * file number. Every other masked field stands.
+ * The destination shown is never a household's own account — a donor pays the
+ * association, which is the whole point of the 29 Sep decision.
  *
  * Age becomes a band, illness becomes "chronic illness", rent becomes a band.
  * Nothing identifying a child is ever published.
