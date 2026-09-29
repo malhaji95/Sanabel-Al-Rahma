@@ -42,7 +42,18 @@ it('walks a case from creation to approval across four accounts', function () {
     expect($this->delegate->can('approve', $case))->toBeFalse()
         ->and($this->supervisor->can('approve', $case))->toBeFalse();
 
-    // 4. The admin, who did not create it, approves.
+    // 4. The two field sign-offs come first: the delegate, then the supervisor,
+    //    who cannot be the same person.
+    $case = app(CaseService::class)->verifyInField($case, $this->delegate);
+    expect($case->status)->toBe('verified');
+
+    expect(fn () => app(CaseService::class)->endorse($case, $this->delegate))
+        ->toThrow(RuntimeException::class);
+
+    $case = app(CaseService::class)->endorse($case, $this->supervisor);
+    expect($case->status)->toBe('pending_approval');
+
+    // 5. Only then does the admin, who did not create it, approve.
     expect($this->admin->can('approve', $case))->toBeTrue();
 
     $approved = app(CaseService::class)->approve($case, $this->admin);

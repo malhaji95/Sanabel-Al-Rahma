@@ -20,9 +20,63 @@ class CaseService
         private readonly AssessmentService $assessments,
     ) {}
 
-    /** Separation of duties — the creator can never be the final approver. */
+    /**
+     * Verification passes through the delegate and then the area supervisor
+     * before it reaches the admin, as the master phases document requires.
+     * A file may be submitted from a draft or after a reassessment was asked for.
+     */
+    public const AWAITING_FIELD = ['draft', 'pending_visit', 'needs_reassessment'];
+
+    /** The delegate's sign-off: the family was visited and the file matches. */
+    public function verifyInField(Beneficiary $case, User $delegate): Beneficiary
+    {
+        if (! in_array($case->status, self::AWAITING_FIELD, true)) {
+            throw new \RuntimeException(__('sanabel.cases.not_awaiting_field'));
+        }
+
+        $case->forceFill([
+            'status' => 'verified',
+            'field_verified_by' => $delegate->getKey(),
+            'field_verified_at' => now(),
+        ])->save();
+
+        return $case->refresh();
+    }
+
+    /**
+     * The area supervisor's sign-off, which puts the file in front of the
+     * admin. Whoever verified it in the field cannot also endorse it: two
+     * sign-offs by one person are one sign-off.
+     */
+    public function endorse(Beneficiary $case, User $supervisor): Beneficiary
+    {
+        if ($case->status !== 'verified') {
+            throw new \RuntimeException(__('sanabel.cases.not_awaiting_endorsement'));
+        }
+
+        if ($case->field_verified_by !== null && $case->field_verified_by === $supervisor->getKey()) {
+            throw new \RuntimeException(__('sanabel.cases.self_endorsement_blocked'));
+        }
+
+        $case->forceFill([
+            'status' => 'pending_approval',
+            'endorsed_by' => $supervisor->getKey(),
+            'endorsed_at' => now(),
+        ])->save();
+
+        return $case->refresh();
+    }
+
+    /**
+     * Separation of duties — the creator can never be the final approver, and
+     * the admin only sees a file the two field steps have already passed.
+     */
     public function approve(Beneficiary $case, User $approver): Beneficiary
     {
+        if ($case->status !== 'pending_approval') {
+            throw new \RuntimeException(__('sanabel.cases.not_awaiting_approval'));
+        }
+
         if ($case->created_by !== null && $case->created_by === $approver->getKey()) {
             throw new \RuntimeException(__('sanabel.cases.self_approval_blocked'));
         }

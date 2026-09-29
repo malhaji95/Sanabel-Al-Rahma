@@ -300,8 +300,20 @@ class BeneficiaryResource extends Resource
                         'published', 'approved' => 'success',
                         'rejected', 'suspended' => 'danger',
                         'needs_reassessment' => 'warning',
+                        // The two waiting rooms read as in-flight, not idle.
+                        'verified', 'pending_approval' => 'info',
                         default => 'gray',
                     }),
+
+                Tables\Columns\TextColumn::make('fieldVerifier.name')
+                    ->label(__('sanabel.verification.field_verified_by'))
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('endorser.name')
+                    ->label(__('sanabel.verification.endorsed_by'))
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\IconColumn::make('duplicate_review_flag')
                     ->label(__('sanabel.beneficiary.duplicate_flag'))
                     ->boolean()

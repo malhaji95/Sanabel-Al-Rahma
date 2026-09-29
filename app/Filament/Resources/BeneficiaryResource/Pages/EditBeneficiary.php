@@ -55,12 +55,41 @@ class EditBeneficiary extends EditRecord
                         ->success()->send();
                 }),
 
+            // The two field steps sit before the admin's button, in the order
+            // they must happen; each disappears once it has been taken.
+            Actions\Action::make('verifyInField')
+                ->label(__('sanabel.actions.verify_in_field'))
+                ->icon('heroicon-o-clipboard-document-check')
+                ->color('info')
+                ->visible(fn () => auth()->user()->can('verifyInField', $this->record))
+                ->requiresConfirmation()
+                ->modalDescription(__('sanabel.actions.verify_in_field_help'))
+                ->action(function () {
+                    app(CaseService::class)->verifyInField($this->record, auth()->user());
+
+                    Notification::make()->title(__('sanabel.actions.verified_in_field'))->success()->send();
+                }),
+
+            Actions\Action::make('endorse')
+                ->label(__('sanabel.actions.endorse'))
+                ->icon('heroicon-o-hand-thumb-up')
+                ->color('info')
+                ->visible(fn () => auth()->user()->can('endorse', $this->record))
+                ->requiresConfirmation()
+                ->modalDescription(__('sanabel.actions.endorse_help'))
+                ->action(function () {
+                    app(CaseService::class)->endorse($this->record, auth()->user());
+
+                    Notification::make()->title(__('sanabel.actions.endorsed'))->success()->send();
+                }),
+
             Actions\Action::make('approve')
                 ->label(__('sanabel.actions.approve'))
                 ->icon('heroicon-o-check-badge')
                 ->color('success')
                 // Separation of duties — the creator is not offered the button at all.
-                ->visible(fn () => auth()->user()->can('approve', $this->record))
+                ->visible(fn () => $this->record->status === 'pending_approval'
+                    && auth()->user()->can('approve', $this->record))
                 ->requiresConfirmation()
                 ->action(function () {
                     app(CaseService::class)->approve($this->record, auth()->user());

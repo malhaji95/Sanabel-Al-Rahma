@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Models\Beneficiary;
 use App\Models\User;
 use App\Policies\Concerns\DeniesReadOnlyRoles;
+use App\Services\CaseService;
 
 class BeneficiaryPolicy
 {
@@ -83,6 +84,28 @@ class BeneficiaryPolicy
     public function recordVisit(User $user, Beneficiary $case): bool
     {
         return $this->canWrite($user, 'record_visit') && $this->inScope($user, $case);
+    }
+
+    /** The delegate's field sign-off, inside their own region and nowhere else. */
+    public function verifyInField(User $user, Beneficiary $case): bool
+    {
+        return $this->canWrite($user, 'recommend')
+            && $this->inScope($user, $case)
+            && in_array($case->status, CaseService::AWAITING_FIELD, true);
+    }
+
+    /**
+     * The area supervisor's endorsement. Held to the role rather than the
+     * permission alone: `recommend` is also a delegate's, and the point of the
+     * step is that a second person in a supervising role looked at the file.
+     */
+    public function endorse(User $user, Beneficiary $case): bool
+    {
+        return $this->canWrite($user, 'recommend')
+            && $this->inScope($user, $case)
+            && $case->status === 'verified'
+            && $case->field_verified_by !== $user->getKey()
+            && ($user->hasRole('area_supervisor', 'case_officer') || $user->isAdmin());
     }
 
     public function requestChange(User $user, Beneficiary $case): bool

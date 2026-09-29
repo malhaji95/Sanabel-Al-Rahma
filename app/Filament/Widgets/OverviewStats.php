@@ -6,6 +6,7 @@ use App\Models\Beneficiary;
 use App\Models\Donation;
 use App\Models\Setting;
 use App\Models\SponsorshipInstallment;
+use App\Services\CaseService;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -38,8 +39,21 @@ class OverviewStats extends BaseWidget
                 ->description(__('sanabel.dashboard.published_help'))
                 ->color('success'),
 
+            // The three sign-offs, each counted where it actually waits. One
+            // card lumping them together said nothing about who was holding up
+            // which file.
+            Stat::make(__('sanabel.dashboard.awaiting_delegate'),
+                Beneficiary::whereIn('status', CaseService::AWAITING_FIELD)->count())
+                ->description(__('sanabel.dashboard.awaiting_delegate_help'))
+                ->color('info'),
+
+            Stat::make(__('sanabel.dashboard.awaiting_supervisor'),
+                Beneficiary::where('status', 'verified')->count())
+                ->description(__('sanabel.dashboard.awaiting_supervisor_help'))
+                ->color('info'),
+
             Stat::make(__('sanabel.dashboard.pending_approval'),
-                Beneficiary::whereIn('status', ['pending_approval', 'verified'])->count())
+                Beneficiary::where('status', 'pending_approval')->count())
                 ->color('warning'),
 
             Stat::make(__('sanabel.dashboard.needs_reassessment'),

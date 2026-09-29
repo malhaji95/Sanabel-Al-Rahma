@@ -74,7 +74,10 @@ it('S24 — the person who created a case cannot approve or reject it', function
     $officer = userWithRole('case_officer');
     $admin = userWithRole('admin');
 
-    $case = familyOf($region, attributes: ['created_by' => $officer->id, 'status' => 'submitted']);
+    $case = familyOf($region, attributes: [
+        'created_by' => $officer->id,
+        'status' => 'pending_approval',
+    ]);
 
     expect(fn () => app(CaseService::class)->approve($case, $officer))
         ->toThrow(RuntimeException::class);
@@ -101,7 +104,7 @@ it('S25 — rejection without a reason is refused, and the reason is stored', fu
 it('S26 — a case can only be published once it is approved', function () {
     $region = regionWithRates();
     $admin = userWithRole('admin');
-    $case = familyOf($region, attributes: ['status' => 'submitted']);
+    $case = familyOf($region, attributes: ['status' => 'pending_approval']);
 
     expect(fn () => app(CaseService::class)->publish($case, $admin))
         ->toThrow(RuntimeException::class);

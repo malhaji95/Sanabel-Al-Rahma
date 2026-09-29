@@ -95,6 +95,10 @@ return [
 
     'cases' => [
         'duplicate_national_id' => 'يوجد ملف مسجل بنفس الرقم الوطني.',
+        'not_awaiting_field' => 'هذا الملف ليس بانتظار اعتماد المندوب.',
+        'not_awaiting_endorsement' => 'هذا الملف ليس بانتظار اعتماد مشرف المنطقة.',
+        'not_awaiting_approval' => 'لا يمكن اعتماد الملف قبل اعتماد المندوب ومشرف المنطقة.',
+        'self_endorsement_blocked' => 'من اعتمد الملف ميدانيًا لا يعتمده مشرفًا أيضًا.',
         'self_approval_blocked' => 'لا يمكن لمنشئ الملف اعتماده نهائياً.',
         'close_requires_proof' => 'لا يمكن إغلاق الملف قبل تسجيل إثبات تسليم.',
         'reject_reason_required' => 'سبب الرفض مطلوب.',
@@ -266,6 +270,12 @@ return [
 
     'actions' => [
         'approve' => 'اعتماد',
+        'verify_in_field' => 'اعتماد المندوب',
+        'verify_in_field_help' => 'أقرّ بأنني زرت الأسرة وأن بيانات الملف تطابق ما رأيته ميدانيًا.',
+        'verified_in_field' => 'تم اعتماد المندوب. الملف بانتظار اعتماد مشرف المنطقة.',
+        'endorse' => 'اعتماد مشرف المنطقة',
+        'endorse_help' => 'أقرّ بمراجعة الملف بعد تحقق المندوب، ورفعه إلى الإدارة للاعتماد النهائي.',
+        'endorsed' => 'تم اعتماد مشرف المنطقة. الملف بانتظار اعتماد الإدارة.',
         'reject' => 'رفض',
         'publish' => 'نشر',
         'reason' => 'السبب',
@@ -505,6 +515,14 @@ return [
         'general_help' => 'يصل إلى محفظة الجمعية، وللجمعية أن تصرفه حيث تراه الأولوية.',
     ],
 
+    // The two field sign-offs that stand between a draft and the admin.
+    'verification' => [
+        'field_verified_by' => 'اعتماد المندوب',
+        'field_verified_at' => 'تاريخ اعتماد المندوب',
+        'endorsed_by' => 'اعتماد مشرف المنطقة',
+        'endorsed_at' => 'تاريخ اعتماد المشرف',
+    ],
+
     'change_request_entity' => [
         'Beneficiary' => 'ملف مستفيد',
         'Housing' => 'السكن',
@@ -539,6 +557,10 @@ return [
         'needs_reassessment' => 'تحتاج إعادة تقييم',
         'pending_verification' => 'تبرعات بانتظار التحقق',
         'over_target' => ':count تجاوزت :hours ساعة',
+        'awaiting_delegate' => 'بانتظار اعتماد المندوب',
+        'awaiting_delegate_help' => 'زيارة ميدانية لم تُعتمد بعد',
+        'awaiting_supervisor' => 'بانتظار اعتماد مشرف المنطقة',
+        'awaiting_supervisor_help' => 'اعتمدها المندوب ولم يراجعها المشرف',
         'earmarked_this_month' => 'المحصّل هذا الشهر — مخصص',
         'general_this_month' => 'المحصّل هذا الشهر — عام',
         'general_help' => 'بتصرّف الجمعية',
