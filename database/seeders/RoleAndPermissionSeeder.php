@@ -40,10 +40,14 @@ class RoleAndPermissionSeeder extends Seeder
             'request_change' => 'all', 'confirm_delivery' => 'all', 'publish_job_profile' => 'all',
             'file_complaint' => 'own', 'view_reports' => 'all',
         ],
+        // A partner association stands in for the delegate on the files it
+        // raises: it enters the data and signs the field step off itself, and
+        // the area supervisor then reviews it like any other file. So it holds
+        // `recommend`, scoped to its own cases — never to anyone else's.
         'association' => [
             'create_case' => 'own', 'edit_draft' => 'own', 'upload_media' => 'own',
             'view_full_case' => 'own', 'search_by_national_id' => 'own', 'request_change' => 'own',
-            'confirm_delivery' => 'own', 'publish_job_profile' => 'own',
+            'recommend' => 'own', 'confirm_delivery' => 'own', 'publish_job_profile' => 'own',
             'file_complaint' => 'own', 'view_reports' => 'own',
         ],
         'donor' => [

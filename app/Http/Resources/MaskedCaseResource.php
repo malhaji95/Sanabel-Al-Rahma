@@ -6,7 +6,6 @@ use App\Models\Beneficiary;
 use App\Services\CoverageService;
 use App\Services\RankingService;
 use App\Services\ScoreService;
-use App\Services\TransferRouting;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -14,13 +13,13 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * Rule 2 — donors are served exclusively by this class.
  *
  * Shown:       file number, area (not village), family size, need type,
- *              need amount, coverage %, urgency label, and the association
- *              wallet the transfer goes to.
+ *              need amount, coverage %, urgency label.
  * Never shown: any name, national ID, phone, address, wallet, landlord,
  *              media, diagnosis, exact age, exact rent, raw score.
  *
- * The destination shown is never a household's own account — a donor pays the
- * association, which is the whole point of the 29 Sep decision.
+ * The wallet a donor pays into is Sanabel Al-Rahma's own and the same for
+ * every family, so it is a setting shown where payment happens — not a
+ * property of a household, and never a household's own account.
  *
  * Age becomes a band, illness becomes "chronic illness", rent becomes a band.
  * Nothing identifying a child is ever published.
@@ -37,7 +36,6 @@ class MaskedCaseResource extends JsonResource
         'file_number', 'area_ar', 'family_size', 'age_bands', 'need_type', 'need_type_label',
         'need_amount', 'currency', 'coverage_percent', 'coverage_label', 'remaining_amount',
         'urgency_label', 'has_chronic_illness', 'rent_band', 'is_renting', 'waiting_weeks',
-        'transfer_routes',
     ];
 
     /**
@@ -82,7 +80,6 @@ class MaskedCaseResource extends JsonResource
             'rent_band' => $this->rentBand($case),
             'is_renting' => (bool) $case->housing?->isRenting(),
             'waiting_weeks' => $ranking->waitingBonus($case),
-            'transfer_routes' => app(TransferRouting::class)->routesFor($case),
         ];
     }
 

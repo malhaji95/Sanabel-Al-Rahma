@@ -2,107 +2,40 @@
 
 namespace App\Services;
 
-use App\Models\Basket;
-use App\Models\BasketItem;
-use App\Models\Beneficiary;
 use App\Models\Setting;
 
 /**
- * Where a donor sends the money — settled on 29 Sep 2026.
+ * One destination, settled on 29 Sep 2026: Sanabel Al-Rahma's own Sham Cash
+ * wallet. Every transfer lands there — the donor either names the file the
+ * money answers for, or leaves it general — and Sanabel Al-Rahma moves it on
+ * to the family, the hospital, the creditor, or wherever the need is.
  *
- * Never to the family. A donor transfers to the association the family belongs
- * to, or, when it belongs to none, to the platform's own wallet. That is the
- * whole of it: there is no choice to make and no family wallet to show, so a
- * donor sees a destination that is never a household's own account.
+ * There is nothing per family and nothing per partner to resolve, so this is
+ * one lookup rather than a routing table.
  */
 class TransferRouting
 {
-    /*
-     | Read once per request rather than once per card: a donor list resolves a
-     | destination for every family on the page.
-     */
-    private ?array $platformWallet = null;
+    /** Read once per request; a page may ask for it in more than one place. */
+    private ?array $wallet = null;
 
     /**
-     * The one destination for this family: its association's wallet, or the
-     * platform's when it has no association or the association entered none.
+     * The wallet a donor transfers to, or null until the association enters
+     * one — in which case the screens say so rather than showing a blank.
      *
-     * @return array<int,array{route:string,wallet:string,holder:string}>
+     * @return array{wallet:string,holder:string}|null
      */
-    public function routesFor(Beneficiary $case): array
+    public function wallet(): ?array
     {
-        $association = $case->association;
+        $stored = $this->wallet ??= (array) Setting::value('platform_wallet', []);
+        $number = trim((string) ($stored['number'] ?? ''));
 
-        if ($association && ($wallet = $this->clean($association->wallet_encrypted))) {
-            return [[
-                'route' => 'association',
-                'wallet' => $wallet,
-                'holder' => $association->name,
-            ]];
-        }
-
-        return array_filter([$this->platformRoute()]);
-    }
-
-    /**
-     * The destinations a whole basket needs, de-duplicated by wallet, so two
-     * families of one association show one number with both file numbers
-     * beside it. A campaign follows its own wallet when it has one.
-     *
-     * @return array<int,array{route:string,wallet:string,holder:string,files:array<int,string>}>
-     */
-    public function routesForBasket(Basket $basket): array
-    {
-        $routes = [];
-
-        foreach ($basket->items()->with(['beneficiary.association', 'campaign'])->get() as $item) {
-            $label = $item->campaign?->title_ar ?? $item->beneficiary?->file_number;
-
-            foreach ($this->routesForItem($item) as $route) {
-                $key = $route['route'].'|'.$route['wallet'];
-                $routes[$key] ??= $route + ['files' => []];
-
-                if ($label && ! in_array($label, $routes[$key]['files'], true)) {
-                    $routes[$key]['files'][] = $label;
-                }
-            }
-        }
-
-        return array_values($routes);
-    }
-
-    /** @return array<int,array{route:string,wallet:string,holder:string}> */
-    private function routesForItem(BasketItem $item): array
-    {
-        if ($campaign = $item->campaign) {
-            $wallet = $this->clean($campaign->wallet_encrypted);
-
-            return $wallet
-                ? [['route' => 'association', 'wallet' => $wallet, 'holder' => $campaign->title_ar]]
-                : array_filter([$this->platformRoute()]);
-        }
-
-        return $item->beneficiary ? $this->routesFor($item->beneficiary) : [];
-    }
-
-    /** The association's own wallet — also the destination for general money. */
-    public function platformRoute(): ?array
-    {
-        $wallet = $this->platformWallet ??= (array) Setting::value('platform_wallet', []);
-
-        if (! $this->clean($wallet['number'] ?? null)) {
+        if ($number === '') {
             return null;
         }
 
         return [
-            'route' => 'platform',
-            'wallet' => $this->clean($wallet['number']),
-            'holder' => (string) ($wallet['holder'] ?? config('brand.name')),
+            'wallet' => $number,
+            'holder' => trim((string) ($stored['holder'] ?? '')) ?: config('brand.name'),
         ];
-    }
-
-    private function clean(mixed $value): string
-    {
-        return trim((string) $value);
     }
 }

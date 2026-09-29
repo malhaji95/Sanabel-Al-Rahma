@@ -50,7 +50,6 @@ class UserResource extends Resource
             Forms\Components\Select::make('role_id')
                 ->label(__('sanabel.user.role'))
                 ->options(fn () => Role::pluck('name_ar', 'id'))
-                ->live()
                 ->required(),
 
             Forms\Components\Select::make('region_id')
@@ -61,20 +60,7 @@ class UserResource extends Resource
 
             Forms\Components\Toggle::make('is_active')->label(__('sanabel.user.is_active'))->default(true),
 
-            // Only an association routes donations, so these two stay hidden
-            // for every other role rather than sitting there meaningless.
-            Forms\Components\TextInput::make('wallet_encrypted')
-                ->label(__('sanabel.user.wallet'))
-                ->helperText(__('sanabel.user.wallet_help'))
-                ->visible(fn (Forms\Get $get) => self::isAssociation($get('role_id'))),
-
         ])->columns(2);
-    }
-
-    /** The association role is data, so it is looked up rather than hardcoded by id. */
-    private static function isAssociation(mixed $roleId): bool
-    {
-        return $roleId && Role::whereKey($roleId)->value('key') === 'association';
     }
 
     public static function table(Table $table): Table

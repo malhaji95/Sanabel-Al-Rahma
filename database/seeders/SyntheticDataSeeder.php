@@ -126,10 +126,7 @@ class SyntheticDataSeeder extends Seeder
             'content' => $make('content_manager', 'content@sanabel.local', 'مسؤول المحتوى'),
         ];
 
-        // The partner association routes its families' donations to its own
-        // wallet by default, and the platform answers for everyone else.
-        $staff['association']->forceFill(['wallet_encrypted' => '0944555666'])->save();
-
+        // One wallet for every transfer, earmarked or general.
         Setting::put('platform_wallet', [
             'number' => '0933000111',
             'holder' => 'جمعية سنابل الرحمة',

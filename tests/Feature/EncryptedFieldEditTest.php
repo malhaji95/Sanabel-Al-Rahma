@@ -1,7 +1,6 @@
 <?php
 
 use App\Filament\Resources\BeneficiaryResource\Pages\EditBeneficiary;
-use App\Filament\Resources\UserResource\Pages\EditUser;
 use App\Models\Beneficiary;
 
 use function Pest\Livewire\livewire;
@@ -53,16 +52,4 @@ it('does not erase a family wallet when an unrelated field is saved', function (
     expect($case->family_name)->toBe('اسم معدَّل')
         ->and($case->phone_encrypted)->toBe('0911111111')
         ->and($case->wallet_encrypted)->toBe('0922222222');
-});
-
-it('opens an association account with the wallet it already has', function () {
-    $association = userWithRole('association', [
-        'name' => 'جمعية الاختبار',
-        'wallet_encrypted' => '0933333333',
-    ]);
-
-    $this->actingAs($this->admin);
-
-    livewire(EditUser::class, ['record' => $association->getRouteKey()])
-        ->assertFormSet(['wallet_encrypted' => '0933333333']);
 });

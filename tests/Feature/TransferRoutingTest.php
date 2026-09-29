@@ -11,9 +11,10 @@ use App\Services\DonationService;
 use App\Services\TransferRouting;
 
 /*
- | The association settled it on 29 Sep 2026: a donor never transfers to a
- | family. Money reaches the association — earmarked for named files, or
- | general money the association may spend at its discretion.
+ | Settled on 29 Sep 2026. One wallet — Sanabel Al-Rahma's own — receives every
+ | transfer, and Sanabel Al-Rahma moves the money on. What a donor chooses is
+ | not where it goes but what it is for: named files, or the association's
+ | discretion.
  */
 
 beforeEach(function () {
@@ -21,76 +22,27 @@ beforeEach(function () {
     $this->region = regionWithRates();
     $this->routing = app(TransferRouting::class);
 
-    Setting::put('platform_wallet', ['number' => '0900000000', 'holder' => 'سنابل الرحمة']);
+    Setting::put('platform_wallet', ['number' => '0900000000', 'holder' => 'جمعية سنابل الرحمة']);
 });
 
-function associationWith(?string $wallet = '0911111111')
-{
-    return userWithRole('association', [
-        'name' => 'جمعية الاختبار',
-        'wallet_encrypted' => $wallet,
-    ]);
-}
-
-it('sends a donor to the wallet of the association the family belongs to', function () {
-    $association = associationWith();
-    $case = publishedCase($this->region);
-    $case->update(['association_id' => $association->id, 'wallet_encrypted' => '0922222222']);
-
-    $routes = $this->routing->routesFor($case->refresh());
-
-    expect($routes)->toHaveCount(1)
-        ->and($routes[0]['route'])->toBe('association')
-        ->and($routes[0]['wallet'])->toBe('0911111111')
-        ->and($routes[0]['holder'])->toBe('جمعية الاختبار');
+it('sends every donor to the one wallet', function () {
+    expect($this->routing->wallet())
+        ->toBe(['wallet' => '0900000000', 'holder' => 'جمعية سنابل الرحمة']);
 });
 
-it('sends a donor to the platform wallet when the family has no association', function () {
+it('says nothing rather than showing a blank when no wallet was entered', function () {
+    Setting::put('platform_wallet', ['number' => null, 'holder' => null]);
+
+    expect($this->routing->wallet())->toBeNull();
+});
+
+it('keeps a family wallet out of donor output entirely', function () {
     $case = publishedCase($this->region);
     $case->update(['wallet_encrypted' => '0922222222']);
-
-    $routes = $this->routing->routesFor($case->refresh());
-
-    expect($routes)->toHaveCount(1)
-        ->and($routes[0]['route'])->toBe('platform')
-        ->and($routes[0]['wallet'])->toBe('0900000000');
-});
-
-it('falls back to the platform when the association entered no wallet', function () {
-    $association = associationWith(wallet: null);
-    $case = publishedCase($this->region);
-    $case->update(['association_id' => $association->id]);
-
-    expect($this->routing->routesFor($case->refresh())[0]['route'])->toBe('platform');
-});
-
-it('never puts a family wallet in front of a donor', function () {
-    $association = associationWith();
-    $case = publishedCase($this->region);
-    $case->update(['association_id' => $association->id, 'wallet_encrypted' => '0922222222']);
 
     $masked = json_encode((new MaskedCaseResource($case->refresh()))->resolve());
 
     expect($masked)->not->toContain('0922222222');
-});
-
-it('shows one wallet once for two families of the same association', function () {
-    $association = associationWith();
-    $donor = Donor::factory()->create();
-    $baskets = app(BasketService::class);
-    $basket = $baskets->openFor($donor);
-
-    foreach (range(1, 2) as $i) {
-        $case = publishedCase($this->region);
-        $case->update(['association_id' => $association->id]);
-        $baskets->addItem($basket, $case->refresh(), 1_000);
-    }
-
-    $routes = $this->routing->routesForBasket($basket->refresh());
-
-    expect($routes)->toHaveCount(1)
-        ->and($routes[0]['wallet'])->toBe('0911111111')
-        ->and($routes[0]['files'])->toHaveCount(2);
 });
 
 it('marks a basket donation as earmarked for the files it names', function () {

@@ -105,3 +105,32 @@ it('sends a file back through the field after a reassessment is asked for', func
 
     expect($this->cases->verifyInField($case, $this->delegate)->status)->toBe('verified');
 });
+
+it('lets a partner association sign off its own file as the delegate would', function () {
+    $association = userWithRole('association');
+    $case = draftCase($this->region, ['created_by' => $association->id, 'source' => 'association']);
+
+    // The association stands in for the delegate on the files it raises.
+    expect($association->can('verifyInField', $case))->toBeTrue();
+
+    $case = $this->cases->verifyInField($case, $association);
+
+    expect($case->status)->toBe('verified')
+        ->and($case->field_verified_by)->toBe($association->id);
+
+    // And the supervisor still reviews it, then the admin. The association
+    // cannot take either of those steps itself.
+    expect($association->can('endorse', $case))->toBeFalse()
+        ->and($this->supervisor->can('endorse', $case))->toBeTrue();
+
+    $case = $this->cases->endorse($case, $this->supervisor);
+
+    expect($this->cases->approve($case, $this->admin)->status)->toBe('approved');
+});
+
+it('does not let an association sign off a file it did not raise', function () {
+    $association = userWithRole('association');
+    $case = draftCase($this->region);
+
+    expect($association->can('verifyInField', $case))->toBeFalse();
+});

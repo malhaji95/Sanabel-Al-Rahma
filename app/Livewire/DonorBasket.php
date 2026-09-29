@@ -112,9 +112,8 @@ class DonorBasket extends Component
                 'case' => (new MaskedCaseResource($item->beneficiary))->resolve(),
             ]),
             'total' => $basket->total(),
-            // Where the donor actually sends the money — the association's
-            // wallet, the family's, or both, as the association decided.
-            'transferRoutes' => app(TransferRouting::class)->routesForBasket($basket),
+            // One destination for everything in the basket.
+            'transferWallet' => app(TransferRouting::class)->wallet(),
         ])->layout('layouts.app');
     }
 }

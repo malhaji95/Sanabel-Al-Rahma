@@ -39,7 +39,7 @@
         @if ($generalRoute)
             <div class="rounded-lg border p-4" style="border-color: var(--border);">
                 <p class="text-sm font-semibold" style="color: var(--brand-primary);">
-                    {{ __('sanabel.transfer.route.' . $generalRoute['route']) }}
+                    {{ __('sanabel.transfer.destination') }}
                 </p>
                 <p class="mt-2 text-lg font-bold tabular" dir="ltr">{{ $generalRoute['wallet'] }}</p>
                 <p class="mt-1 text-xs" style="color: var(--text-muted);">

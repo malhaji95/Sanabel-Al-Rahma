@@ -74,10 +74,8 @@ class DonorPortal extends Component
 
         return view('livewire.donor-portal', [
             'donor' => $donor,
-            // General money has no family behind it, so the wallet shown is the
-            // association's own — the same one a basket without an association
-            // resolves to.
-            'generalRoute' => app(TransferRouting::class)->platformRoute(),
+            // The same wallet the basket sends earmarked money to.
+            'generalRoute' => app(TransferRouting::class)->wallet(),
             'donations' => $donations->map(fn (Donation $donation) => [
                 'transaction_ref' => $donation->transaction_ref,
                 'amount' => $donation->amount,

@@ -76,44 +76,24 @@
 
                 {{-- No automatic transfers exist: a human moves the money, the system records it. --}}
                 <form wire:submit="recordTransfer" class="space-y-4">
-                    @if (count($transferRoutes) === 0)
-                        <p class="text-sm leading-relaxed" style="color: var(--text-muted);">
-                            {{ __('sanabel.public.transfer_instructions') }}
-                        </p>
-                    @endif
-
-                    {{-- The wallet is the one masked field a donor may see, and
-                         only here: no name travels with it, and an account that
-                         belongs to a family is labelled by its file number. --}}
-                    @if (count($transferRoutes) === 0)
-                        <p class="text-sm" style="color: var(--text-muted);">{{ __('sanabel.transfer.none') }}</p>
-                    @else
+                    {{-- One destination for everything in the basket: Sanabel
+                         Al-Rahma's own wallet. A family's account is never here. --}}
+                    @if ($transferWallet)
                         <div class="space-y-3">
-                            <p class="text-sm font-medium">
-                                {{ count($transferRoutes) > 1 ? __('sanabel.transfer.choose') : __('sanabel.transfer.single') }}
-                            </p>
+                            <p class="text-sm font-medium">{{ __('sanabel.transfer.single') }}</p>
 
-                            @foreach ($transferRoutes as $route)
-                                <div class="rounded-lg border p-4" style="border-color: var(--border);">
-                                    <p class="text-sm font-semibold" style="color: var(--brand-primary);">
-                                        {{ __('sanabel.transfer.route.' . $route['route']) }}
-                                    </p>
-
-                                    <p class="mt-2 text-lg font-bold tabular" dir="ltr">{{ $route['wallet'] }}</p>
-
-                                    <p class="mt-1 text-xs" style="color: var(--text-muted);">
-                                        {{ __('sanabel.transfer.holder') }}: {{ $route['holder'] }}
-                                    </p>
-
-                                    @php($others = array_diff($route['files'] ?? [], [$route['holder']]))
-                                    @if ($others !== [])
-                                        <p class="mt-1 text-xs tabular" style="color: var(--text-muted);">
-                                            {{ implode('، ', $others) }}
-                                        </p>
-                                    @endif
-                                </div>
-                            @endforeach
+                            <div class="rounded-lg border p-4" style="border-color: var(--border);">
+                                <p class="text-sm font-semibold" style="color: var(--brand-primary);">
+                                    {{ __('sanabel.transfer.destination') }}
+                                </p>
+                                <p class="mt-2 text-lg font-bold tabular" dir="ltr">{{ $transferWallet['wallet'] }}</p>
+                                <p class="mt-1 text-xs" style="color: var(--text-muted);">
+                                    {{ __('sanabel.transfer.holder') }}: {{ $transferWallet['holder'] }}
+                                </p>
+                            </div>
                         </div>
+                    @else
+                        <p class="text-sm" style="color: var(--text-muted);">{{ __('sanabel.transfer.none') }}</p>
                     @endif
 
                     <div>
