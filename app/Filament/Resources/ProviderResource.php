@@ -42,6 +42,26 @@ class ProviderResource extends Resource
             Forms\Components\TextInput::make('discount_value')->label(__('sanabel.provider.discount_value'))->numeric()->minValue(0)->required(),
             Forms\Components\DatePicker::make('valid_until')->label(__('sanabel.provider.valid_until')),
             Forms\Components\Select::make('user_id')->label(__('sanabel.provider.account'))->relationship('user', 'name')->searchable(),
+
+            // The agreed ceiling. Left empty for a provider that set none, which
+            // is how every provider stood before this was added.
+            Forms\Components\TextInput::make('case_quota')
+                ->label(__('sanabel.provider.case_quota'))
+                ->helperText(__('sanabel.provider.case_quota_help'))
+                ->numeric()->minValue(0),
+
+            Forms\Components\Select::make('quota_period')
+                ->label(__('sanabel.provider.quota_period'))
+                ->options(__('sanabel.quota_period'))
+                ->default('monthly')
+                ->helperText(__('sanabel.provider.quota_period_help'))
+                ->required(),
+
+            Forms\Components\TextInput::make('case_value')
+                ->label(__('sanabel.provider.case_value'))
+                ->helperText(__('sanabel.provider.case_value_help'))
+                ->numeric()->minValue(0)
+                ->suffix(config('sanabel.currency')),
         ])->columns(2);
     }
 
@@ -57,6 +77,21 @@ class ProviderResource extends Resource
                 Tables\Columns\TextColumn::make('region.name_ar')->label(__('sanabel.beneficiary.region'))->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('discount_value')->label(__('sanabel.provider.discount_value'))->numeric()->sortable(),
                 Tables\Columns\TextColumn::make('valid_until')->label(__('sanabel.provider.valid_until'))->date()->sortable(),
+
+                // Remaining, not used: the number an operator needs before
+                // sending one more family is how many are left.
+                Tables\Columns\TextColumn::make('case_quota')
+                    ->label(__('sanabel.provider.quota_remaining'))
+                    ->state(fn (Provider $record) => $record->case_quota === null
+                        ? __('sanabel.provider.no_quota')
+                        : $record->quotaRemaining().' / '.$record->case_quota)
+                    ->badge()
+                    ->color(fn (Provider $record) => match (true) {
+                        $record->case_quota === null => 'gray',
+                        $record->quotaExceeded() => 'danger',
+                        $record->quotaRemaining() <= 3 => 'warning',
+                        default => 'success',
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

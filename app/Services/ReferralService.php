@@ -6,11 +6,17 @@ use App\Models\Beneficiary;
 use App\Models\Provider;
 use App\Models\Referral;
 use App\Models\Setting;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /** Single-use referral cards. A provider only ever sees three fields. */
 class ReferralService
 {
+    /**
+     * Issuing a card is what draws the provider's quota down — that is the
+     * moment the association committed a case to them, not the moment the
+     * family walks in. Passing the quota warns; it does not refuse the card.
+     */
     public function issue(Beneficiary $beneficiary, Provider $provider): Referral
     {
         $days = (int) Setting::value(
@@ -18,14 +24,24 @@ class ReferralService
             config('sanabel.setting_defaults.referral_validity_days')
         );
 
-        return Referral::create([
-            'beneficiary_id' => $beneficiary->getKey(),
-            'provider_id' => $provider->getKey(),
-            'code' => strtoupper(Str::random(10)),
-            'issued_at' => now(),
-            'expires_at' => now()->addDays($days),
-            'status' => 'issued',
-        ]);
+        return DB::transaction(function () use ($beneficiary, $provider, $days) {
+            $referral = Referral::create([
+                'beneficiary_id' => $beneficiary->getKey(),
+                'provider_id' => $provider->getKey(),
+                'code' => strtoupper(Str::random(10)),
+                'issued_at' => now(),
+                'expires_at' => now()->addDays($days),
+                'status' => 'issued',
+            ]);
+
+            // A monthly quota counts this month's cards, so it needs no counter.
+            // A fixed one has no month to count within, so it keeps its own.
+            if ($provider->case_quota !== null && $provider->quota_period === 'fixed') {
+                $provider->increment('quota_used');
+            }
+
+            return $referral;
+        });
     }
 
     /** Refuses an expired, used or revoked card. */
