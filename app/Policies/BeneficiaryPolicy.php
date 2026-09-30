@@ -133,9 +133,13 @@ class BeneficiaryPolicy
             return true;
         }
 
+        // The association sees the families of the city it works in, not only
+        // the ones it referred itself — decided 30 Sep 2026. Its own referrals
+        // stay visible even if the file was later moved to another region.
         if ($user->hasRole('association')) {
             return $case->created_by === $user->getKey()
-                || ($user->association_id !== null && $case->created_by === $user->association_id);
+                || ($user->association_id !== null && $case->created_by === $user->association_id)
+                || $this->permissions()->coversRegion($user, $case->region_id);
         }
 
         if ($user->hasRole('beneficiary')) {

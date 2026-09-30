@@ -100,6 +100,7 @@
                         <th class="px-4 py-3 text-start font-medium">{{ __('sanabel.beneficiary.status') }}</th>
                         <th class="px-4 py-3 text-start font-medium">{{ __('sanabel.public.covered_files') }}</th>
                         <th class="px-4 py-3 text-start font-medium">{{ __('sanabel.donation.received_at') }}</th>
+                        <th class="px-4 py-3 text-start font-medium">{{ __('sanabel.donation.transfer_record_seen') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y" style="border-color: var(--border);">
@@ -122,6 +123,17 @@
                                 {{ $donation['cases']->join('، ') ?: '—' }}
                             </td>
                             <td class="tabular px-4 py-3" style="color: var(--text-muted);">{{ $donation['created_at'] }}</td>
+                            {{-- Proof the association moved the money onward. --}}
+                            <td class="px-4 py-3 text-xs">
+                                @if ($donation['transfer_record'])
+                                    <a href="{{ $donation['transfer_record'] }}" target="_blank" rel="noopener"
+                                       class="font-medium" style="color: var(--brand-primary);">
+                                        {{ __('sanabel.public.more') }}
+                                    </a>
+                                @else
+                                    <span style="color: var(--text-muted);">{{ __('sanabel.donation.transfer_record_none') }}</span>
+                                @endif
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>

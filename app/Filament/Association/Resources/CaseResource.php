@@ -4,6 +4,8 @@ namespace App\Filament\Association\Resources;
 
 use App\Filament\Association\Resources\CaseResource\Pages;
 use App\Models\Beneficiary;
+use App\Models\Region;
+use App\Models\Scopes\RegionScope;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -28,17 +30,29 @@ class CaseResource extends Resource
         return __('sanabel.beneficiary.plural');
     }
 
+    /**
+     * The city the association works in, plus anything it referred itself.
+     *
+     * RegionScope already narrows the query to the association's own region
+     * subtree, so this only widens it back to include a file it referred that
+     * has since been moved elsewhere.
+     */
     public static function getEloquentQuery(): Builder
     {
         $user = auth()->user();
 
-        return parent::getEloquentQuery()->where(function (Builder $query) use ($user) {
-            $query->where('created_by', $user->getKey());
+        return parent::getEloquentQuery()->withoutGlobalScope(RegionScope::class)
+            ->where(function (Builder $query) use ($user) {
+                $query->where('created_by', $user->getKey());
 
-            if ($user->association_id) {
-                $query->orWhere('created_by', $user->association_id);
-            }
-        });
+                if ($user->association_id) {
+                    $query->orWhere('created_by', $user->association_id);
+                }
+
+                if ($user->region_id) {
+                    $query->orWhereIn('region_id', Region::descendantIds($user->region_id));
+                }
+            });
     }
 
     public static function table(Table $table): Table

@@ -6,6 +6,7 @@ use App\Exceptions\DuplicateTransactionRef;
 use App\Http\Resources\MaskedCaseResource;
 use App\Models\Donation;
 use App\Payments\PaymentGateway;
+use App\Services\MediaService;
 use App\Services\TransferRouting;
 use Livewire\Component;
 
@@ -69,7 +70,7 @@ class DonorPortal extends Component
         $donor = auth()->user()->donor;
 
         $donations = $donor
-            ? $donor->donations()->with('allocations.beneficiary')->latest('id')->take(50)->get()
+            ? $donor->donations()->with(['allocations.beneficiary', 'transferRecord'])->latest('id')->take(50)->get()
             : collect();
 
         return view('livewire.donor-portal', [
@@ -82,6 +83,10 @@ class DonorPortal extends Component
                 'status' => $donation->status,
                 'status_label' => __('sanabel.donations.'.$donation->status),
                 'designation' => $donation->designation,
+                // A short-lived signed link, so the file itself stays private.
+                'transfer_record' => $donation->transferRecord
+                    ? app(MediaService::class)->temporaryUrl($donation->transferRecord, 15)
+                    : null,
                 'designation_label' => __('sanabel.designation.'.$donation->designation),
                 'created_at' => $donation->created_at->translatedFormat('Y-m-d'),
                 'cases' => $donation->allocations

@@ -7,6 +7,7 @@ use App\Models\Donation;
 use App\Models\Fund;
 use App\Payments\PaymentGateway;
 use App\Services\DonationService;
+use App\Services\MediaService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -130,6 +131,34 @@ class DonationResource extends Resource
                     ->options(fn () => Fund::pluck('name_ar', 'id')),
             ])
             ->actions([
+                // The other half of the trail: the donor uploaded a deposit
+                // slip, and this is the record of the transfer the association
+                // made onward. It is shown to the donor, so the caption warns
+                // against a screenshot carrying a recipient's name or wallet —
+                // rule 2 stands, image or not.
+                Tables\Actions\Action::make('transferRecord')
+                    ->label(__('sanabel.donation.attach_transfer_record'))
+                    ->icon('heroicon-o-paper-clip')
+                    ->color('gray')
+                    ->visible(fn (Donation $record) => $record->status === 'verified'
+                        && auth()->user()->can_('verify_payment'))
+                    ->form([
+                        Forms\Components\FileUpload::make('file')
+                            ->label(__('sanabel.donation.transfer_record'))
+                            ->helperText(__('sanabel.donation.transfer_record_help'))
+                            ->image()
+                            ->storeFiles(false)
+                            ->required(),
+                    ])
+                    ->action(function (Donation $record, array $data) {
+                        $media = app(MediaService::class)
+                            ->store($data['file'], $record, 'transfer_record', auth()->user());
+
+                        $record->forceFill(['transfer_record_media_id' => $media->getKey()])->save();
+
+                        Notification::make()->title(__('sanabel.donation.transfer_record_saved'))->success()->send();
+                    }),
+
                 Tables\Actions\Action::make('verify')
                     ->label(__('sanabel.actions.verify'))
                     ->icon('heroicon-o-check-circle')

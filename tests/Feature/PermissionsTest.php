@@ -76,18 +76,26 @@ it('denies council every write permission and allows it read permissions', funct
         ->and($council->isReadOnly())->toBeTrue();
 });
 
-it('stops an association from opening an out-of-scope case', function () {
+it('stops an association from opening a case outside its city', function () {
     $association = userWithRole('association', ['region_id' => $this->region->id]);
     $otherAssociation = userWithRole('association', ['region_id' => $this->region->id]);
 
     $ownCase = publishedCase($this->region);
     $ownCase->forceFill(['created_by' => $association->id])->save();
 
-    $foreignCase = publishedCase($this->region);
-    $foreignCase->forceFill(['created_by' => $otherAssociation->id])->save();
+    // Since 30 Sep 2026 an association sees the families of the city it works
+    // in, so a second association in the same city is no longer a boundary —
+    // the city is. A file in another city stays closed to it.
+    $sameCity = publishedCase($this->region);
+    $sameCity->forceFill(['created_by' => $otherAssociation->id])->save();
+
+    $otherCity = publishedCase(regionWithRates());
 
     $this->actingAs($association, 'sanctum')->getJson(route('cases.show', $ownCase))->assertOk();
-    $this->actingAs($association, 'sanctum')->getJson(route('cases.show', $foreignCase))->assertForbidden();
+    $this->actingAs($association, 'sanctum')->getJson(route('cases.show', $sameCity))->assertOk();
+    // Not found rather than forbidden: the region scope removes the row from
+    // the query, so the association cannot even learn the file exists.
+    $this->actingAs($association, 'sanctum')->getJson(route('cases.show', $otherCity))->assertNotFound();
 });
 
 it('returns four values only from the coordination lookup', function () {

@@ -390,6 +390,12 @@ return [
     'donation' => [
         'singular' => 'تبرع', 'plural' => 'التبرعات',
         'donor' => 'المتبرع', 'amount' => 'المبلغ', 'transaction_ref' => 'رقم الحوالة',
+        'attach_transfer_record' => 'إرفاق سجل التحويل',
+        'transfer_record' => 'صورة سجل التحويل',
+        'transfer_record_help' => 'صورة الحوالة الصادرة من الجمعية، تظهر للمتبرع. احرص ألا تحمل اسم المستلم ولا رقم محفظته — المبلغ والتاريخ والمرجع تكفي.',
+        'transfer_record_saved' => 'أُرفق سجل التحويل وصار ظاهرًا للمتبرع.',
+        'transfer_record_seen' => 'سجل التحويل',
+        'transfer_record_none' => 'لم يُرفق بعد',
         'fund' => 'الصندوق', 'route' => 'القناة', 'receipt' => 'الإيصال',
         'received_at' => 'تاريخ التسجيل', 'verified_at' => 'تاريخ التحقق',
     ],
