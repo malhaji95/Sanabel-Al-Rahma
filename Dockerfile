@@ -56,6 +56,7 @@ COPY docker/php.ini /usr/local/etc/php/conf.d/99-sanabel.ini
 COPY docker/nginx.conf /etc/nginx/nginx.conf.template
 COPY docker/supervisord.conf /etc/supervisord.conf
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint
+COPY docker/nginx-start.sh /usr/local/bin/nginx-start
 
 WORKDIR /app
 
@@ -66,7 +67,7 @@ COPY --from=assets /build/public/build ./public/build
 RUN mkdir -p storage/framework/cache/data storage/framework/sessions \
         storage/framework/views storage/logs storage/app/private/media bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache \
-    && chmod +x /usr/local/bin/entrypoint
+    && chmod +x /usr/local/bin/entrypoint /usr/local/bin/nginx-start
 
 # Everything the container needs to boot, so it does not depend on the host
 # having applied render.yaml — creating a service from the dashboard does not
