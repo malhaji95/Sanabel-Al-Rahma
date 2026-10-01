@@ -34,11 +34,43 @@ class PostResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\TextInput::make('slug')->label(__('sanabel.post.slug'))->required(),
             Forms\Components\TextInput::make('title_ar')->label(__('sanabel.post.title'))->required(),
-            Forms\Components\Textarea::make('body_ar')->label(__('sanabel.post.body'))->columnSpanFull(),
-            Forms\Components\Toggle::make('is_published')->label(__('sanabel.post.is_published')),
+            Forms\Components\TextInput::make('slug')->label(__('sanabel.post.slug'))
+                ->helperText(__('sanabel.post.slug_help'))
+                ->required(),
+
+            Forms\Components\Textarea::make('excerpt_ar')
+                ->label(__('sanabel.post.excerpt'))
+                ->helperText(__('sanabel.post.excerpt_help'))
+                ->rows(2)
+                ->maxLength(300)
+                ->columnSpanFull(),
+
+            // Marketing artwork on the public disk — deliberately not the media
+            // disk, which holds family documents behind signed URLs.
+            Forms\Components\FileUpload::make('image')
+                ->label(__('sanabel.post.image'))
+                ->helperText(__('sanabel.post.image_help'))
+                ->image()
+                ->disk('public')
+                ->directory('news')
+                ->maxSize(4096)
+                ->columnSpanFull(),
+
+            // Pictures dropped inside the article land on the same disk. The
+            // model strips anything the toolbar cannot produce before saving.
+            Forms\Components\RichEditor::make('body_ar')
+                ->label(__('sanabel.post.body'))
+                ->fileAttachmentsDisk('public')
+                ->fileAttachmentsDirectory('news')
+                ->columnSpanFull(),
+
+            Forms\Components\DateTimePicker::make('published_at')
+                ->label(__('sanabel.post.published_at'))
+                ->helperText(__('sanabel.post.published_at_help'))
+                ->seconds(false),
             Forms\Components\TextInput::make('sort_order')->label(__('sanabel.post.sort_order'))->numeric()->minValue(0),
+            Forms\Components\Toggle::make('is_published')->label(__('sanabel.post.is_published')),
         ])->columns(2);
     }
 
@@ -46,7 +78,9 @@ class PostResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\ImageColumn::make('image')->label(__('sanabel.post.image'))->disk('public'),
                 Tables\Columns\TextColumn::make('title_ar')->label(__('sanabel.post.title'))->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('published_at')->label(__('sanabel.post.published_at'))->dateTime('Y-m-d')->sortable(),
                 Tables\Columns\IconColumn::make('is_published')->label(__('sanabel.post.is_published'))->boolean(),
                 Tables\Columns\TextColumn::make('sort_order')->label(__('sanabel.post.sort_order'))->numeric()->sortable(),
             ])

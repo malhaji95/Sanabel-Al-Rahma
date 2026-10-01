@@ -13,7 +13,14 @@
 
         <div class="rule-gold my-6"></div>
 
-        <div class="whitespace-pre-line leading-loose">{{ $post->body_ar }}</div>
+        @if ($post->imageUrl())
+            <img src="{{ $post->imageUrl() }}" alt="{{ $post->title_ar }}"
+                 class="mb-6 w-full rounded-xl object-cover">
+        @endif
+
+        {{-- Rich text. The model strips anything outside the editor toolbar
+             before saving, so no markup reaches here that it did not allow. --}}
+        <div class="prose-news leading-loose">{!! $post->body_ar !!}</div>
     </article>
 
     <div class="mx-auto mt-6 max-w-3xl">

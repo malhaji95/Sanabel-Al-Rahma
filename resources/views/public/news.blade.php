@@ -9,7 +9,12 @@
     @else
         <div class="grid gap-4 sm:grid-cols-2">
             @foreach ($posts as $post)
-                <a href="{{ route('post', $post->slug) }}" class="card-interactive block no-underline">
+                <a href="{{ route('post', $post->slug) }}" class="card-interactive block overflow-hidden p-0 no-underline">
+                    @if ($post->imageUrl())
+                        <img src="{{ $post->imageUrl() }}" alt="{{ $post->title_ar }}"
+                             class="h-44 w-full object-cover" loading="lazy">
+                    @endif
+                    <div class="p-5">
                     <h2 class="text-base">{{ $post->title_ar }}</h2>
                     @if ($post->published_at)
                         <p class="tabular mt-1 text-xs" style="color: var(--text-muted);">
@@ -17,11 +22,12 @@
                         </p>
                     @endif
                     <p class="mt-2 line-clamp-3 text-sm leading-relaxed" style="color: var(--text-muted);">
-                        {{ $post->body_ar }}
+                        {{ $post->excerpt() }}
                     </p>
                     <span class="mt-3 inline-block text-sm font-medium" style="color: var(--accent);">
                         {{ __('sanabel.public.read_more') }}
                     </span>
+                    </div>
                 </a>
             @endforeach
         </div>
