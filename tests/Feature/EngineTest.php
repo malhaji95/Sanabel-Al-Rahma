@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AdjustmentCatalog;
 use App\Models\Assessment;
 use App\Models\Beneficiary;
 use App\Models\HealthRecord;
@@ -60,6 +61,32 @@ it('counts each member exactly once, under one person class', function () {
     expect(array_sum($counts))->toBe(6)
         ->and($counts)->toBe(['adult' => 2, 'child' => 3, 'elderly' => 1])
         ->and($need['monthly_need'])->toBe(22_000);
+});
+
+it('adds a household allowance once, however many members trigger it', function () {
+    $region = regionWithRates(adult: 5000, child: 2000);
+
+    AdjustmentCatalog::create([
+        'key' => 'children_present', 'name_ar' => 'وجود أطفال', 'amount' => 3000,
+        'region_id' => $region->id, 'effective_from' => now()->subYear(), 'version' => 1,
+    ]);
+
+    // Both families trigger the same allowance; only the number of children
+    // differs. The allowance belongs to the household, not to each child.
+    $small = familyOf($region, adults: 2, children: 1);
+    $large = familyOf($region, adults: 2, children: 4);
+
+    $smallNeed = app(NeedEngine::class)->compute($small);
+    $largeNeed = app(NeedEngine::class)->compute($large);
+
+    $allowance = fn (array $need) => array_sum(array_column($need['snapshot']['adjustments'], 'amount'));
+
+    expect($allowance($smallNeed))->toBe($allowance($largeNeed))
+        ->and($allowance($smallNeed))->toBe(3_000)
+        // 12,000 for the members + 3,000 for the one household allowance.
+        ->and($smallNeed['monthly_need'])->toBe(15_000)
+        // 18,000 for the members + the same 3,000, not 12,000 for four children.
+        ->and($largeNeed['monthly_need'])->toBe(21_000);
 });
 
 it('never returns a negative gap when income exceeds need', function () {
