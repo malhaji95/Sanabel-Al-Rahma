@@ -8,8 +8,11 @@
 
 @php
     $covered = $case['coverage_percent'];
-    $urgent = $case['urgency_label'] === __('sanabel.masked.urgency.critical');
-    $high = $case['urgency_label'] === __('sanabel.masked.urgency.high');
+    // The badge reads the priority band, which comes from how much of the need
+    // is still uncovered. Running out of time is a separate thing, so it gets
+    // its own small marker rather than overwriting the band.
+    $band = $case['priority_band'];
+    $urgent = $case['is_urgent'];
 @endphp
 
 <article class="card-interactive flex h-full flex-col">
@@ -19,19 +22,26 @@
             <p class="tabular text-lg font-bold" dir="ltr">{{ $case['file_number'] }}</p>
         </div>
 
-        <span @class([
-            'badge',
-            'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200' => $urgent,
-            'bg-gold-100 text-gold-800 dark:bg-gold-900/50 dark:text-gold-100' => $high,
-            'bg-brand-50 text-brand-700 dark:bg-brand-900/50 dark:text-brand-100' => ! $urgent && ! $high,
-        ])>
+        <div class="flex flex-wrap items-center justify-end gap-1.5">
             @if ($urgent)
-                <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path d="M12 2 1 21h22L12 2Zm0 6 1 7h-2l1-7Zm0 9.5a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4Z"/>
-                </svg>
+                <span class="badge bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200">
+                    <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M12 2 1 21h22L12 2Zm0 6 1 7h-2l1-7Zm0 9.5a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4Z"/>
+                    </svg>
+                    {{ __('sanabel.masked.urgency.critical') }}
+                </span>
             @endif
-            {{ $case['urgency_label'] }}
-        </span>
+
+            <span @class([
+                'badge',
+                'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200' => $band === 'critical',
+                'bg-gold-100 text-gold-800 dark:bg-gold-900/50 dark:text-gold-100' => $band === 'middle',
+                'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200' => $band === 'low',
+                'bg-brand-50 text-brand-700 dark:bg-brand-900/50 dark:text-brand-100' => $band === 'complete',
+            ])>
+                {{ $case['priority_label'] }}
+            </span>
+        </div>
     </header>
 
     <dl class="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">

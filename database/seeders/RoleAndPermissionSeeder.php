@@ -25,7 +25,10 @@ class RoleAndPermissionSeeder extends Seeder
             'create_case' => 'all', 'edit_draft' => 'own', 'upload_media' => 'all',
             'record_visit' => 'area', 'recommend' => 'area', 'view_full_case' => 'area',
             'search_by_national_id' => 'area', 'request_change' => 'area',
-            'confirm_delivery' => 'area', 'publish_job_profile' => 'area',
+            // No confirm_delivery: the association decided on 4 Oct 2026 that a
+            // delegate verifies and studies, and touches no money — not the
+            // transfer, and not the receipt that closes a case.
+            'publish_job_profile' => 'area',
             'file_complaint' => 'own', 'view_reports' => 'own',
         ],
         'area_supervisor' => [

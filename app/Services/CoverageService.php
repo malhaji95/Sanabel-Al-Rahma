@@ -301,6 +301,33 @@ class CoverageService
         };
     }
 
+    /**
+     * The priority band a donor reads on the card, from how much of the need is
+     * still uncovered: the less that has arrived, the higher the priority. The
+     * two thresholds are settings, so the association retunes them without a
+     * release.
+     */
+    public function priorityBand(Beneficiary $beneficiary, ?int $confirmed = null, ?Carbon $month = null): string
+    {
+        $percent = $this->coveragePercent($beneficiary, $confirmed, $month);
+
+        $critical = (int) Setting::value(
+            'priority_critical_below',
+            config('sanabel.setting_defaults.priority_critical_below')
+        );
+        $middle = (int) Setting::value(
+            'priority_middle_below',
+            config('sanabel.setting_defaults.priority_middle_below')
+        );
+
+        return match (true) {
+            $percent >= 100 => 'complete',
+            $percent < $critical => 'critical',
+            $percent < $middle => 'middle',
+            default => 'low',
+        };
+    }
+
     /** Support confirmed inside the deprivation window — the D factor's numerator. */
     public function confirmedSupportInWindow(Beneficiary $beneficiary): int
     {

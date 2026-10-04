@@ -26,8 +26,21 @@ class BeneficiaryPolicy
         return $this->inScope($user, $case);
     }
 
+    /**
+     * A file is opened down the approved chain only — the delegate, the
+     * association, the case officer. The system administrator holds every
+     * permission because the role is technical, and that is exactly why it does
+     * not open a family file: the chain would start at the end that can also
+     * approve it.
+     */
+    public const CANNOT_CREATE_CASE = ['admin'];
+
     public function create(User $user): bool
     {
+        if (in_array($user->role?->key, self::CANNOT_CREATE_CASE, true)) {
+            return false;
+        }
+
         return $this->canWrite($user, 'create_case');
     }
 

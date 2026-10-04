@@ -37,6 +37,11 @@ return [
         'verification_target_hours' => 48,
         'deprivation_window_days' => 90,
         'assessment_valid_days' => 180,
+        // Coverage thresholds behind the priority badge a donor sees. Below the
+        // first is the highest priority; at 100% the case is complete. The
+        // association moves these from the settings screen.
+        'priority_critical_below' => 41,
+        'priority_middle_below' => 61,
         'referral_validity_days' => 30,
         // Where a donor sends the money when neither the family nor its
         // association says otherwise: direct|association|both.

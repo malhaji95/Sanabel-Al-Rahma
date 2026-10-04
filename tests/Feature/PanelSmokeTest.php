@@ -92,7 +92,8 @@ it('loads every admin resource create page', function (string $resource) {
         ->get($resource::getUrl('create'))
         ->assertSuccessful();
 })->with([
-    BeneficiaryResource::class,
+    // Not BeneficiaryResource: a family file is opened down the approved chain,
+    // and the system administrator is not on it. Its own test is below.
     DonationResource::class,
     CampaignResource::class,
     SponsorshipResource::class,
@@ -103,6 +104,20 @@ it('loads every admin resource create page', function (string $resource) {
     RegionRateResource::class,
     UserResource::class,
 ]);
+
+it('opens the new-family screen for a case officer and refuses the administrator', function () {
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+
+    $this->actingAs(userWithRole('case_officer'))
+        ->get(BeneficiaryResource::getUrl('create'))
+        ->assertSuccessful();
+
+    // Filament turns the denied policy into a redirect away from the screen
+    // rather than a 403 page; either way the administrator does not reach it.
+    $this->actingAs(userWithRole('admin'))
+        ->get(BeneficiaryResource::getUrl('create'))
+        ->assertRedirect();
+});
 
 it('loads the admin dashboard with its widgets', function () {
     publishedCase($this->region);

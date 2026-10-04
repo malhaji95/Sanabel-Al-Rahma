@@ -36,6 +36,7 @@ class MaskedCaseResource extends JsonResource
         'file_number', 'area_ar', 'family_size', 'age_bands', 'need_type', 'need_type_label',
         'need_amount', 'currency', 'coverage_percent', 'coverage_label', 'remaining_amount',
         'urgency_label', 'has_chronic_illness', 'rent_band', 'is_renting', 'waiting_weeks',
+        'priority_band', 'priority_label', 'is_urgent',
     ];
 
     /**
@@ -75,6 +76,13 @@ class MaskedCaseResource extends JsonResource
             'coverage_percent' => $coverage->coveragePercent($case, $confirmed),
             'coverage_label' => __('sanabel.coordination.coverage_'.$coverage->coverageLabel($case, $confirmed)),
             'remaining_amount' => $coverage->remainingNeed($case, $confirmed),
+            // The badge the association asked for: priority read from how much
+            // of the need is still uncovered.
+            'priority_band' => $band = $coverage->priorityBand($case, $confirmed),
+            'priority_label' => __('sanabel.masked.priority.'.$band),
+            // Kept apart from the band on purpose. A case can be nearly covered
+            // and still be running out of time; one badge cannot say both.
+            'is_urgent' => \App\Services\ScoreService::urgencyBand($case->urgency_deadline_at) >= 75,
             'urgency_label' => $this->urgencyLabel($case),
             'has_chronic_illness' => $this->hasChronicIllness($case),
             'rent_band' => $this->rentBand($case),

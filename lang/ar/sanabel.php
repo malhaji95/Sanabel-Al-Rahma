@@ -111,6 +111,12 @@ return [
     ],
 
     'masked' => [
+        'priority' => [
+            'critical' => 'أولوية قصوى',
+            'middle' => 'أولوية وسطى',
+            'low' => 'أولوية متدنية',
+            'complete' => 'مكتمل',
+        ],
         'urgency' => [
             'none' => 'غير عاجل',
             'low' => 'أولوية منخفضة',
@@ -381,6 +387,8 @@ return [
             'badge_gold_min' => 'الحد الأدنى لشارة الذهب',
             'verification_target_hours' => 'المدة المستهدفة للتحقق (ساعة)',
             'deprivation_window_days' => 'نافذة احتساب الحرمان (يوم)',
+            'priority_critical_below' => 'حد الأولوية القصوى — نسبة تغطية أقل من',
+            'priority_middle_below' => 'حد الأولوية الوسطى — نسبة تغطية أقل من',
             'assessment_valid_days' => 'صلاحية التقييم (يوم)',
             'referral_validity_days' => 'صلاحية بطاقة الإحالة (يوم)',
             'platform_wallet_number' => 'محفظة سنابل الرحمة (شام كاش)',
