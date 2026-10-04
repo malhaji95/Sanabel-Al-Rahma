@@ -98,9 +98,11 @@ it('stops a delegate confirming that money reached a family', function () {
     $delegate = userWithRole('delegate', ['region_id' => $region->id]);
     $officer = userWithRole('case_officer', ['region_id' => $region->id]);
 
+    // In-kind on purpose: this test is about who may confirm a delivery, not
+    // about the transfer a cash receipt has to name.
     $delivery = Delivery::create([
         'beneficiary_id' => $case->id,
-        'type' => 'cash',
+        'type' => 'in_kind',
         'note_ar' => 'تسليم تجريبي',
     ]);
 

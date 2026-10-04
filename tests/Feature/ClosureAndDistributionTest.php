@@ -19,9 +19,13 @@ it('cannot close a case without a delivery proof', function () {
     expect(fn () => app(CaseService::class)->close($case))
         ->toThrow(RuntimeException::class, __('sanabel.cases.close_requires_proof'));
 
+    // A cash receipt names the transfer it proves (decision of 4 Oct 2026).
+    $donation = \App\Models\Donation::factory()->create(['status' => 'verified']);
+
     // A delivery row with no proof is still not enough.
     Delivery::create([
         'beneficiary_id' => $case->id,
+        'donation_id' => $donation->id,
         'type' => 'cash',
         'confirmed_by' => $this->admin->id,
         'confirmed_at' => now(),
@@ -30,7 +34,9 @@ it('cannot close a case without a delivery proof', function () {
     expect(fn () => app(CaseService::class)->close($case->refresh()))
         ->toThrow(RuntimeException::class);
 
-    app(CaseService::class)->confirmDelivery($case, $this->admin, 'cash', proofMediaId: 42);
+    app(CaseService::class)->confirmDelivery(
+        $case, $this->admin, 'cash', proofMediaId: 42, donationId: $donation->id
+    );
 
     expect(app(CaseService::class)->close($case->refresh())->status)->toBe('graduated');
 });

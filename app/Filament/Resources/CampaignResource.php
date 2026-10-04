@@ -38,6 +38,14 @@ class CampaignResource extends Resource
             Forms\Components\Textarea::make('body_ar')->label(__('sanabel.campaign.body'))->columnSpanFull(),
             Forms\Components\TextInput::make('goal_amount')->label(__('sanabel.campaign.goal'))->numeric()->minValue(0)->required()->suffix(config('sanabel.currency')),
             Forms\Components\Select::make('beneficiary_id')->label(__('sanabel.campaign.case'))->relationship('beneficiary', 'file_number')->searchable(),
+            Forms\Components\DatePicker::make('starts_on')
+                ->label(__('sanabel.campaigns.starts_on'))
+                ->helperText(__('sanabel.campaigns.window_help')),
+
+            Forms\Components\DatePicker::make('ends_on')
+                ->label(__('sanabel.campaigns.ends_on'))
+                ->afterOrEqual('starts_on'),
+
             Forms\Components\Textarea::make('surplus_policy_text_ar')
                 ->label(__('sanabel.campaign.surplus_policy'))
                 ->helperText(__('sanabel.campaign.surplus_help'))

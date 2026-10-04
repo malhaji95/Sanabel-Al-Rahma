@@ -83,6 +83,10 @@ class BasketService
      */
     public function addCampaign(Basket $basket, Campaign $campaign, int $amount): BasketItem
     {
+        if (! $campaign->isOpenToday()) {
+            throw ReservationUnavailable::campaignClosed($campaign->title_ar);
+        }
+
         return BasketItem::updateOrCreate(
             ['basket_id' => $basket->getKey(), 'campaign_id' => $campaign->getKey()],
             [

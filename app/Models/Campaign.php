@@ -17,6 +17,7 @@ class Campaign extends Model
 
     protected $fillable = [
         'beneficiary_id', 'title_ar', 'body_ar', 'goal_amount',
+        'starts_on', 'ends_on',
         'currency', 'wallet_encrypted', 'surplus_policy_text_ar', 'is_published', 'status',
         'fund_id', 'created_by',
     ];
@@ -29,6 +30,8 @@ class Campaign extends Model
             'wallet_encrypted' => 'encrypted',
             'is_published' => 'boolean',
             'goal_amount' => 'integer',
+            'starts_on' => 'date',
+            'ends_on' => 'date',
         ];
     }
 
@@ -75,6 +78,38 @@ class Campaign extends Model
      * money still has to be moved and its delivery proved, which is what
      * `awaiting_execution` and then `completed` stand for.
      */
+    /**
+     * Inside its window. A campaign with no dates is always open, which is how
+     * every campaign behaved before the dates existed.
+     */
+    public function isOpenToday(): bool
+    {
+        $today = now()->startOfDay();
+
+        return ! ($this->starts_on && $today->lt($this->starts_on))
+            && ! ($this->ends_on && $today->gt($this->ends_on));
+    }
+
+    /**
+     * Past its end without reaching the goal. The money raised stays where it
+     * is; what happens to it is decided by the campaign's own policy, which the
+     * donor read before paying.
+     */
+    public function lapseIfOverdue(?int $collected = null): void
+    {
+        if ($this->status !== 'active' || ! $this->ends_on) {
+            return;
+        }
+
+        if (now()->startOfDay()->lte($this->ends_on)) {
+            return;
+        }
+
+        if (($collected ?? $this->collectedAmount()) < $this->goal_amount) {
+            $this->forceFill(['status' => 'lapsed'])->save();
+        }
+    }
+
     public function closeFundingIfMet(?int $collected = null): void
     {
         $raised = $collected ?? $this->collectedAmount();
