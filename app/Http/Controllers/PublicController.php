@@ -98,6 +98,34 @@ class PublicController extends Controller
         ]);
     }
 
+    /**
+     * One published family file, as a donor sees it: the same masked card the
+     * list draws, on an address that can be shared. A file that is covered or
+     * no longer published still answers, saying so and offering others, rather
+     * than taking a donation it cannot use.
+     */
+    public function case(string $fileNumber): View
+    {
+        $case = Beneficiary::published()
+            ->with(['region', 'members', 'housing', 'healthRecords', 'association'])
+            ->where('file_number', $fileNumber)
+            ->first();
+
+        $coverage = app(CoverageService::class);
+        $closed = $case === null || $coverage->remainingNeed($case) <= 0;
+
+        return view('public.case', [
+            'card' => $case ? (new MaskedCaseResource($case))->resolve() : null,
+            'closed' => $closed,
+            // Something else to give to, so a finished link is not a dead end.
+            'alternatives' => $closed
+                ? app(RankingService::class)->fundingList('monthly')->take(3)
+                    ->map(fn (array $row) => (new MaskedCaseResource($row['beneficiary'], $row['confirmed']))->resolve())
+                    ->values()
+                : collect(),
+        ]);
+    }
+
     public function campaigns(): View
     {
         return view('public.campaigns', [

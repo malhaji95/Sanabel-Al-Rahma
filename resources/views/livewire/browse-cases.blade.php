@@ -58,6 +58,18 @@
                                 {{ __('sanabel.public.login_to_donate') }}
                             </a>
                         @endauth
+
+                        {{-- The opportunity's own address, and a way to send it on. --}}
+                        <div class="mt-2 flex items-center gap-2">
+                            <a href="{{ route('opportunity', $case['file_number']) }}"
+                               class="btn-secondary flex-1 justify-center no-underline">
+                                {{ __('sanabel.public.donate_now') }}
+                            </a>
+
+                            <x-share-button
+                                :url="route('opportunity', $case['file_number'])"
+                                :title="__('sanabel.share.case_title', ['need' => $case['need_type_label'], 'area' => $case['area_ar']])" />
+                        </div>
                     </x-masked-case-card>
                 @endforeach
             </div>

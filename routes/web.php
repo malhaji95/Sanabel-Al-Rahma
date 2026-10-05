@@ -25,6 +25,10 @@ Route::middleware('auth')
 Route::get('/campaigns', [PublicController::class, 'campaigns'])->name('campaigns.public');
 Route::get('/cases', BrowseCases::class)->name('cases.browse');
 
+// One address per family file, so an opportunity can be sent on. It serves the
+// same masked card the list serves — nothing here that the list does not show.
+Route::get('/cases/{fileNumber}', [PublicController::class, 'case'])->name('opportunity');
+
 Route::get('/login', [LoginController::class, 'show'])->name('login')->middleware('guest');
 Route::post('/login', [LoginController::class, 'store'])->middleware('guest');
 Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');

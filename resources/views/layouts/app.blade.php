@@ -10,6 +10,18 @@
 
     <title>@hasSection('title')@yield('title') — {{ __('sanabel.app_name') }}@else{{ __('sanabel.app_name') }}@endif</title>
 
+    {{-- The card a shared link draws in WhatsApp or on Facebook. It carries the
+         platform's own name and artwork and a general line about the kind of
+         help needed — never a family's name, picture, area detail or document.
+         A page overrides only the title and the line; the image is always ours. --}}
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="{{ __('sanabel.app_name') }}">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:title" content="@yield('share_title', __('sanabel.app_name'))">
+    <meta property="og:description" content="@yield('share_description', config('brand.tagline_ar'))">
+    <meta property="og:image" content="{{ url(config('brand.logo.full')) }}">
+    <meta name="twitter:card" content="summary_large_image">
+
     {{-- The symbol alone, as the identity guide requires for icons. --}}
     <link rel="icon" type="image/png" href="{{ config('brand.icons.favicon') }}">
     <link rel="apple-touch-icon" href="{{ config('brand.icons.apple_touch') }}">

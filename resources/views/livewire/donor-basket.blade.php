@@ -26,6 +26,13 @@
         </div>
     @endif
 
+    @if ($thanks)
+        <div class="card my-4 text-center leading-loose">
+            <p>{{ __('sanabel.public.thanks_blessing') }}</p>
+            <p class="mt-2" style="color: var(--text-muted);">{{ __('sanabel.public.thanks_trust') }}</p>
+        </div>
+    @endif
+
     @if ($items->isEmpty())
         <x-empty-state :title="__('sanabel.basket.empty')" :body="__('sanabel.public.basket_empty_help')">
             <a href="{{ route('cases.browse') }}" class="btn-primary mt-2 no-underline">
@@ -104,6 +111,14 @@
                         @error('transactionRef')
                             <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
                         @enderror
+                    </div>
+
+                    {{-- Where a shop puts its coupon box. --}}
+                    <div class="rounded-xl p-4 text-center leading-loose"
+                         style="background: var(--surface-muted, rgba(0,0,0,.03));">
+                        <p class="font-medium">{{ __('sanabel.public.nudge_title') }}</p>
+                        <p class="mt-1 text-sm" style="color: var(--text-muted);">{{ __('sanabel.public.nudge_hadith') }}</p>
+                        <p class="mt-1 text-xs" style="color: var(--text-muted);">{{ __('sanabel.public.nudge_source') }}</p>
                     </div>
 
                     <button type="submit" class="btn-primary">

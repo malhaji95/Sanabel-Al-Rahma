@@ -22,6 +22,9 @@ class DonorBasket extends Component
 
     public ?string $notice = null;
 
+    /** Set the moment a transfer is recorded, cleared on the next action. */
+    public bool $thanks = false;
+
     public string $transactionRef = '';
 
     #[On('basket-updated')]
@@ -88,6 +91,8 @@ class DonorBasket extends Component
 
         $this->transactionRef = '';
         $this->notice = __('sanabel.public.transfer_recorded');
+        // Shown once, under the confirmation, in the association's own words.
+        $this->thanks = true;
     }
 
     private function basket()

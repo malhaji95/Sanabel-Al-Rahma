@@ -53,4 +53,10 @@
             {{ __('sanabel.public.campaign_closed') }}
         </p>
     @endif
+
+    <div class="mt-3">
+        <x-share-button
+            :url="route('campaigns.public')"
+            :title="$campaign->title_ar" />
+    </div>
 </article>

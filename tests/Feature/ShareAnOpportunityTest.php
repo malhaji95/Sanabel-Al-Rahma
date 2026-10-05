@@ -1,0 +1,89 @@
+<?php
+
+use App\Models\Donor;
+use App\Services\BasketService;
+use App\Services\CoverageService;
+use App\Services\DonationService;
+use App\Services\GeneralMoneyService;
+
+/*
+ | An opportunity can be sent on: it has an address of its own, and the card a
+ | messaging app draws beside the link carries the platform's name, not a
+ | family's.
+ */
+
+beforeEach(function () {
+    seedCore();
+});
+
+it('gives a published family file an address of its own', function () {
+    $case = publishedCase(regionWithRates());
+
+    $this->get(route('opportunity', $case->file_number))
+        ->assertOk()
+        ->assertSee($case->file_number);
+});
+
+it('puts nothing identifying in the card a messaging app draws', function () {
+    $region = regionWithRates();
+    $case = publishedCase($region);
+    $case->update(['first_name' => 'محمود', 'family_name' => 'العلي']);
+
+    $body = $this->get(route('opportunity', $case->file_number))->assertOk()->getContent();
+
+    // The preview block exists, and is the platform's own.
+    expect($body)->toContain('og:image')
+        ->toContain('brand/logo-full.png')
+        // Neither the name nor any contact detail travels with the link.
+        ->not->toContain('محمود')
+        ->not->toContain('العلي');
+});
+
+it('answers a link to a file that is already covered without taking a donation', function () {
+    $region = regionWithRates();
+    $case = publishedCase($region);
+    $coverage = app(CoverageService::class);
+
+    $donation = app(DonationService::class)->record([
+        'donor_id' => Donor::factory()->create()->id,
+        'amount' => $coverage->needAmount($case),
+        'transaction_ref' => 'REF-COVERED',
+        'designation' => 'general',
+    ]);
+
+    $admin = userWithRole('admin');
+    app(DonationService::class)->verify($donation, $admin->id);
+    app(GeneralMoneyService::class)->allocate(
+        $donation, $case, $coverage->needAmount($case), $coverage->currentMonth(), $admin
+    );
+
+    $this->get(route('opportunity', $case->file_number))
+        ->assertOk()
+        ->assertSee(__('sanabel.share.closed_title'))
+        ->assertSee(__('sanabel.share.browse_others'));
+});
+
+it('answers a link to a file that was never published the same way', function () {
+    $this->get(route('opportunity', 'NO-SUCH-FILE'))
+        ->assertOk()
+        ->assertSee(__('sanabel.share.closed_title'));
+});
+
+it('offers the donor the nudge and thanks them in the association voice', function () {
+    $region = regionWithRates();
+    $case = publishedCase($region);
+    $donor = Donor::factory()->create(['user_id' => userWithRole('donor')->id]);
+
+    $baskets = app(BasketService::class);
+    $basket = $baskets->openFor($donor);
+    $baskets->addItem($basket, $case, 10_000);
+    $baskets->reserve($basket);
+
+    $this->actingAs($donor->user);
+
+    \Livewire\Livewire::test(\App\Livewire\DonorBasket::class)
+        ->assertSee(__('sanabel.public.nudge_title'))
+        ->set('transactionRef', 'REF-THANKS')
+        ->call('recordTransfer')
+        ->assertSee(__('sanabel.public.thanks_blessing'));
+});
