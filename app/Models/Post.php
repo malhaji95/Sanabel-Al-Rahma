@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -29,9 +30,25 @@ class Post extends Model
     /** The path a piece walks. Each step names who took it and when. */
     public const STATUSES = ['draft', 'review', 'approved', 'published', 'archived'];
 
+    /** The two states that mean an approver has signed the piece off. */
+    public const SIGNED_OFF = ['approved', 'published'];
+
+    /** What the reader actually sees. Changing any of these needs a new approval. */
+    public const CONTENT_FIELDS = ['title_ar', 'excerpt_ar', 'body_ar', 'image'];
+
     public function beneficiary(): BelongsTo
     {
         return $this->belongsTo(Beneficiary::class);
+    }
+
+    public function reviewedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 
     /**
@@ -50,6 +67,8 @@ class Post extends Model
                 $post->body_ar = self::sanitize((string) $post->body_ar);
             }
 
+            $post->enforceApproval();
+
             // A story or a picture that belongs to a family does not go public
             // until that family has agreed to it, in writing, on the record.
             if ($post->status === 'published'
@@ -65,6 +84,67 @@ class Post extends Model
                 $post->published_at = now();
             }
         });
+    }
+
+    /**
+     * Nothing reaches the reader without an approval signature on it, and an
+     * amendment is a new piece of content: an editor who changes the title,
+     * the summary, the body or the picture of a piece that was already signed
+     * off sends it back to review, and it leaves the site until somebody with
+     * `approve_content` signs it again (decision of 5 October).
+     *
+     * Seeders, tests and console commands write without an actor; the rule is
+     * about what a person may do, so an unattended write is left alone.
+     */
+    private function enforceApproval(): void
+    {
+        $actor = Auth::user();
+
+        if ($actor === null) {
+            return;
+        }
+
+        $approver = $actor->can_('approve_content');
+        $contentChanged = collect(self::CONTENT_FIELDS)->contains(fn (string $f) => $this->isDirty($f));
+
+        if ($this->exists
+            && in_array($this->getOriginal('status'), self::SIGNED_OFF, true)
+            && $contentChanged
+            && ! $approver) {
+            $this->status = 'review';
+            $this->approved_by = null;
+            $this->approved_at = null;
+        }
+
+        // Moving a piece into approved or published *is* the approval.
+        if (($this->isDirty('status') || ! $this->exists)
+            && in_array($this->status, self::SIGNED_OFF, true)
+            && ! $approver) {
+            throw new \RuntimeException(__('sanabel.post.approval_required'));
+        }
+
+        $this->stampSignature($actor, $contentChanged);
+    }
+
+    /** Who took the last step on this piece, and when. */
+    private function stampSignature(User $actor, bool $contentChanged): void
+    {
+        if (in_array($this->status, self::SIGNED_OFF, true)
+            && ($this->isDirty('status') || $contentChanged)) {
+            $this->approved_by = $actor->getKey();
+            $this->approved_at = now();
+        }
+
+        if ($this->status === 'review' && $this->isDirty('status')) {
+            $this->reviewed_by = $actor->getKey();
+            $this->reviewed_at = now();
+        }
+    }
+
+    /** True when this account may sign a piece off, and so may publish it. */
+    public static function canBeApprovedBy(?User $user): bool
+    {
+        return (bool) $user?->can_('approve_content');
     }
 
     /** Signed by a named person, on a date, with the paper attached. */

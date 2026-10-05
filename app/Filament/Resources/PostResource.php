@@ -73,11 +73,18 @@ class PostResource extends Resource
 
             // The path, not a switch. Moving to 'published' is what puts the
             // piece on the public site; the model keeps the old flag in step.
+            //
+            // An editor may carry a piece as far as review. The two steps that
+            // put it in front of a reader are left visible but unselectable,
+            // so the account that writes is never the account that approves.
             Forms\Components\Select::make('status')
                 ->label(__('sanabel.post.status'))
+                ->helperText(__('sanabel.post.status_help'))
                 ->options(collect(Post::STATUSES)
                     ->mapWithKeys(fn (string $s) => [$s => __('sanabel.post.statuses.'.$s)])
                     ->all())
+                ->disableOptionWhen(fn (string $value) => in_array($value, Post::SIGNED_OFF, true)
+                    && ! Post::canBeApprovedBy(auth()->user()))
                 ->default('draft')
                 ->required()
                 ->live(),
@@ -130,6 +137,10 @@ class PostResource extends Resource
                         'archived' => 'gray',
                         default => 'gray',
                     }),
+                Tables\Columns\TextColumn::make('approvedBy.name')
+                    ->label(__('sanabel.post.approved_by'))
+                    ->placeholder(__('sanabel.post.not_approved_yet'))
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('sort_order')->label(__('sanabel.post.sort_order'))->numeric()->sortable(),
             ])
             ->actions([

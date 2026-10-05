@@ -22,7 +22,7 @@ class PermissionService
         'request_change', 'approve_change', 'merge_duplicates', 'donate',
         'verify_payment', 'manage_campaigns', 'manage_distribution', 'confirm_delivery',
         'manage_own_offers', 'verify_referral', 'publish_job_profile', 'manage_members',
-        'file_complaint', 'handle_complaint', 'manage_cms', 'manage_users',
+        'file_complaint', 'handle_complaint', 'manage_cms', 'approve_content', 'manage_users',
     ];
 
     public const READ_PERMISSIONS = [
