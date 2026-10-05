@@ -493,7 +493,7 @@ class SyntheticDataSeeder extends Seeder
                 'goal_amount' => 60_000,
                 'currency' => config('sanabel.currency'),
                 'status' => 'active',
-                'status' => 'published',
+                'is_published' => true,
                 'surplus_policy_text_ar' => 'يوجَّه الفائض إلى ترميم منزل آخر في المنطقة نفسها.',
                 'fund_id' => Fund::byKey(Fund::RESTRICTED)->id,
             ]);
@@ -506,7 +506,7 @@ class SyntheticDataSeeder extends Seeder
             'goal_amount' => 100_000,
             'currency' => config('sanabel.currency'),
             'status' => 'active',
-            'status' => 'published',
+            'is_published' => true,
             'surplus_policy_text_ar' => 'يوجَّه الفائض إلى حملة صحية مماثلة في المنطقة نفسها.',
             'fund_id' => Fund::byKey(Fund::RESTRICTED)->id,
         ]);
@@ -547,7 +547,7 @@ class SyntheticDataSeeder extends Seeder
         Page::firstOrCreate(['slug' => 'about'], [
             'title_ar' => 'من نحن',
             'body_ar' => 'صفحة تعريفية تجريبية يحررها المدير من لوحة التحكم.',
-            'status' => 'published',
+            'is_published' => true,
         ]);
 
         $posts = [
