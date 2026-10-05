@@ -18,7 +18,7 @@ it('shows the main picture and the editor summary on the news page', function ()
         'excerpt_ar' => 'اكتملت الحاجة الشهرية لعشر أسر.',
         'body_ar' => '<p>نص طويل لا يصلح أن يكون ملخصًا.</p>',
         'image' => 'news/cover.jpg',
-        'is_published' => true,
+        'status' => 'published',
         'published_at' => now(),
     ]);
 
@@ -36,7 +36,7 @@ it('falls back to the opening of the body when no summary was written', function
         'slug' => 'health-network',
         'title_ar' => 'توسيع الشبكة الصحية',
         'body_ar' => '<p>انضم مركز طبي جديد إلى شبكة الخصومات.</p>',
-        'is_published' => true,
+        'status' => 'published',
         'published_at' => now(),
     ]);
 
@@ -52,7 +52,7 @@ it('renders the body as rich text, pictures included', function () {
         'slug' => 'launch',
         'title_ar' => 'إطلاق المنصة',
         'body_ar' => '<h2>البداية</h2><p>بدأ العمل في درعا.</p><img src="/storage/news/inline.jpg">',
-        'is_published' => true,
+        'status' => 'published',
         'published_at' => now(),
     ]);
 
@@ -68,7 +68,7 @@ it('drops a script an editor account tried to plant in an article', function () 
         'title_ar' => 'خبر',
         'body_ar' => '<p>نص</p><script>fetch("/evil")</script><a href="javascript:alert(1)">اضغط</a>'
             .'<img src="x" onerror="alert(2)">',
-        'is_published' => true,
+        'status' => 'published',
         'published_at' => now(),
     ]);
 

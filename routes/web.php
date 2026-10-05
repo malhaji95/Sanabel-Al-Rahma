@@ -12,6 +12,16 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [PublicController::class, 'home'])->name('home');
 Route::get('/news', [PublicController::class, 'news'])->name('news');
 Route::get('/news/{slug}', [PublicController::class, 'post'])->name('post');
+
+/*
+ | Seeing a piece as a reader will, before anyone else can. It renders the same
+ | article page whatever the post's status, so what the editor approves is what
+ | goes out — and it is behind auth, so an unpublished draft is not a public URL
+ | anyone can guess.
+ */
+Route::middleware('auth')
+    ->get('/news/{slug}/preview', [PublicController::class, 'previewPost'])
+    ->name('post.preview');
 Route::get('/campaigns', [PublicController::class, 'campaigns'])->name('campaigns.public');
 Route::get('/cases', BrowseCases::class)->name('cases.browse');
 

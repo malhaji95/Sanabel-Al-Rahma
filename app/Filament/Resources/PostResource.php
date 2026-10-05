@@ -70,7 +70,45 @@ class PostResource extends Resource
                 ->helperText(__('sanabel.post.published_at_help'))
                 ->seconds(false),
             Forms\Components\TextInput::make('sort_order')->label(__('sanabel.post.sort_order'))->numeric()->minValue(0),
-            Forms\Components\Toggle::make('is_published')->label(__('sanabel.post.is_published')),
+
+            // The path, not a switch. Moving to 'published' is what puts the
+            // piece on the public site; the model keeps the old flag in step.
+            Forms\Components\Select::make('status')
+                ->label(__('sanabel.post.status'))
+                ->options(collect(Post::STATUSES)
+                    ->mapWithKeys(fn (string $s) => [$s => __('sanabel.post.statuses.'.$s)])
+                    ->all())
+                ->default('draft')
+                ->required()
+                ->live(),
+
+            Forms\Components\Section::make(__('sanabel.post.consent'))
+                ->description(__('sanabel.post.consent_help'))
+                ->columns(2)
+                ->columnSpanFull()
+                ->schema([
+                    Forms\Components\Select::make('beneficiary_id')
+                        ->label(__('sanabel.post.beneficiary'))
+                        ->helperText(__('sanabel.post.beneficiary_help'))
+                        ->relationship('beneficiary', 'file_number')
+                        ->searchable()
+                        ->preload()
+                        ->live(),
+
+                    Forms\Components\TextInput::make('consent_signed_by_ar')
+                        ->label(__('sanabel.post.consent_signed_by'))
+                        ->required(fn (Forms\Get $get) => filled($get('beneficiary_id'))),
+
+                    Forms\Components\DatePicker::make('consent_signed_on')
+                        ->label(__('sanabel.post.consent_signed_on'))
+                        ->required(fn (Forms\Get $get) => filled($get('beneficiary_id'))),
+
+                    Forms\Components\FileUpload::make('consent_media_id')
+                        ->label(__('sanabel.post.consent_document'))
+                        ->disk('public')
+                        ->directory('consents')
+                        ->required(fn (Forms\Get $get) => filled($get('beneficiary_id'))),
+                ]),
         ])->columns(2);
     }
 
@@ -81,10 +119,25 @@ class PostResource extends Resource
                 Tables\Columns\ImageColumn::make('image')->label(__('sanabel.post.image'))->disk('public'),
                 Tables\Columns\TextColumn::make('title_ar')->label(__('sanabel.post.title'))->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('published_at')->label(__('sanabel.post.published_at'))->dateTime('Y-m-d')->sortable(),
-                Tables\Columns\IconColumn::make('is_published')->label(__('sanabel.post.is_published'))->boolean(),
+                Tables\Columns\TextColumn::make('status')
+                    ->label(__('sanabel.post.status'))
+                    ->badge()
+                    ->formatStateUsing(fn (string $state) => __('sanabel.post.statuses.'.$state))
+                    ->color(fn (string $state) => match ($state) {
+                        'published' => 'success',
+                        'approved' => 'info',
+                        'review' => 'warning',
+                        'archived' => 'gray',
+                        default => 'gray',
+                    }),
                 Tables\Columns\TextColumn::make('sort_order')->label(__('sanabel.post.sort_order'))->numeric()->sortable(),
             ])
             ->actions([
+                Tables\Actions\Action::make('preview')
+                    ->label(__('sanabel.post.preview'))
+                    ->icon('heroicon-o-eye')
+                    ->url(fn (Post $record) => route('post.preview', $record->slug))
+                    ->openUrlInNewTab(),
                 Tables\Actions\EditAction::make(),
             ])
             ->defaultSort('id', 'desc')

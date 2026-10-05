@@ -6,6 +6,7 @@ use App\Models\Concerns\Auditable;
 use App\Models\Concerns\TracksCreator;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -16,7 +17,22 @@ class Post extends Model
 
     protected $guarded = ['id'];
 
-    protected $casts = ['is_published' => 'boolean', 'sort_order' => 'integer', 'published_at' => 'datetime'];
+    protected $casts = [
+        'is_published' => 'boolean',
+        'sort_order' => 'integer',
+        'published_at' => 'datetime',
+        'reviewed_at' => 'datetime',
+        'approved_at' => 'datetime',
+        'consent_signed_on' => 'date',
+    ];
+
+    /** The path a piece walks. Each step names who took it and when. */
+    public const STATUSES = ['draft', 'review', 'approved', 'published', 'archived'];
+
+    public function beneficiary(): BelongsTo
+    {
+        return $this->belongsTo(Beneficiary::class);
+    }
 
     /**
      * The body is rich text, so the page prints it as markup rather than
@@ -33,7 +49,30 @@ class Post extends Model
             if ($post->isDirty('body_ar')) {
                 $post->body_ar = self::sanitize((string) $post->body_ar);
             }
+
+            // A story or a picture that belongs to a family does not go public
+            // until that family has agreed to it, in writing, on the record.
+            if ($post->status === 'published'
+                && $post->beneficiary_id !== null
+                && ! $post->hasConsent()) {
+                throw new \RuntimeException(__('sanabel.post.consent_required'));
+            }
+
+            // The public pages read the flag; the status is the decision.
+            $post->is_published = $post->status === 'published';
+
+            if ($post->is_published && $post->published_at === null) {
+                $post->published_at = now();
+            }
         });
+    }
+
+    /** Signed by a named person, on a date, with the paper attached. */
+    public function hasConsent(): bool
+    {
+        return filled($this->consent_signed_by_ar)
+            && $this->consent_signed_on !== null
+            && $this->consent_media_id !== null;
     }
 
     public static function sanitize(string $html): string

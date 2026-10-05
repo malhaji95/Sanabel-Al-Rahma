@@ -31,7 +31,7 @@ function donorFor(): User
 
 it('renders the public home page with CMS content', function () {
     Banner::create(['title_ar' => 'بانر ترحيبي', 'is_published' => true, 'sort_order' => 1]);
-    Post::create(['slug' => 'khabar', 'title_ar' => 'خبر منشور', 'body_ar' => 'نص', 'is_published' => true, 'published_at' => now()]);
+    Post::create(['slug' => 'khabar', 'title_ar' => 'خبر منشور', 'body_ar' => 'نص', 'status' => 'published', 'published_at' => now()]);
     Campaign::factory()->create([
         'title_ar' => 'حملة الشتاء',
         'surplus_policy_text_ar' => 'يوجه الفائض لحملة مماثلة.',
@@ -49,7 +49,7 @@ it('renders the public home page with CMS content', function () {
 });
 
 it('renders news, a post, a CMS page and the campaigns list', function () {
-    Post::create(['slug' => 'story', 'title_ar' => 'قصة', 'body_ar' => 'التفاصيل', 'is_published' => true, 'published_at' => now()]);
+    Post::create(['slug' => 'story', 'title_ar' => 'قصة', 'body_ar' => 'التفاصيل', 'status' => 'published', 'published_at' => now()]);
     Page::create(['slug' => 'about', 'title_ar' => 'من نحن', 'body_ar' => 'نبذة', 'is_published' => true]);
     Campaign::factory()->create(['surplus_policy_text_ar' => 'سياسة', 'is_published' => true]);
 

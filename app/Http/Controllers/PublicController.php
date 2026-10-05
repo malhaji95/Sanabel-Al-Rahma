@@ -8,6 +8,7 @@ use App\Models\Beneficiary;
 use App\Models\Campaign;
 use App\Models\Page;
 use App\Models\Post;
+use Illuminate\Http\Request;
 use App\Models\Region;
 use App\Services\CoverageService;
 use App\Services\RankingService;
@@ -79,6 +80,21 @@ class PublicController extends Controller
     {
         return view('public.post', [
             'post' => Post::where('slug', $slug)->where('is_published', true)->firstOrFail(),
+        ]);
+    }
+
+    /**
+     * The same article page, for a piece that has not gone out yet. Only an
+     * account that may manage content gets it, so a draft is not readable by
+     * anyone who guesses the slug.
+     */
+    public function previewPost(Request $request, string $slug)
+    {
+        abort_unless($request->user()?->can_('manage_cms'), 403, __('sanabel.permissions.denied'));
+
+        return view('public.post', [
+            'post' => Post::where('slug', $slug)->firstOrFail(),
+            'isPreview' => true,
         ]);
     }
 
