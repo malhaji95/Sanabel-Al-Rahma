@@ -36,7 +36,7 @@ class MaskedCaseResource extends JsonResource
         'file_number', 'area_ar', 'family_size', 'age_bands', 'need_type', 'need_type_label',
         'need_amount', 'currency', 'coverage_percent', 'coverage_label', 'remaining_amount',
         'urgency_label', 'has_chronic_illness', 'rent_band', 'is_renting', 'waiting_weeks',
-        'priority_band', 'priority_label', 'is_urgent',
+        'priority_band', 'priority_label', 'is_urgent', 'accepts_zakat', 'can_share',
     ];
 
     /**
@@ -88,6 +88,13 @@ class MaskedCaseResource extends JsonResource
             'rent_band' => $this->rentBand($case),
             'is_renting' => (bool) $case->housing?->isRenting(),
             'waiting_weeks' => $ranking->waitingBonus($case),
+            // Whether zakat may be paid on this file — never which of the eight
+            // categories it falls under. The category describes the household,
+            // and rule 2 keeps that behind the association's door.
+            'accepts_zakat' => filled($case->zakat_category),
+            // Not a fact about the household: the association's own switch for
+            // whether this file's link may be passed around.
+            'can_share' => (bool) $case->is_shareable,
         ];
     }
 

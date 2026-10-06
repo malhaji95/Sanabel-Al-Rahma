@@ -99,6 +99,20 @@ class BeneficiaryResource extends Resource
                         ->options(__('sanabel.masked.need_type'))
                         ->required(),
 
+                    // One of the eight, or nothing. The donor is told only that
+                    // zakat may be paid on the file, never which category.
+                    Forms\Components\Select::make('zakat_category')
+                        ->label(__('sanabel.zakat.category'))
+                        ->helperText(__('sanabel.zakat.category_help'))
+                        ->options(collect(Beneficiary::ZAKAT_CATEGORIES)
+                            ->mapWithKeys(fn (string $k) => [$k => __('sanabel.zakat.categories.'.$k)])
+                            ->all()),
+
+                    Forms\Components\Toggle::make('is_shareable')
+                        ->label(__('sanabel.beneficiary.is_shareable'))
+                        ->helperText(__('sanabel.beneficiary.is_shareable_help'))
+                        ->default(true),
+
                     // Recorded, never computed from: the need engine does not
                     // read it, so a note here cannot move a score.
                     Forms\Components\Textarea::make('previous_aid_ar')

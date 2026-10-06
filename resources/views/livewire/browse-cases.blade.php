@@ -66,9 +66,11 @@
                                 {{ __('sanabel.public.donate_now') }}
                             </a>
 
-                            <x-share-button
-                                :url="route('opportunity', $case['file_number'])"
-                                :title="__('sanabel.share.case_title', ['need' => $case['need_type_label'], 'area' => $case['area_ar']])" />
+                            @if ($case['can_share'] ?? true)
+                                <x-share-button
+                                    :url="route('opportunity', $case['file_number'])"
+                                    :title="__('sanabel.share.case_title', ['need' => $case['need_type_label'], 'area' => $case['area_ar']])" />
+                            @endif
                         </div>
                     </x-masked-case-card>
                 @endforeach

@@ -87,3 +87,54 @@ it('offers the donor the nudge and thanks them in the association voice', functi
         ->call('recordTransfer')
         ->assertSee(__('sanabel.public.thanks_blessing'));
 });
+
+/*
+ | The association's switch over its own links, and the zakat classification
+ | (decisions of 5 October).
+ */
+
+it('drops the share button on a file the association has closed to sharing', function () {
+    $case = publishedCase(regionWithRates());
+
+    $this->get(route('opportunity', $case->file_number))
+        ->assertOk()
+        ->assertSee(__('sanabel.share.action'));
+
+    $case->update(['is_shareable' => false]);
+
+    // Still published, still fundable — only the link stops being handed around.
+    $this->get(route('opportunity', $case->file_number))
+        ->assertOk()
+        ->assertSee(__('sanabel.public.donate_now'))
+        ->assertDontSee(__('sanabel.share.action'));
+
+    $this->get(route('cases.browse'))->assertOk()->assertDontSee(__('sanabel.share.action'));
+});
+
+it('tells a donor that zakat may be paid, and never which category', function () {
+    $case = publishedCase(regionWithRates());
+
+    $this->get(route('opportunity', $case->file_number))
+        ->assertOk()
+        ->assertDontSee(__('sanabel.zakat.accepts'));
+
+    $case->update(['zakat_category' => 'debtors']);
+
+    $this->get(route('opportunity', $case->file_number))
+        ->assertOk()
+        ->assertSee(__('sanabel.zakat.accepts'))
+        // The category describes the household, so it stays behind rule 2.
+        ->assertDontSee(__('sanabel.zakat.categories.debtors'));
+});
+
+it('keeps the category out of the masked payload entirely', function () {
+    $case = publishedCase(regionWithRates());
+    $case->update(['zakat_category' => 'debtors']);
+
+    $payload = (new App\Http\Resources\MaskedCaseResource($case))->toArray(request());
+
+    expect($payload)->toHaveKey('accepts_zakat')
+        ->and($payload['accepts_zakat'])->toBeTrue()
+        ->and(json_encode($payload))->not->toContain('debtors')
+        ->and(array_diff(array_keys($payload), App\Http\Resources\MaskedCaseResource::ALLOWED_KEYS))->toBeEmpty();
+});

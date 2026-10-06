@@ -41,6 +41,14 @@
             ])>
                 {{ $case['priority_label'] }}
             </span>
+
+            {{-- That zakat may be paid on this file. Which of the eight
+                 categories it falls under is never published. --}}
+            @if ($case['accepts_zakat'] ?? false)
+                <span class="badge bg-brand-50 text-brand-700 dark:bg-brand-900/50 dark:text-brand-100">
+                    {{ __('sanabel.zakat.accepts') }}
+                </span>
+            @endif
         </div>
     </header>
 

@@ -22,10 +22,20 @@ class Beneficiary extends Model
         'needs_reassessment', 'suspended', 'graduated', 'rejected', 'merged',
     ];
 
+    /**
+     * The eight categories zakat may be paid to, in the order of the verse.
+     * A file is classified by choosing one of them; the reason is never typed
+     * by hand, so the fund stays reportable and a free-text box does not turn
+     * into a second account of the household.
+     */
+    public const ZAKAT_CATEGORIES = [
+        'poor', 'needy', 'workers', 'hearts', 'slaves', 'debtors', 'cause', 'wayfarer',
+    ];
+
     protected $fillable = [
         'file_number', 'national_id_encrypted', 'national_id_hash', 'first_name', 'father_name',
         'family_name', 'phone_encrypted', 'region_id', 'association_id', 'marital_status', 'wallet_encrypted',
-        'support_type', 'previous_aid_ar', 'urgency_deadline_at', 'documented_debt', 'status', 'last_assessment_at', 'next_assessment_due_at', 'source',
+        'support_type', 'zakat_category', 'is_shareable', 'previous_aid_ar', 'urgency_deadline_at', 'documented_debt', 'status', 'last_assessment_at', 'next_assessment_due_at', 'source',
         'merged_into_id', 'duplicate_review_flag', 'approved_by', 'approved_at', 'reject_reason_ar',
         'field_verified_by', 'field_verified_at', 'endorsed_by', 'endorsed_at',
         'published_at', 'created_by',
@@ -36,6 +46,7 @@ class Beneficiary extends Model
     protected function casts(): array
     {
         return [
+            'is_shareable' => 'boolean',
             'national_id_encrypted' => 'encrypted',
             'phone_encrypted' => 'encrypted',
             'wallet_encrypted' => 'encrypted',
