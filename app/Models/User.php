@@ -24,7 +24,7 @@ class User extends Authenticatable implements FilamentUser
     protected $hidden = ['password', 'remember_token', 'phone_encrypted', 'two_factor_secret'];
 
     /** Roles that must pass a second factor before reaching a panel (T-38). */
-    public const TWO_FACTOR_ROLES = ['admin', 'council'];
+    public const TWO_FACTOR_ROLES = ['admin', 'council', 'board_director'];
 
     protected function casts(): array
     {
@@ -96,7 +96,14 @@ class User extends Authenticatable implements FilamentUser
         }
 
         return match ($panel->getId()) {
-            'admin' => $this->hasRole('admin', 'case_officer', 'area_supervisor', 'delegate', 'council', 'finance', 'content_manager'),
+            'admin' => $this->hasRole(
+                'admin', 'case_officer', 'area_supervisor', 'delegate', 'council', 'finance', 'content_manager',
+                // The structure of 5 October. Each one reaches the association
+                // panel; what they see inside it is the matrix's business.
+                'board_director', 'executive_director', 'deputy_executive_director',
+                'deputy_area_supervisor', 'treasurer', 'oversight_director',
+                'data_officer', 'data_supervisor', 'data_manager',
+            ),
             'association' => $this->hasRole('association', 'admin'),
             'provider' => $this->hasRole('service_provider', 'admin'),
             default => false,
