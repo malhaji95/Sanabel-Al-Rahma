@@ -35,7 +35,11 @@ class Beneficiary extends Model
     protected $fillable = [
         'file_number', 'user_id', 'national_id_encrypted', 'national_id_hash', 'first_name', 'father_name',
         'family_name', 'phone_encrypted', 'region_id', 'association_id', 'marital_status', 'wallet_encrypted',
-        'support_type', 'zakat_category', 'is_shareable', 'previous_aid_ar', 'urgency_deadline_at', 'documented_debt', 'status', 'last_assessment_at', 'next_assessment_due_at', 'source',
+        'support_type', 'zakat_category', 'is_shareable', 'previous_aid_ar',
+        // The association's own social survey, carried into the file.
+        'gender', 'birth_date', 'town_ar', 'latitude', 'longitude', 'works', 'workplace_ar',
+        'has_quran_memorizers', 'quran_memorizer_count', 'livelihood_proposal_ar',
+        'proposal_skills_ar', 'proposal_cost', 'surveyed_by_ar', 'furnishing_ar', 'urgency_deadline_at', 'documented_debt', 'status', 'last_assessment_at', 'next_assessment_due_at', 'source',
         'merged_into_id', 'duplicate_review_flag', 'approved_by', 'approved_at', 'reject_reason_ar',
         'field_verified_by', 'field_verified_at', 'endorsed_by', 'endorsed_at',
         'published_at', 'created_by',
@@ -52,6 +56,31 @@ class Beneficiary extends Model
         return $this->hasMany(Disbursement::class);
     }
 
+    public function debts()
+    {
+        return $this->hasMany(Debt::class);
+    }
+
+    public function supportSources()
+    {
+        return $this->hasMany(SupportSource::class);
+    }
+
+    public function caregivers()
+    {
+        return $this->hasMany(Caregiver::class);
+    }
+
+    public function assets()
+    {
+        return $this->hasMany(Asset::class);
+    }
+
+    public function livestock()
+    {
+        return $this->hasMany(Livestock::class);
+    }
+
     /** The family's own papers: identity, lease, medical report, debt paper. */
     public function documents()
     {
@@ -64,6 +93,9 @@ class Beneficiary extends Model
     {
         return [
             'is_shareable' => 'boolean',
+            'birth_date' => 'date',
+            'works' => 'boolean',
+            'has_quran_memorizers' => 'boolean',
             'national_id_encrypted' => 'encrypted',
             'phone_encrypted' => 'encrypted',
             'wallet_encrypted' => 'encrypted',

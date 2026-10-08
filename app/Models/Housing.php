@@ -19,7 +19,11 @@ class Housing extends Model
         'beneficiary_id', 'housing_type', 'monthly_rent', 'currency', 'habitable_rooms',
         'safety_band', 'services_band', 'eviction_band', 'landlord_name_ar',
         'landlord_phone_encrypted', 'created_by',
+        'type_other_ar', 'rent_period', 'bathrooms', 'has_kitchen',
     ];
+
+    /** شهري أو سنوي، كما يسأل الاستبيان. */
+    public const RENT_PERIODS = ['monthly', 'yearly'];
 
     protected $hidden = ['landlord_name_ar', 'landlord_phone_encrypted'];
 
@@ -29,6 +33,8 @@ class Housing extends Model
             'landlord_phone_encrypted' => 'encrypted',
             'monthly_rent' => 'integer',
             'habitable_rooms' => 'integer',
+            'bathrooms' => 'integer',
+            'has_kitchen' => 'boolean',
             'safety_band' => 'integer',
             'services_band' => 'integer',
             'eviction_band' => 'integer',
