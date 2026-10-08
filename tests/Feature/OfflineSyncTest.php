@@ -192,3 +192,46 @@ it('never writes a visit to the device in the clear', function () {
     expect($writer[0])->toContain('seal(db, body)')
         ->and($fields)->toBe(['client_uuid', 'synced', 'queued_at', 'iv', 'sealed']);
 });
+
+/*
+ | Where the visit took place, when the delegate chose to record it
+ | (decision of 6 October).
+ */
+it('carries an optional location, and is complete without one', function () {
+    $delegate = userWithRole('delegate', ['region_id' => $this->region->id]);
+    $case = familyOf($this->region, adults: 1, children: 1);
+
+    $push = fn (array $extra) => $this->actingAs($delegate, 'sanctum')
+        ->postJson('/api/visits/sync', ['visits' => [array_merge([
+            'client_uuid' => (string) Str::uuid(),
+            'beneficiary_id' => $case->id,
+            'visited_at' => now()->toIso8601String(),
+            'note_ar' => 'زيارة',
+        ], $extra)]]);
+
+    $push([])->assertCreated();
+
+    $without = App\Models\Visit::latest('id')->first();
+    expect($without->hasLocation())->toBeFalse();
+
+    $push(['latitude' => 32.6189, 'longitude' => 36.1021])->assertCreated();
+
+    $with = App\Models\Visit::latest('id')->first();
+    expect($with->hasLocation())->toBeTrue()
+        ->and((float) $with->latitude)->toBe(32.6189);
+
+    // A coordinate off the globe is refused rather than stored.
+    $push(['latitude' => 999, 'longitude' => 36.1])->assertStatus(422);
+});
+
+it('shows a visit location only to the field and the executive line', function () {
+    foreach (['delegate', 'area_supervisor', 'executive_director', 'board_director'] as $role) {
+        expect(App\Models\Visit::showsLocationTo(userWithRole($role)))->toBeTrue("{$role} should see it");
+    }
+
+    foreach (['donor', 'association', 'service_provider', 'finance', 'content_manager', 'treasurer'] as $role) {
+        expect(App\Models\Visit::showsLocationTo(userWithRole($role)))->toBeFalse("{$role} should not see it");
+    }
+
+    expect(App\Models\Visit::showsLocationTo(null))->toBeFalse();
+});

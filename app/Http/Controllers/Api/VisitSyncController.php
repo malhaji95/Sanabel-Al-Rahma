@@ -28,6 +28,10 @@ class VisitSyncController extends Controller
             'visits.*.recommendation' => ['nullable', 'string', 'max:64'],
             'visits.*.is_reassessment' => ['nullable', 'boolean'],
             'visits.*.base_version_at' => ['nullable', 'date'],
+            // Optional on purpose: no signal, or a family who would rather
+            // not, and the visit is still complete.
+            'visits.*.latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'visits.*.longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'visits.*.data' => ['nullable', 'array'],
         ]);
 

@@ -92,6 +92,25 @@
             {{ __('sanabel.field.is_reassessment') }}
         </label>
 
+        {{-- Optional, and said to be optional. No signal, or a family who
+             would rather not, and the visit is complete without it. --}}
+        <div class="rounded-xl border p-3" style="border-color: var(--border);">
+            <div class="flex items-center justify-between gap-3">
+                <span class="field-label mb-0">{{ __('sanabel.field.location') }}</span>
+
+                <button type="button" class="btn-secondary text-sm" x-on:click="captureLocation()"
+                        x-text="locating ? @js(__('sanabel.field.locating')) : @js(__('sanabel.field.locate'))"></button>
+            </div>
+
+            <p class="mt-2 text-xs" style="color: var(--text-muted);"
+               x-text="form.latitude ? @js(__('sanabel.field.located')) : @js(__('sanabel.field.location_help'))"></p>
+
+            <button type="button" class="mt-2 text-xs underline" x-show="form.latitude" x-cloak
+                    x-on:click="form.latitude = null; form.longitude = null">
+                {{ __('sanabel.field.clear_location') }}
+            </button>
+        </div>
+
         <button type="submit" class="btn-primary w-full">{{ __('sanabel.field.save') }}</button>
 
         <p class="text-xs" style="color: var(--text-muted);">{{ __('sanabel.field.save_help') }}</p>
@@ -106,6 +125,7 @@
             online: navigator.onLine,
             pending: 0,
             syncing: false,
+            locating: false,
             message: '',
             form: {
                 beneficiary_id: '',
@@ -113,6 +133,36 @@
                 note_ar: '',
                 recommendation: 'approve',
                 is_reassessment: false,
+                latitude: null,
+                longitude: null,
+            },
+
+            /**
+             * The device's own position, asked for only when the delegate
+             * presses the button. Refusing it, or having no fix, leaves the
+             * visit exactly as valid.
+             */
+            captureLocation() {
+                if (! navigator.geolocation) {
+                    this.message = @js(__('sanabel.field.location_unavailable'));
+
+                    return
+                }
+
+                this.locating = true
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        this.form.latitude = Number(position.coords.latitude.toFixed(7))
+                        this.form.longitude = Number(position.coords.longitude.toFixed(7))
+                        this.locating = false
+                    },
+                    () => {
+                        this.locating = false
+                        this.message = @js(__('sanabel.field.location_unavailable'));
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 },
+                )
             },
 
             async boot() {
@@ -152,6 +202,8 @@
                 })
 
                 this.form.note_ar = ''
+                this.form.latitude = null
+                this.form.longitude = null
                 this.message = @js(__('sanabel.field.saved_offline'));
                 await this.refreshPending()
 

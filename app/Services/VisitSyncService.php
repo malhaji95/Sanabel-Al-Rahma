@@ -54,6 +54,8 @@ class VisitSyncService
                 'note_ar' => $payload['note_ar'] ?? null,
                 'recommendation' => $payload['recommendation'] ?? null,
                 'is_reassessment' => (bool) ($payload['is_reassessment'] ?? false),
+                'latitude' => $payload['latitude'] ?? null,
+                'longitude' => $payload['longitude'] ?? null,
                 'payload_json' => $payload['data'] ?? null,
                 'base_version_at' => $baseVersionAt,
                 'conflict_flag' => $conflict,
