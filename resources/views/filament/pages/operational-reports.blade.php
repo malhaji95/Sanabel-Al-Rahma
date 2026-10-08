@@ -14,7 +14,7 @@
             'active', 'due', 'overdue', 'lapsed',
         ]],
         'failures' => ['heading' => __('sanabel.reports.failures'), 'money' => false, 'keys' => [
-            'disbursements', 'disputed', 'distribution_items', 'rejected_donations',
+            'disbursements', 'disputed', 'awaiting_overdue', 'distribution_items', 'rejected_donations',
         ]],
         'campaigns' => ['heading' => __('sanabel.reports.campaigns'), 'money' => false, 'keys' => [
             'active', 'funded', 'lapsed',

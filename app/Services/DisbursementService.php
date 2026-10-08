@@ -280,7 +280,12 @@ class DisbursementService
 
     /**
      * The household says it did not arrive. That is an objection, not a note:
-     * it opens a complaint with a reference number and goes back to finance.
+     * it opens a complaint with a reference number, tied to this payment, and
+     * goes to the finance desk.
+     *
+     * It raises no replacement payment. What is owed instead, if anything, is
+     * the association's decision after it looks, not something a button
+     * creates (decision of 8 October).
      */
     public function disputeReceipt(Disbursement $disbursement, User $family, string $reasonAr): Disbursement
     {
@@ -314,24 +319,25 @@ class DisbursementService
     }
 
     /**
-     * Silence is not confirmation. A payment nobody answered for inside the
-     * window goes back to the finance desk the same way an objection does.
+     * Silence is neither a yes nor a no.
+     *
+     * The association was explicit on 8 October: running the window out is
+     * not a confirmation and does not close the payment. So nothing about
+     * the payment's state moves — it is still waiting on the household, and
+     * both of their answers are still open to them. All that happens is that
+     * it is raised for follow-up, once, and the finance desk is told.
      */
     public function chaseUnconfirmed(): int
     {
         $overdue = Disbursement::query()
             ->where('status', 'executed')
+            ->whereNull('escalated_at')
             ->whereNotNull('confirm_due_at')
             ->where('confirm_due_at', '<', now())
             ->get();
 
         foreach ($overdue as $disbursement) {
-            $disbursement->forceFill([
-                'status' => 'disputed',
-                'dispute_reason_ar' => __('sanabel.disbursement.no_answer_in_window', [
-                    'days' => self::confirmDays(),
-                ]),
-            ])->save();
+            $disbursement->forceFill(['escalated_at' => now()])->save();
 
             $this->tellFinance($disbursement, null);
         }

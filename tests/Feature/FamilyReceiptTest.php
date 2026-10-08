@@ -73,18 +73,58 @@ it('lets nobody else answer for a family', function () {
     expect($payment->refresh()->status)->toBe('executed');
 });
 
-it('sends an unanswered payment back to finance once the window has passed', function () {
+it('follows a silent window up without closing the payment', function () {
     $payment = ($this->payment)();
 
     expect($this->service->chaseUnconfirmed())->toBe(0);
 
     $payment->forceFill(['confirm_due_at' => now()->subDay()])->save();
 
-    expect($this->service->chaseUnconfirmed())->toBe(1)
-        ->and($payment->refresh()->status)->toBe('disputed')
-        // Silence is recorded as silence, not as an objection the family made.
-        ->and($payment->dispute_reason_ar)->toContain('لم يصل تأكيد')
-        ->and($payment->complaint_id)->toBeNull();
+    expect($this->service->chaseUnconfirmed())->toBe(1);
+
+    $payment->refresh();
+
+    // The association was explicit: running the window out is not an answer.
+    expect($payment->status)->toBe('executed')
+        ->and($payment->awaitsBeneficiary())->toBeTrue()
+        ->and($payment->awaitsAndIsOverdue())->toBeTrue()
+        ->and($payment->escalated_at)->not->toBeNull()
+        // Not read as an objection the family never made.
+        ->and($payment->complaint_id)->toBeNull()
+        ->and($payment->dispute_reason_ar)->toBeNull();
+
+    // Raised once, not once a day.
+    expect($this->service->chaseUnconfirmed())->toBe(0);
+});
+
+it('still lets the family answer after the window has run out', function () {
+    $payment = ($this->payment)();
+    $payment->forceFill(['confirm_due_at' => now()->subDay()])->save();
+    $this->service->chaseUnconfirmed();
+
+    $this->service->confirmReceipt($payment->refresh(), $this->account);
+
+    expect($payment->refresh()->status)->toBe('received');
+
+    $second = ($this->payment)(2_000);
+    $second->forceFill(['confirm_due_at' => now()->subDay()])->save();
+    $this->service->chaseUnconfirmed();
+
+    $this->service->disputeReceipt($second->refresh(), $this->account, 'لم يصلني شيء');
+
+    expect($second->refresh()->status)->toBe('disputed');
+});
+
+it('raises no replacement payment when the family objects', function () {
+    $payment = ($this->payment)();
+    $before = Disbursement::count();
+
+    $this->service->disputeReceipt($payment, $this->account, 'لم يصلني المبلغ');
+
+    // The objection answers the payment that was made. What is owed instead
+    // is the association's call after it looks, not a button's.
+    expect(Disbursement::count())->toBe($before)
+        ->and($payment->refresh()->complaint_id)->not->toBeNull();
 });
 
 it('shows a family their own payments and nobody else', function () {

@@ -57,7 +57,11 @@
                             {{-- The association's own wording, shown before the family worries. --}}
                             <p class="mt-3 text-sm">{{ __('sanabel.disbursement.deposit_notice') }}</p>
                             <p class="mt-1 text-xs" style="color: var(--text-muted);">
-                                {{ __('sanabel.disbursement.confirm_window', ['days' => $confirmDays]) }}
+                                @if ($payment->awaitsAndIsOverdue())
+                                    {{ __('sanabel.disbursement.still_awaiting_you') }}
+                                @else
+                                    {{ __('sanabel.disbursement.confirm_window', ['days' => $confirmDays]) }}
+                                @endif
                             </p>
 
                             <div class="mt-3 flex flex-wrap gap-2">

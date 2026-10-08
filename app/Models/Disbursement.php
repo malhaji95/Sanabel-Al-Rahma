@@ -24,6 +24,7 @@ class Disbursement extends Model
         'reconciled_at' => 'datetime',
         'confirm_due_at' => 'datetime',
         'beneficiary_responded_at' => 'datetime',
+        'escalated_at' => 'datetime',
     ];
 
     public const STATUSES = [
@@ -37,6 +38,16 @@ class Disbursement extends Model
     public function awaitsBeneficiary(): bool
     {
         return $this->status === 'executed';
+    }
+
+    /**
+     * Still waiting, and the window has run out. The association's rule of
+     * 8 October: silence is followed up, never read as a confirmation and
+     * never allowed to close the payment by itself.
+     */
+    public function awaitsAndIsOverdue(): bool
+    {
+        return $this->awaitsBeneficiary() && $this->escalated_at !== null;
     }
 
     public function beneficiary(): BelongsTo

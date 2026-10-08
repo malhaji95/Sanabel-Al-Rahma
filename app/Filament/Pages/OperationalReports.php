@@ -177,6 +177,10 @@ class OperationalReports extends Page implements HasForms
             'distribution_items' => DistributionItem::where('status', 'failed')->count(),
             'disbursements' => Disbursement::where('status', 'failed')->count(),
             'disputed' => Disbursement::where('status', 'disputed')->count(),
+            // Still waiting on a household past its window: followed up, not
+            // closed, and never counted as an objection they did not make.
+            'awaiting_overdue' => Disbursement::where('status', 'executed')
+                ->whereNotNull('escalated_at')->count(),
             'rejected_donations' => Donation::where('status', 'rejected')
                 ->whereBetween('updated_at', [$from, $to])->count(),
         ];
