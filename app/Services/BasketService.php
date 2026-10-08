@@ -9,6 +9,7 @@ use App\Models\Beneficiary;
 use App\Models\Campaign;
 use App\Models\Donor;
 use App\Models\Setting;
+use App\Services\NotificationService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -216,6 +217,42 @@ class BasketService
     }
 
     /** Run by the scheduler every five minutes. */
+    /**
+     * Tells a donor, once, that their hold is about to run out.
+     *
+     * It shares the five-minute schedule with releaseExpired(), so the basket
+     * carries the mark that the donor was told; without it they would hear
+     * the same thing every five minutes until the hold lapsed.
+     */
+    public function warnExpiring(?int $hoursBefore = null): int
+    {
+        $hoursBefore ??= (int) Setting::value(
+            'basket_warn_hours',
+            config('sanabel.setting_defaults.basket_warn_hours')
+        );
+
+        $expiring = Basket::query()
+            ->where('status', 'reserved')
+            ->whereNull('expiry_warned_at')
+            ->whereNotNull('reserved_until')
+            ->where('reserved_until', '>', now())
+            ->where('reserved_until', '<=', now()->addHours($hoursBefore))
+            ->with('donor')
+            ->get();
+
+        foreach ($expiring as $basket) {
+            app(NotificationService::class)->send(
+                $basket->donor?->user_id,
+                'basket_expiring',
+                ['expires_at' => $basket->reserved_until->translatedFormat('Y-m-d H:i')],
+            );
+
+            $basket->forceFill(['expiry_warned_at' => now()])->save();
+        }
+
+        return $expiring->count();
+    }
+
     public function releaseExpired(): int
     {
         $expired = Basket::query()

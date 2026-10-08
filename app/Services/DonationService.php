@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\DuplicateTransactionRef;
 use App\Models\Basket;
 use App\Models\Donation;
+use App\Models\User;
 use App\Models\DonationAllocation;
 use App\Models\Fund;
 use App\Support\DatabaseErrors;
@@ -44,7 +45,20 @@ class DonationService
         }
 
         try {
-            return DB::transaction(fn () => Donation::create($payload));
+            return DB::transaction(function () use ($payload) {
+                $donation = Donation::create($payload);
+
+                // Whoever verifies money hears that there is money to verify.
+                // The payload carries the transaction reference and nothing
+                // about the donor or the family (rule 10).
+                foreach (User::verifiers() as $verifierId) {
+                    $this->notifications->send($verifierId, 'donation_pending', [
+                        'ref' => $donation->transaction_ref,
+                    ]);
+                }
+
+                return $donation;
+            });
         } catch (QueryException $e) {
             // Rule 1 — the unique index is the guard; this only turns it into a message.
             if ($this->isUniqueViolation($e, 'transaction_ref')) {

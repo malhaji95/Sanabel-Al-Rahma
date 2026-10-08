@@ -14,9 +14,12 @@ class ReleaseExpiredBaskets extends Command
 
     public function handle(BasketService $baskets): int
     {
+        // Warn first, release second: a hold warned about in this same pass
+        // would otherwise be released before the donor ever heard of it.
+        $warned = $baskets->warnExpiring();
         $released = $baskets->releaseExpired();
 
-        $this->info("Released {$released} expired reservation(s).");
+        $this->info("Warned {$warned} donor(s); released {$released} expired reservation(s).");
 
         return self::SUCCESS;
     }

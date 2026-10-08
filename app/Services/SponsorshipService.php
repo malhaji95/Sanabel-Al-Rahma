@@ -97,6 +97,14 @@ class SponsorshipService
 
         foreach ($overdue as $installment) {
             $installment->forceFill(['status' => 'overdue'])->save();
+
+            // Late is not lapsed. A donor hears the first long before the
+            // second, while paying still keeps the sponsorship alive.
+            $this->notifications->send(
+                $installment->sponsorship?->donor?->user_id,
+                'sponsorship_overdue',
+                ['due_date' => $installment->due_date?->toDateString()],
+            );
         }
 
         $lapsed = 0;

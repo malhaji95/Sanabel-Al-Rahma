@@ -79,6 +79,22 @@ class User extends Authenticatable implements FilamentUser
         return app(PermissionService::class)->has($this, $permissionKey);
     }
 
+    /**
+     * The accounts that verify incoming money, so a donation that lands can
+     * say so. Read from the permission rows, not a list of role names, so a
+     * role granted verify_payment later is told without a code change.
+     *
+     * @return array<int,int>
+     */
+    public static function verifiers(): array
+    {
+        return static::query()
+            ->where('is_active', true)
+            ->whereHas('role.permissions', fn ($q) => $q->where('key', 'verify_payment'))
+            ->pluck('id')
+            ->all();
+    }
+
     public function requiresTwoFactor(): bool
     {
         return in_array($this->role?->key, self::TWO_FACTOR_ROLES, true);
