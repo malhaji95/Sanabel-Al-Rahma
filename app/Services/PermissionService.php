@@ -23,6 +23,10 @@ class PermissionService
         'verify_payment', 'manage_campaigns', 'manage_distribution', 'confirm_delivery',
         'manage_own_offers', 'verify_referral', 'publish_job_profile', 'manage_members',
         'file_complaint', 'handle_complaint', 'manage_cms', 'approve_content', 'manage_users',
+        // The disbursement path of 6 October, one key per step so no role
+        // quietly holds two of them.
+        'confirm_disbursement', 'raise_disbursement_order', 'approve_disbursement',
+        'execute_disbursement', 'reconcile_disbursement',
     ];
 
     public const READ_PERMISSIONS = [

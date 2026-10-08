@@ -38,6 +38,7 @@ class RoleAndPermissionSeeder extends Seeder
             'confirm_delivery' => 'area', 'file_complaint' => 'own', 'view_reports' => 'area',
         ],
         'case_officer' => [
+            'confirm_disbursement' => 'all',
             'create_case' => 'all', 'edit_draft' => 'all', 'upload_media' => 'all',
             'recommend' => 'all', 'view_full_case' => 'all', 'search_by_national_id' => 'all',
             'request_change' => 'all', 'confirm_delivery' => 'all', 'publish_job_profile' => 'all',
@@ -66,6 +67,7 @@ class RoleAndPermissionSeeder extends Seeder
         // amount, never the family behind it, so this role reads the masked
         // case and never the full one.
         'finance' => [
+            'reconcile_disbursement' => 'all',
             'verify_payment' => 'all', 'view_masked_case' => 'all',
             'view_reports' => 'all', 'file_complaint' => 'own',
         ],
@@ -102,6 +104,7 @@ class RoleAndPermissionSeeder extends Seeder
             'approve_case' => 'all', 'approve_change' => 'all', 'suspend_graduate' => 'all',
             'view_full_case' => 'all', 'view_masked_case' => 'all', 'search_by_national_id' => 'all',
             'handle_complaint' => 'all', 'manage_campaigns' => 'all', 'approve_content' => 'all',
+            'approve_disbursement' => 'all',
             'file_complaint' => 'own', 'view_reports' => 'all',
         ],
 
@@ -112,6 +115,7 @@ class RoleAndPermissionSeeder extends Seeder
             'approve_case' => 'all', 'approve_change' => 'all', 'suspend_graduate' => 'all',
             'view_full_case' => 'all', 'view_masked_case' => 'all', 'search_by_national_id' => 'all',
             'handle_complaint' => 'all', 'manage_campaigns' => 'all', 'approve_content' => 'all',
+            'approve_disbursement' => 'all',
             'file_complaint' => 'own', 'view_reports' => 'all',
         ],
 
@@ -126,6 +130,7 @@ class RoleAndPermissionSeeder extends Seeder
         // Reads the masked case only — paying a family needs the file number
         // and the amount, never the household behind them.
         'treasurer' => [
+            'raise_disbursement_order' => 'all', 'execute_disbursement' => 'all',
             'verify_payment' => 'all', 'view_masked_case' => 'all',
             'view_reports' => 'all', 'file_complaint' => 'own',
         ],
@@ -154,7 +159,7 @@ class RoleAndPermissionSeeder extends Seeder
 
         // Over the data system as a whole, and out of the assessment and the money.
         'data_manager' => [
-            'edit_draft' => 'all', 'merge_duplicates' => 'all', 'view_full_case' => 'all',
+            'confirm_disbursement' => 'all', 'edit_draft' => 'all', 'merge_duplicates' => 'all', 'view_full_case' => 'all',
             'view_masked_case' => 'all', 'search_by_national_id' => 'all',
             'approve_change' => 'all', 'file_complaint' => 'own', 'view_reports' => 'all',
         ],

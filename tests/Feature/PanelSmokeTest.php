@@ -11,6 +11,8 @@ use App\Filament\Resources\BeneficiaryResource;
 use App\Filament\Resources\CampaignResource;
 use App\Filament\Resources\ChangeRequestResource;
 use App\Filament\Resources\ComplaintResource;
+use App\Filament\Resources\DisbursementOrderResource;
+use App\Filament\Resources\DisbursementResource;
 use App\Filament\Resources\DistributionResource;
 use App\Filament\Resources\DonationResource;
 use App\Filament\Resources\JobProfileResource;
@@ -68,6 +70,8 @@ it('loads every admin resource list page', function (string $resource) {
     CampaignResource::class,
     SponsorshipResource::class,
     DistributionResource::class,
+    DisbursementResource::class,
+    DisbursementOrderResource::class,
     ChangeRequestResource::class,
     MemberResource::class,
     ProviderResource::class,
