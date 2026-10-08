@@ -373,6 +373,11 @@ class BeneficiaryResource extends Resource
         return $data;
     }
 
+    public static function getRelations(): array
+    {
+        return [BeneficiaryResource\RelationManagers\DocumentsRelationManager::class];
+    }
+
     public static function getPages(): array
     {
         return [

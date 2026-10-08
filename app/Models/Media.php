@@ -18,6 +18,20 @@ class Media extends Model
         'uploaded_by', 'created_by',
     ];
 
+    /**
+     * What a family's file may carry. A controlled list rather than free
+     * text, so the papers can be looked for later and a kind cannot quietly
+     * become a second description of the household.
+     */
+    public const FAMILY_KINDS = [
+        'identity', 'residence', 'lease', 'medical', 'debt', 'income', 'other',
+    ];
+
+    public function uploader()
+    {
+        return $this->belongsTo(User::class, 'uploaded_by');
+    }
+
     public function owner()
     {
         return $this->morphTo(__FUNCTION__, 'owner_type', 'owner_id');

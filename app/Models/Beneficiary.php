@@ -41,6 +41,12 @@ class Beneficiary extends Model
         'published_at', 'created_by',
     ];
 
+    /** The family's own papers: identity, lease, medical report, debt paper. */
+    public function documents()
+    {
+        return $this->morphMany(Media::class, 'owner', 'owner_type', 'owner_id');
+    }
+
     protected $hidden = ['national_id_encrypted', 'national_id_hash', 'phone_encrypted', 'wallet_encrypted'];
 
     protected function casts(): array
