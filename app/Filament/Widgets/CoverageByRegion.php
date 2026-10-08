@@ -36,7 +36,7 @@ class CoverageByRegion extends Widget
         $cases = Beneficiary::published()->with('region.parent.parent.parent')->get();
 
         // One query for the whole page rather than one per family.
-        $confirmedByCase = $coverage->confirmedForMonthForMany($cases);
+        $confirmedByCase = $coverage->fundedForMonthForMany($cases);
 
         $rows = [];
 

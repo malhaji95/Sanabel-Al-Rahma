@@ -145,6 +145,51 @@ class CoverageService
             ->all();
     }
 
+    /**
+     * Last month's surplus, carried into this one.
+     *
+     * The association decided on 6 October that a transfer larger than the
+     * month's need is not paid twice and is not lost: it carries to the next
+     * month. Only one month back, which is what they asked for, so this stays
+     * a single lookup rather than a walk down the whole history.
+     */
+    public function carriedInto(Beneficiary $beneficiary, ?Carbon $month = null): int
+    {
+        $month = ($month ?? $this->currentMonth())->copy()->startOfMonth();
+
+        return max(0, $this->confirmedForMonth($beneficiary, $month->copy()->subMonth())
+            - $this->needAmount($beneficiary));
+    }
+
+    /** What this month has to spend: its own money, plus last month's surplus. */
+    public function fundedForMonth(Beneficiary $beneficiary, ?Carbon $month = null): int
+    {
+        return $this->confirmedForMonth($beneficiary, $month) + $this->carriedInto($beneficiary, $month);
+    }
+
+    /**
+     * The same figure for many families, in two queries rather than two per
+     * family: this month's money, and last month's, which the carry is read
+     * from.
+     *
+     * @return array<int,int>
+     */
+    public function fundedForMonthForMany(iterable $beneficiaries, ?Carbon $month = null): array
+    {
+        $families = collect($beneficiaries);
+        $month = ($month ?? $this->currentMonth())->copy()->startOfMonth();
+
+        $thisMonth = $this->confirmedForMonthForMany($families, $month);
+        $lastMonth = $this->confirmedForMonthForMany($families, $month->copy()->subMonth());
+
+        return $families->mapWithKeys(function (Beneficiary $family) use ($thisMonth, $lastMonth) {
+            $id = $family->getKey();
+            $carried = max(0, ($lastMonth[$id] ?? 0) - $this->needAmount($family));
+
+            return [$id => ($thisMonth[$id] ?? 0) + $carried];
+        })->all();
+    }
+
     /** The funding target: what the family still needs each month before any money arrives. */
     public function needAmount(Beneficiary $beneficiary): int
     {
@@ -264,7 +309,7 @@ class CoverageService
         $month = ($month ?? $this->currentMonth())->copy()->startOfMonth();
 
         return max(0, $this->needAmount($beneficiary)
-            - ($confirmed ?? $this->confirmedForMonth($beneficiary, $month))
+            - ($confirmed ?? $this->fundedForMonth($beneficiary, $month))
             - $this->reservedAmount($beneficiary, $month));
     }
 
@@ -280,7 +325,7 @@ class CoverageService
         // One month's need against that month's money. Comparing it against
         // everything the family ever received was the bug this replaces: a
         // family funded once read as covered for ever.
-        $confirmed ??= $this->confirmedForMonth($beneficiary, $month);
+        $confirmed ??= $this->fundedForMonth($beneficiary, $month);
 
         return $need > 0 ? min(1.0, $confirmed / $need) : 1.0;
     }

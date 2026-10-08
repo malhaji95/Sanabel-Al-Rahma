@@ -3,6 +3,7 @@
 use App\Exceptions\ReservationUnavailable;
 use App\Models\Beneficiary;
 use App\Models\Donation;
+use App\Models\DonationAllocation;
 use App\Models\Donor;
 use App\Models\Setting;
 use App\Services\BasketService;
@@ -139,4 +140,96 @@ it('does not let this month and next month claim the same money', function () {
         ->and($coverage->remainingNeed($case->fresh(), month: Carbon::create(2026, 11, 1)))->toBe($need);
 
     Carbon::setTestNow();
+});
+
+/*
+ | A transfer larger than the month's need is neither paid twice nor lost: it
+ | carries into the next month (decision of 6 October).
+ */
+it('carries last month surplus into this month', function () {
+    $region = regionWithRates();
+    $admin = userWithRole('admin');
+    $coverage = app(CoverageService::class);
+
+    $family = publishedCase($region);
+    $need = $coverage->needAmount($family);
+
+    // Last month received half as much again as it needed.
+    $this->travelTo(now()->subMonthNoOverflow()->startOfMonth()->addDays(3));
+
+    $donation = app(DonationService::class)->record([
+        'donor_id' => Donor::factory()->create()->id,
+        'amount' => (int) ($need * 1.5),
+        'transaction_ref' => 'TRX-CARRY-1',
+    ]);
+    DonationAllocation::create([
+        'donation_id' => $donation->id,
+        'beneficiary_id' => $family->id,
+        'amount' => (int) ($need * 1.5),
+        'currency' => 'SYP',
+        'coverage_month' => now()->startOfMonth(),
+    ]);
+    app(DonationService::class)->verify($donation, $admin->id);
+
+    // Last month was covered, and no more than covered.
+    expect($coverage->coveragePercent($family->fresh()))->toBe(100);
+
+    $this->travelBack();
+    $family = $family->fresh();
+
+    $carried = (int) ($need * 1.5) - $need;
+
+    expect($coverage->carriedInto($family))->toBe($carried)
+        // This month starts with the surplus already in hand.
+        ->and($coverage->fundedForMonth($family))->toBe($carried)
+        ->and($coverage->confirmedForMonth($family))->toBe(0)
+        // And the family needs that much less from a new donor.
+        ->and($coverage->remainingNeed($family))->toBe($need - $carried);
+});
+
+it('carries nothing when last month was not covered', function () {
+    $region = regionWithRates();
+    $coverage = app(CoverageService::class);
+    $family = publishedCase($region);
+
+    expect($coverage->carriedInto($family))->toBe(0)
+        ->and($coverage->fundedForMonth($family))->toBe(0);
+});
+
+it('reads the same carry in the batch as one family at a time', function () {
+    $region = regionWithRates();
+    $admin = userWithRole('admin');
+    $coverage = app(CoverageService::class);
+
+    $families = collect([publishedCase($region), publishedCase($region)]);
+
+    $this->travelTo(now()->subMonthNoOverflow()->startOfMonth()->addDays(2));
+
+    foreach ($families as $i => $family) {
+        $amount = $coverage->needAmount($family) + 7_000;
+
+        $donation = app(DonationService::class)->record([
+            'donor_id' => Donor::factory()->create()->id,
+            'amount' => $amount,
+            'transaction_ref' => 'TRX-CARRY-B'.$i,
+        ]);
+        DonationAllocation::create([
+            'donation_id' => $donation->id,
+            'beneficiary_id' => $family->id,
+            'amount' => $amount,
+            'currency' => 'SYP',
+            'coverage_month' => now()->startOfMonth(),
+        ]);
+        app(DonationService::class)->verify($donation, $admin->id);
+    }
+
+    $this->travelBack();
+    $families = $families->map->fresh();
+
+    $batch = $coverage->fundedForMonthForMany($families);
+
+    foreach ($families as $family) {
+        expect($batch[$family->getKey()])->toBe($coverage->fundedForMonth($family))
+            ->and($batch[$family->getKey()])->toBe(7_000);
+    }
 });

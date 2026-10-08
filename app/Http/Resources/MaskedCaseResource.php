@@ -60,7 +60,7 @@ class MaskedCaseResource extends JsonResource
         $members = $case->members;
 
         // One figure for the three coverage numbers on the card.
-        $confirmed = $this->confirmed ?? $coverage->confirmedForMonth($case);
+        $confirmed = $this->confirmed ?? $coverage->fundedForMonth($case);
 
         return [
             'file_number' => $case->file_number,

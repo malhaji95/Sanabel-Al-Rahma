@@ -79,7 +79,7 @@ class RankingService
         }
 
         $families = $query->get();
-        $confirmed = $this->coverage->confirmedForMonthForMany($families);
+        $confirmed = $this->coverage->fundedForMonthForMany($families);
 
         return $families
             ->map(fn (Beneficiary $b) => [
