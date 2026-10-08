@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Models\Beneficiary;
+use App\Models\Complaint;
 use App\Models\Disbursement;
 use App\Models\DisbursementOrder;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +25,10 @@ use Illuminate\Support\Facades\DB;
  */
 class DisbursementService
 {
-    public function __construct(private readonly CoverageService $coverage) {}
+    public function __construct(
+        private readonly CoverageService $coverage,
+        private readonly NotificationService $notifications,
+    ) {}
 
     /**
      * A payment owed to a family, confirmed by the case officer.
@@ -207,6 +212,9 @@ class DisbursementService
             'executed_at' => now(),
             'transfer_ref' => $transferRef,
             'proof_media_id' => $proofMediaId,
+            // From here the family has their say, for as many days as the
+            // association sets. Silence is not consent.
+            'confirm_due_at' => now()->addDays(self::confirmDays()),
         ])->save();
 
         $this->settle($disbursement->order?->refresh());
@@ -231,7 +239,7 @@ class DisbursementService
     /** The accountant ties the executed line to the bank. */
     public function reconcile(Disbursement $disbursement, User $accountant): Disbursement
     {
-        if ($disbursement->status !== 'executed') {
+        if (! in_array($disbursement->status, ['executed', 'received'], true)) {
             throw new \RuntimeException(__('sanabel.disbursement.execute_before_reconciling'));
         }
 
@@ -244,6 +252,111 @@ class DisbursementService
         return $disbursement->refresh();
     }
 
+    /** How many days the household has to answer. Data, not a figure here. */
+    public static function confirmDays(): int
+    {
+        return (int) Setting::value(
+            'receipt_confirm_days',
+            config('sanabel.setting_defaults.receipt_confirm_days')
+        );
+    }
+
+    /** The household says the money arrived, and the payment closes. */
+    public function confirmReceipt(Disbursement $disbursement, User $family): Disbursement
+    {
+        $this->guardTheirOwn($disbursement, $family);
+
+        if (! $disbursement->awaitsBeneficiary()) {
+            throw new \RuntimeException(__('sanabel.disbursement.not_awaiting_receipt'));
+        }
+
+        $disbursement->forceFill([
+            'status' => 'received',
+            'beneficiary_responded_at' => now(),
+        ])->save();
+
+        return $disbursement->refresh();
+    }
+
+    /**
+     * The household says it did not arrive. That is an objection, not a note:
+     * it opens a complaint with a reference number and goes back to finance.
+     */
+    public function disputeReceipt(Disbursement $disbursement, User $family, string $reasonAr): Disbursement
+    {
+        $this->guardTheirOwn($disbursement, $family);
+
+        if (! $disbursement->awaitsBeneficiary()) {
+            throw new \RuntimeException(__('sanabel.disbursement.not_awaiting_receipt'));
+        }
+
+        return DB::transaction(function () use ($disbursement, $family, $reasonAr) {
+            $complaint = Complaint::create([
+                'reference_no' => 'CMP-'.now()->format('y').'-'.str_pad((string) (Complaint::count() + 1), 5, '0', STR_PAD_LEFT),
+                'submitted_by' => $family->getKey(),
+                'subject_ar' => __('sanabel.disbursement.dispute_subject'),
+                'body_ar' => $reasonAr,
+                'category' => 'financial',
+                'status' => 'open',
+            ]);
+
+            $disbursement->forceFill([
+                'status' => 'disputed',
+                'beneficiary_responded_at' => now(),
+                'dispute_reason_ar' => $reasonAr,
+                'complaint_id' => $complaint->getKey(),
+            ])->save();
+
+            $this->tellFinance($disbursement, $complaint->reference_no);
+
+            return $disbursement->refresh();
+        });
+    }
+
+    /**
+     * Silence is not confirmation. A payment nobody answered for inside the
+     * window goes back to the finance desk the same way an objection does.
+     */
+    public function chaseUnconfirmed(): int
+    {
+        $overdue = Disbursement::query()
+            ->where('status', 'executed')
+            ->whereNotNull('confirm_due_at')
+            ->where('confirm_due_at', '<', now())
+            ->get();
+
+        foreach ($overdue as $disbursement) {
+            $disbursement->forceFill([
+                'status' => 'disputed',
+                'dispute_reason_ar' => __('sanabel.disbursement.no_answer_in_window', [
+                    'days' => self::confirmDays(),
+                ]),
+            ])->save();
+
+            $this->tellFinance($disbursement, null);
+        }
+
+        return $overdue->count();
+    }
+
+    /** A payment belongs to one household, and only they answer for it. */
+    private function guardTheirOwn(Disbursement $disbursement, User $family): void
+    {
+        if ($disbursement->beneficiary?->user_id !== $family->getKey()) {
+            throw new \RuntimeException(__('sanabel.disbursement.not_your_payment'));
+        }
+    }
+
+    private function tellFinance(Disbursement $disbursement, ?string $reference): void
+    {
+        foreach (User::verifiers() as $verifierId) {
+            $this->notifications->send($verifierId, 'disbursement_disputed', array_filter([
+                'file_number' => $disbursement->beneficiary?->file_number,
+                'reference_no' => $reference,
+            ]));
+        }
+    }
+
     /** Executing while any line is still waiting; settled once none is. */
     public function settle(?DisbursementOrder $order): ?DisbursementOrder
     {
@@ -251,7 +364,7 @@ class DisbursementService
             return null;
         }
 
-        $waiting = $order->disbursements()->where('status', 'approved')->exists();
+        $waiting = $order->disbursements()->whereIn('status', ['approved'])->exists();
 
         $order->forceFill([
             'status' => $waiting ? 'executing' : 'settled',

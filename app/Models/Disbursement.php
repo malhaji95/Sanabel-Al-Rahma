@@ -22,11 +22,22 @@ class Disbursement extends Model
         'approved_at' => 'datetime',
         'executed_at' => 'datetime',
         'reconciled_at' => 'datetime',
+        'confirm_due_at' => 'datetime',
+        'beneficiary_responded_at' => 'datetime',
     ];
 
     public const STATUSES = [
-        'confirmed', 'in_order', 'approved', 'rejected', 'executed', 'failed', 'reconciled',
+        'confirmed', 'in_order', 'approved', 'rejected', 'executed',
+        // What the family themselves said about it.
+        'received', 'disputed',
+        'failed', 'reconciled',
     ];
+
+    /** Transferred, and waiting on the household to say it arrived. */
+    public function awaitsBeneficiary(): bool
+    {
+        return $this->status === 'executed';
+    }
 
     public function beneficiary(): BelongsTo
     {
@@ -46,6 +57,11 @@ class Disbursement extends Model
     public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function complaint(): BelongsTo
+    {
+        return $this->belongsTo(Complaint::class);
     }
 
     public function executedBy(): BelongsTo

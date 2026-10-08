@@ -26,6 +26,10 @@ return [
         'basket_hold_hours' => 24,
         // How long before a hold runs out the donor hears about it.
         'basket_warn_hours' => 6,
+        // How long a household has to say a payment arrived before it goes
+        // back to the finance desk. Proposed; the association may change it
+        // from the settings screen without a deploy.
+        'receipt_confirm_days' => 7,
         // Days before the current month ends when the next month opens for
         // funding, so a family is not left with a gap at the turn of the month.
         'next_month_opens_days_before' => 7,

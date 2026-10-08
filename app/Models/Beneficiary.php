@@ -33,13 +33,24 @@ class Beneficiary extends Model
     ];
 
     protected $fillable = [
-        'file_number', 'national_id_encrypted', 'national_id_hash', 'first_name', 'father_name',
+        'file_number', 'user_id', 'national_id_encrypted', 'national_id_hash', 'first_name', 'father_name',
         'family_name', 'phone_encrypted', 'region_id', 'association_id', 'marital_status', 'wallet_encrypted',
         'support_type', 'zakat_category', 'is_shareable', 'previous_aid_ar', 'urgency_deadline_at', 'documented_debt', 'status', 'last_assessment_at', 'next_assessment_due_at', 'source',
         'merged_into_id', 'duplicate_review_flag', 'approved_by', 'approved_at', 'reject_reason_ar',
         'field_verified_by', 'field_verified_at', 'endorsed_by', 'endorsed_at',
         'published_at', 'created_by',
     ];
+
+    /** The household's own account, which sees this file and no other. */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function disbursements()
+    {
+        return $this->hasMany(Disbursement::class);
+    }
 
     /** The family's own papers: identity, lease, medical report, debt paper. */
     public function documents()
