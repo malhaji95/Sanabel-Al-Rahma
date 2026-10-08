@@ -11,6 +11,7 @@ use App\Filament\Resources\BeneficiaryResource;
 use App\Filament\Resources\CampaignResource;
 use App\Filament\Resources\ChangeRequestResource;
 use App\Filament\Resources\ComplaintResource;
+use App\Filament\Resources\AuditLogResource;
 use App\Filament\Resources\DisbursementOrderResource;
 use App\Filament\Resources\DisbursementResource;
 use App\Filament\Resources\DistributionResource;
@@ -87,6 +88,7 @@ it('loads every admin resource list page', function (string $resource) {
     PostResource::class,
     BannerResource::class,
     UserResource::class,
+    AuditLogResource::class,
 ]);
 
 it('loads every admin resource create page', function (string $resource) {
