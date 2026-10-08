@@ -4,46 +4,74 @@ namespace App\Filament\Widgets;
 
 use App\Models\Beneficiary;
 use App\Services\CoverageService;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Filament\Widgets\TableWidget as BaseWidget;
+use Filament\Widgets\Widget;
 
-/** Coverage per region, so an admin can see where the money is not reaching. */
-class CoverageByRegion extends BaseWidget
+/**
+ * Coverage per region, added up.
+ *
+ * This widget used to carry the right heading over the wrong thing: a list of
+ * individual files, one row each, under the title "coverage by region". The
+ * association read it and said so. What it was asked for is the sum: for every
+ * area, how many families, what they need between them, what has reached them
+ * this month, and the percentage that leaves.
+ *
+ * Families hang off the deepest node of the region tree — a village or a town —
+ * so each one is rolled up to its area, and to its governorate when it has no
+ * area above it. The month is the one the coverage service considers current.
+ */
+class CoverageByRegion extends Widget
 {
     protected static ?int $sort = 2;
 
     protected int|string|array $columnSpan = 'full';
 
-    public function getTableHeading(): string
-    {
-        return __('sanabel.dashboard.coverage_by_region');
-    }
+    protected static string $view = 'filament.widgets.coverage-by-region';
 
-    public function table(Table $table): Table
+    /** @return array<int,array<string,mixed>> */
+    public function getRows(): array
     {
-        return $table
-            ->query(Beneficiary::published()->with('region'))
-            ->columns([
-                Tables\Columns\TextColumn::make('file_number')->label(__('sanabel.beneficiary.file_number'))->searchable(),
-                Tables\Columns\TextColumn::make('region.name_ar')->label(__('sanabel.beneficiary.region'))->sortable(),
-                Tables\Columns\TextColumn::make('support_type')
-                    ->label(__('sanabel.beneficiary.support_type'))
-                    ->formatStateUsing(fn (string $state) => __('sanabel.masked.need_type.'.$state)),
-                Tables\Columns\TextColumn::make('coverage')
-                    ->label(__('sanabel.beneficiary.coverage'))
-                    ->state(fn (Beneficiary $record) => app(CoverageService::class)->coveragePercent($record).'%')
-                    ->badge()
-                    ->color(fn (Beneficiary $record) => match (true) {
-                        app(CoverageService::class)->coverageRatio($record) >= 1.0 => 'success',
-                        app(CoverageService::class)->coverageRatio($record) > 0 => 'warning',
-                        default => 'danger',
-                    }),
-                Tables\Columns\TextColumn::make('next_assessment_due_at')
-                    ->label(__('sanabel.beneficiary.next_assessment'))
-                    ->date()
-                    ->color(fn ($state) => $state && $state->isPast() ? 'danger' : null),
-            ])
-            ->defaultPaginationPageOption(10);
+        $coverage = app(CoverageService::class);
+
+        // The region scope has already narrowed this to what the user may see.
+        $cases = Beneficiary::published()->with('region.parent.parent.parent')->get();
+
+        // One query for the whole page rather than one per family.
+        $confirmedByCase = $coverage->confirmedForMonthForMany($cases);
+
+        $rows = [];
+
+        foreach ($cases as $case) {
+            $region = $case->region?->ancestorOfType('area')
+                ?? $case->region?->ancestorOfType('governorate')
+                ?? $case->region;
+
+            $key = $region?->getKey() ?? 0;
+
+            $rows[$key] ??= [
+                'region' => $region?->name_ar ?? __('sanabel.dashboard.region_unknown'),
+                'families' => 0,
+                'need' => 0,
+                'paid' => 0,
+            ];
+
+            $rows[$key]['families']++;
+            $rows[$key]['need'] += $coverage->needAmount($case);
+            // Never more than the need: what arrived beyond it is carried to
+            // the next month, so counting it here would read as over-coverage.
+            $rows[$key]['paid'] += min(
+                $confirmedByCase[$case->getKey()] ?? 0,
+                $coverage->needAmount($case),
+            );
+        }
+
+        foreach ($rows as $key => $row) {
+            $rows[$key]['percent'] = $row['need'] > 0
+                ? (int) round($row['paid'] / $row['need'] * 100)
+                : 0;
+        }
+
+        usort($rows, fn (array $a, array $b) => $a['percent'] <=> $b['percent']);
+
+        return $rows;
     }
 }

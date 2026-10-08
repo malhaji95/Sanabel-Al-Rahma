@@ -2,9 +2,12 @@
 
 namespace App\Filament\Widgets;
 
+use App\Models\Basket;
 use App\Models\Beneficiary;
 use App\Models\Donation;
+use App\Models\DistributionItem;
 use App\Models\Setting;
+use App\Models\Sponsorship;
 use App\Models\SponsorshipInstallment;
 use App\Services\CaseService;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
@@ -80,6 +83,29 @@ class OverviewStats extends BaseWidget
             Stat::make(__('sanabel.dashboard.overdue_installments'),
                 SponsorshipInstallment::where('status', 'overdue')->count())
                 ->color('danger'),
+
+            // Money a donor has put a hold on but not yet transferred. It is
+            // not income and it is not free: it is the third state, and the
+            // association asked to see it rather than infer it.
+            Stat::make(__('sanabel.dashboard.reserved_now'),
+                number_format((int) Basket::where('status', 'reserved')
+                    ->where('reserved_until', '>', now())
+                    ->withSum('items', 'amount')
+                    ->get()
+                    ->sum('items_sum_amount')))
+                ->description(__('sanabel.dashboard.reserved_help'))
+                ->color('warning'),
+
+            Stat::make(__('sanabel.dashboard.active_sponsorships'),
+                Sponsorship::where('status', 'active')->count())
+                ->color('success'),
+
+            // A distribution line that was attempted and did not land. Each
+            // one carries its documented reason; this is only the count.
+            Stat::make(__('sanabel.dashboard.failed_operations'),
+                DistributionItem::where('status', 'failed')->count())
+                ->description(__('sanabel.dashboard.failed_help'))
+                ->color(DistributionItem::where('status', 'failed')->exists() ? 'danger' : 'success'),
         ];
     }
 }
