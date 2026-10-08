@@ -112,6 +112,7 @@ class DuplicateService
         if (! $case) {
             return [
                 'registered' => false,
+                'assessment_state' => 'none',
                 'has_active_assessment' => false,
                 'supported_this_period' => false,
                 'coverage' => 'none',
@@ -121,10 +122,21 @@ class DuplicateService
         $assessment = $case->assessments()->where('status', 'approved')->latest('id')->first();
         $coverage = app(CoverageService::class);
 
+        // A partner association asked to tell "we assessed them and it ran
+        // out" from "we never assessed them at all" (decision of 6 October).
+        // The two mean different things on their side: the first says come
+        // back to us, the second says start from the beginning.
+        $state = match (true) {
+            $assessment === null => 'none',
+            ! $assessment->valid_until || $assessment->valid_until->isFuture() => 'active',
+            default => 'expired',
+        };
+
         return [
             'registered' => true,
-            'has_active_assessment' => $assessment !== null
-                && (! $assessment->valid_until || $assessment->valid_until->isFuture()),
+            'assessment_state' => $state,
+            // Kept beside the new value: partner systems already read it.
+            'has_active_assessment' => $state === 'active',
             'supported_this_period' => $coverage->confirmedForMonth($case) > 0,
             'coverage' => $coverage->coverageLabel($case),
         ];

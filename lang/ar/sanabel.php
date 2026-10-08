@@ -165,6 +165,10 @@ return [
     'coordination' => [
         'registered' => 'مسجل لدى الجمعية',
         'has_active_assessment' => 'لديه تقييم ساري',
+        'assessment_state' => 'حالة التقييم',
+        'assessment_none' => 'لم يُقيَّم بعد',
+        'assessment_active' => 'تقييم ضمن مدته',
+        'assessment_expired' => 'تقييم انتهت مدته',
         'supported_this_period' => 'مدعوم لهذا النوع خلال الفترة',
         'coverage' => 'نسبة التغطية',
         'coverage_none' => 'لا يوجد',

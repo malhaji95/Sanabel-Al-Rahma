@@ -185,3 +185,36 @@ it('starts the reassessment clock on the path the panel actually uses', function
     expect(app(CaseService::class)->flagOverdueReassessments())->toBe(1)
         ->and($case->fresh()->status)->toBe('needs_reassessment');
 });
+
+/*
+ | The limited lookup now tells a partner association three things apart, not
+ | two: never assessed, assessed and running, assessed and run out (decision
+ | of 6 October, with the contract change agreed).
+ */
+it('tells never assessed apart from assessed and expired', function () {
+    $region = regionWithRates();
+    $lookup = fn (string $id) => app(App\Services\DuplicateService::class)->coordinationLookup($id);
+
+    // Nobody at all.
+    expect($lookup('99-does-not-exist')['assessment_state'])->toBe('none');
+
+    $case = familyOf($region, adults: 1, children: 1);
+    $nationalId = $case->national_id_encrypted;
+
+    // On file, never assessed.
+    expect($lookup($nationalId)['assessment_state'])->toBe('none')
+        ->and($lookup($nationalId)['registered'])->toBeTrue();
+
+    app(App\Services\AssessmentService::class)->create($case, status: 'approved');
+    $assessment = $case->assessments()->latest('id')->first();
+    $assessment->update(['valid_until' => now()->addMonths(3)]);
+
+    expect($lookup($nationalId)['assessment_state'])->toBe('active')
+        // The old boolean still answers, for a partner already reading it.
+        ->and($lookup($nationalId)['has_active_assessment'])->toBeTrue();
+
+    $assessment->update(['valid_until' => now()->subDay()]);
+
+    expect($lookup($nationalId)['assessment_state'])->toBe('expired')
+        ->and($lookup($nationalId)['has_active_assessment'])->toBeFalse();
+});
