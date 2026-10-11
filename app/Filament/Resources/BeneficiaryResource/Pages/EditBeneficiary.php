@@ -79,12 +79,18 @@ class EditBeneficiary extends EditRecord
                         ->required(),
                 ])
                 ->action(function (array $data) {
-                    app(CaseService::class)->requestChange(
-                        $this->record,
-                        auth()->user(),
-                        ['wallet_encrypted' => $data['wallet_encrypted']],
-                        $data['reason_ar'],
-                    );
+                    try {
+                        app(CaseService::class)->requestChange(
+                            $this->record,
+                            auth()->user(),
+                            ['wallet_encrypted' => $data['wallet_encrypted']],
+                            $data['reason_ar'],
+                        );
+                    } catch (\RuntimeException $e) {
+                        Notification::make()->title($e->getMessage())->danger()->send();
+
+                        return;
+                    }
 
                     Notification::make()->title(__('sanabel.cases.payment_change_requested'))->success()->send();
                 }),

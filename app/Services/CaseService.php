@@ -200,6 +200,25 @@ class CaseService
         string $reasonAr,
         ?Model $target = null,
     ): ChangeRequest {
+        /*
+         | T-61 (AUTH-03) — refused here, where the request is raised, rather
+         | than at approval. The payload was any array at all and an approved
+         | one is filled straight into the model, so a request whose stated
+         | reason was "a phone number" could carry status and published_at and
+         | take a draft file past every step of the approval chain.
+         */
+        $forbidden = ChangeRequest::fieldsNotChangeable($payload);
+
+        if ($forbidden !== []) {
+            throw new \RuntimeException(__('sanabel.cases.field_not_changeable', [
+                'fields' => implode('، ', $forbidden),
+            ]));
+        }
+
+        if ($payload === []) {
+            throw new \RuntimeException(__('sanabel.cases.change_needs_a_field'));
+        }
+
         $target ??= $this->resolveChangeTarget($case, $payload);
 
         return ChangeRequest::create([
@@ -256,8 +275,23 @@ class CaseService
         return DB::transaction(function () use ($request, $reviewer) {
             $model = $request->entity_type::findOrFail($request->entity_id);
 
+            $payload = $request->payload_json;
+
+            /*
+             | The hash is what rule 11 matches a duplicate on, and it is not a
+             | field a request may name. Changing the number without it left
+             | duplicate detection silently pointing at the old one.
+             */
+            if ($model instanceof Beneficiary && array_key_exists('national_id_encrypted', $payload)) {
+                $payload['national_id_hash'] = Beneficiary::hashNationalId(
+                    (string) $payload['national_id_encrypted']
+                );
+            }
+
             // The one path allowed to write a live file's payment details.
-            Beneficiary::applyingApprovedChange(fn () => $model->fill($request->payload_json)->save());
+            // fill(), not forceFill(): the allowlist above is the gate, and
+            // each model's fillable list stays as the second one.
+            Beneficiary::applyingApprovedChange(fn () => $model->fill($payload)->save());
 
             $request->forceFill([
                 'status' => 'approved',

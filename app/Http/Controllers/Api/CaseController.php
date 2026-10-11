@@ -108,9 +108,15 @@ class CaseController extends Controller
             'reason_ar' => ['required', 'string', 'max:500'],
         ]);
 
-        $changeRequest = $this->cases->requestChange(
-            $case, $request->user(), $validated['payload'], $validated['reason_ar']
-        );
+        try {
+            $changeRequest = $this->cases->requestChange(
+                $case, $request->user(), $validated['payload'], $validated['reason_ar']
+            );
+        } catch (\RuntimeException $e) {
+            // T-61 — a payload naming a field no request may carry. The
+            // service holds the list, so this route cannot drift from it.
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
         return response()->json(['id' => $changeRequest->id, 'is_material' => $changeRequest->is_material], 201);
     }
