@@ -33,7 +33,7 @@ class Beneficiary extends Model
     ];
 
     protected $fillable = [
-        'file_number', 'user_id', 'national_id_encrypted', 'national_id_hash', 'first_name', 'father_name',
+        'file_number', 'legacy_file_no', 'user_id', 'national_id_encrypted', 'national_id_hash', 'first_name', 'father_name',
         'family_name', 'phone_encrypted', 'region_id', 'association_id', 'marital_status', 'wallet_encrypted',
         'support_type', 'zakat_category', 'is_shareable', 'previous_aid_ar',
         // The association's own social survey, carried into the file.

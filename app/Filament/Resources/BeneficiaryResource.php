@@ -52,6 +52,14 @@ class BeneficiaryResource extends Resource
                         ->unique(ignoreRecord: true)
                         ->default(fn () => 'F-'.now()->format('y').'-'.str_pad((string) (Beneficiary::withoutGlobalScopes()->max('id') + 1), 6, '0', STR_PAD_LEFT)),
 
+                    // T-50 — the number this family carried in the old system.
+                    // Unique, so the same old file cannot be imported twice.
+                    Forms\Components\TextInput::make('legacy_file_no')
+                        ->label(__('sanabel.beneficiary.legacy_file_no'))
+                        ->helperText(__('sanabel.beneficiary.legacy_file_no_help'))
+                        ->maxLength(64)
+                        ->unique(ignoreRecord: true),
+
                     Forms\Components\TextInput::make('national_id_encrypted')
                         ->label(__('sanabel.beneficiary.national_id'))
                         ->required()
@@ -301,6 +309,8 @@ class BeneficiaryResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('file_number')->label(__('sanabel.beneficiary.file_number'))->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('legacy_file_no')->label(__('sanabel.beneficiary.legacy_file_no'))
+                    ->searchable()->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('family_name')->label(__('sanabel.beneficiary.family_name'))->searchable(),
                 Tables\Columns\TextColumn::make('region.name_ar')->label(__('sanabel.beneficiary.region'))->sortable(),
                 Tables\Columns\TextColumn::make('support_type')
