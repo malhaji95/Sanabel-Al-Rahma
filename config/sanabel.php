@@ -13,6 +13,37 @@ return [
     'media_disk' => env('SANABEL_MEDIA_DISK', 'media_local'),
 
     /*
+     | T-58 — FILE-01. What may be uploaded at all, and how an upload is held.
+     |
+     | The stored extension is taken from the key of this map, never from the
+     | name the browser sent: a file called paper.php that sniffs as a JPEG is
+     | stored as a JPEG, and one that sniffs as anything not listed here is
+     | refused outright. HEIC is on the list because a delegate photographs a
+     | document on an iPhone.
+     */
+    'media' => [
+        'max_bytes' => (int) env('SANABEL_MEDIA_MAX_BYTES', 8 * 1024 * 1024),
+
+        'allowed' => [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            'image/heic' => 'heic',
+            'image/heif' => 'heif',
+            'application/pdf' => 'pdf',
+        ],
+
+        /*
+         | FILE-02 asks for an antivirus scan, and no scanner is wired to this
+         | system: that needs a service the association has to provide. Turning
+         | this on makes every new upload land as `pending` and withholds it
+         | until something marks it clean, so the gate is ready the day they
+         | have one. Off, an upload that passes the checks above is served.
+         */
+        'require_external_scan' => env('SANABEL_MEDIA_REQUIRE_SCAN', false),
+    ],
+
+    /*
      | The relation values that count as an orphan for the V factor. A domain
      | value, so it is data rather than a literal buried in the score service.
      */

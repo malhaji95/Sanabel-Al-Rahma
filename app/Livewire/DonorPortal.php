@@ -84,7 +84,9 @@ class DonorPortal extends Component
                 'status_label' => __('sanabel.donations.'.$donation->status),
                 'designation' => $donation->designation,
                 // A short-lived signed link, so the file itself stays private.
-                'transfer_record' => $donation->transferRecord
+                // A record still waiting on its checks (T-58) simply does not
+                // appear: the donor's own page is not the place to explain it.
+                'transfer_record' => $donation->transferRecord?->isServable()
                     ? app(MediaService::class)->temporaryUrl($donation->transferRecord, 15)
                     : null,
                 'designation_label' => __('sanabel.designation.'.$donation->designation),

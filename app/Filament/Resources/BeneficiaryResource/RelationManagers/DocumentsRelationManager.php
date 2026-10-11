@@ -43,6 +43,17 @@ class DocumentsRelationManager extends RelationManager
                         ? $state
                         : __('sanabel.document.kinds.'.$state)),
                 Tables\Columns\TextColumn::make('mime')->label(__('sanabel.document.type'))->toggleable(),
+                // T-58 — a paper that has not cleared its checks is visible on
+                // the list and cannot be opened.
+                Tables\Columns\TextColumn::make('scan_status')
+                    ->label(__('sanabel.document.scan_status'))
+                    ->badge()
+                    ->color(fn (string $state) => match ($state) {
+                        Media::CLEAN => 'success',
+                        Media::REJECTED => 'danger',
+                        default => 'warning',
+                    })
+                    ->formatStateUsing(fn (string $state) => __('sanabel.document.scan_statuses.'.$state)),
                 Tables\Columns\TextColumn::make('size_bytes')
                     ->label(__('sanabel.document.size'))
                     ->formatStateUsing(fn (?int $state) => $state ? number_format($state / 1024).' KB' : '—'),
@@ -74,12 +85,20 @@ class DocumentsRelationManager extends RelationManager
                             ->helperText(__('sanabel.document.file_help')),
                     ])
                     ->action(function (array $data) {
-                        app(MediaService::class)->store(
-                            $data['file'],
-                            $this->getOwnerRecord(),
-                            $data['kind'],
-                            auth()->user(),
-                        );
+                        try {
+                            app(MediaService::class)->store(
+                                $data['file'],
+                                $this->getOwnerRecord(),
+                                $data['kind'],
+                                auth()->user(),
+                            );
+                        } catch (\RuntimeException $e) {
+                            // The type and size gate speaks Arabic; show what
+                            // it said rather than a 500.
+                            Notification::make()->title($e->getMessage())->danger()->send();
+
+                            return;
+                        }
 
                         Notification::make()->title(__('sanabel.document.uploaded'))->success()->send();
                     }),
@@ -88,6 +107,7 @@ class DocumentsRelationManager extends RelationManager
                 Tables\Actions\Action::make('open')
                     ->label(__('sanabel.document.open'))
                     ->icon('heroicon-o-eye')
+                    ->visible(fn (Media $record) => $record->isServable())
                     ->url(fn (Media $record) => app(MediaService::class)->temporaryUrl($record))
                     ->openUrlInNewTab(),
 

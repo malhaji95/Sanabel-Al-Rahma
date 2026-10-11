@@ -151,8 +151,15 @@ class DonationResource extends Resource
                             ->required(),
                     ])
                     ->action(function (Donation $record, array $data) {
-                        $media = app(MediaService::class)
-                            ->store($data['file'], $record, 'transfer_record', auth()->user());
+                        try {
+                            $media = app(MediaService::class)
+                                ->store($data['file'], $record, 'transfer_record', auth()->user());
+                        } catch (\RuntimeException $e) {
+                            // T-58 — the type and size gate speaks Arabic.
+                            Notification::make()->title($e->getMessage())->danger()->send();
+
+                            return;
+                        }
 
                         $record->forceFill(['transfer_record_media_id' => $media->getKey()])->save();
 

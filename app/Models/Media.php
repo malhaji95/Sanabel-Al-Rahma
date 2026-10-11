@@ -15,8 +15,26 @@ class Media extends Model
 
     protected $fillable = [
         'owner_type', 'owner_id', 'kind', 'storage_key', 'visibility', 'mime', 'size_bytes',
-        'uploaded_by', 'created_by',
+        'scan_status', 'scanned_at', 'scan_note', 'uploaded_by', 'created_by',
     ];
+
+    /*
+     | T-58 (FILE-01) — where an upload stands.
+     |
+     |   clean    passed every check the system can run, and may be served
+     |   pending  stored, waiting on a scanner outside the system
+     |   rejected failed a check; kept, because rule 3 forbids erasing anything
+     */
+    public const CLEAN = 'clean';
+
+    public const PENDING = 'pending';
+
+    public const REJECTED = 'rejected';
+
+    protected function casts(): array
+    {
+        return ['scanned_at' => 'datetime'];
+    }
 
     /**
      * What a family's file may carry. A controlled list rather than free
@@ -37,9 +55,19 @@ class Media extends Model
         return $this->morphTo(__FUNCTION__, 'owner_type', 'owner_id');
     }
 
+    /** Only a file that has cleared its checks is ever handed out. */
+    public function isServable(): bool
+    {
+        return $this->scan_status === self::CLEAN;
+    }
+
     /** Private bucket only — there is no public media URL. */
     public function signedUrl(int $minutes = 5): string
     {
+        if (! $this->isServable()) {
+            throw new \RuntimeException(__('sanabel.document.not_cleared'));
+        }
+
         return Storage::disk(config('sanabel.media_disk'))
             ->temporaryUrl($this->storage_key, now()->addMinutes($minutes));
     }
