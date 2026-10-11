@@ -8,6 +8,7 @@ use App\Models\Region;
 use App\Models\User;
 use App\Services\CoverageService;
 use App\Services\DependencyRules;
+use App\Services\RankingService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -446,6 +447,228 @@ class BeneficiaryResource extends Resource
                                 ->columnSpanFull(),
 
                             Forms\Components\Textarea::make('description_ar')->label(__('sanabel.health.description'))->columnSpanFull(),
+                        ])->columns(2),
+                ]),
+
+                // T-55 — what the family owns and what they owe. Each row is
+                // the record of what was said; the two questions the
+                // association answered on 11 October are asked here, and
+                // nothing is inferred from a row without them.
+                Forms\Components\Wizard\Step::make(__('sanabel.beneficiary.step_assets'))->schema([
+                    Forms\Components\Repeater::make('assets')
+                        ->relationship()
+                        ->label(__('sanabel.asset.plural'))
+                        ->schema([
+                            Forms\Components\Select::make('kind')
+                                ->label(__('sanabel.asset.kind'))
+                                ->options(__('sanabel.asset.kinds'))
+                                ->required()
+                                ->live(),
+
+                            Forms\Components\TextInput::make('kind_other_ar')
+                                ->label(__('sanabel.asset.kind_other_ar'))
+                                ->visible(fn (Forms\Get $get) => $get('kind') === 'other'),
+
+                            // Asked of the delegate, never inferred from the
+                            // kind: the same tractor is a livelihood to one
+                            // family and an investment to another.
+                            Forms\Components\Select::make('necessity')
+                                ->label(__('sanabel.asset.necessity'))
+                                ->helperText(__('sanabel.asset.necessity_help'))
+                                ->options(__('sanabel.asset.necessities'))
+                                ->live(),
+
+                            Forms\Components\TextInput::make('necessity_reason_ar')
+                                ->label(__('sanabel.asset.necessity_reason_ar'))
+                                ->visible(fn (Forms\Get $get) => $get('necessity') === 'essential'),
+
+                            Forms\Components\TextInput::make('estimated_value')
+                                ->label(__('sanabel.asset.estimated_value'))
+                                ->numeric()->minValue(0)
+                                ->suffix(config('sanabel.currency')),
+
+                            Forms\Components\Textarea::make('details_ar')
+                                ->label(__('sanabel.asset.details_ar'))
+                                ->rows(2)
+                                ->columnSpanFull(),
+                        ])->columns(2),
+
+                    // Read-only: the rule's own output, so the committee sees
+                    // the figure rather than adding it up by hand.
+                    Forms\Components\Placeholder::make('surplus_asset_total')
+                        ->label(__('sanabel.asset.surplus_total'))
+                        ->helperText(__('sanabel.asset.surplus_total_help'))
+                        ->content(fn (?Beneficiary $record) => $record
+                            ? number_format(app(RankingService::class)->surplusAssetValue($record))
+                                .' '.config('sanabel.currency')
+                            : '—'),
+
+                    Forms\Components\Repeater::make('livestock')
+                        ->relationship()
+                        ->label(__('sanabel.livestock.plural'))
+                        ->schema([
+                            Forms\Components\Select::make('kind')
+                                ->label(__('sanabel.livestock.kind'))
+                                ->options(__('sanabel.livestock.kinds'))
+                                ->required()
+                                ->live(),
+
+                            Forms\Components\TextInput::make('kind_other_ar')
+                                ->label(__('sanabel.livestock.kind_other_ar'))
+                                ->visible(fn (Forms\Get $get) => $get('kind') === 'other'),
+
+                            Forms\Components\TextInput::make('head_count')
+                                ->label(__('sanabel.livestock.head_count'))
+                                ->numeric()->minValue(0)->default(0),
+
+                            Forms\Components\Select::make('income_kind')
+                                ->label(__('sanabel.livestock.income_kind'))
+                                ->options(__('sanabel.livestock.income_kinds'))
+                                ->live(),
+
+                            Forms\Components\TextInput::make('monthly_income')
+                                ->label(__('sanabel.livestock.monthly_income'))
+                                ->helperText(__('sanabel.livestock.monthly_income_help'))
+                                ->numeric()->minValue(0)
+                                ->suffix(config('sanabel.currency'))
+                                ->visible(fn (Forms\Get $get) => in_array(
+                                    $get('income_kind'),
+                                    ['partial_income', 'main_income'],
+                                    true,
+                                )),
+
+                            // The one answer the engine reads. Asked only when
+                            // there is an income to ask about.
+                            Forms\Components\Toggle::make('is_stable')
+                                ->label(__('sanabel.livestock.is_stable'))
+                                ->helperText(__('sanabel.livestock.is_stable_help'))
+                                ->visible(fn (Forms\Get $get) => in_array(
+                                    $get('income_kind'),
+                                    ['partial_income', 'main_income'],
+                                    true,
+                                )),
+                        ])->columns(2),
+                ]),
+
+                Forms\Components\Wizard\Step::make(__('sanabel.beneficiary.step_obligations'))->schema([
+                    Forms\Components\Repeater::make('debts')
+                        ->relationship(modifyQueryUsing: fn ($query) => self::unhide(
+                            $query,
+                            ['creditor_phone_encrypted'],
+                        ))
+                        ->label(__('sanabel.debt.plural'))
+                        ->schema([
+                            Forms\Components\TextInput::make('creditor_name_ar')
+                                ->label(__('sanabel.debt.creditor_name_ar'))
+                                ->required(),
+
+                            Forms\Components\TextInput::make('amount')
+                                ->label(__('sanabel.debt.amount'))
+                                ->helperText(__('sanabel.debt.engine_help'))
+                                ->numeric()->minValue(0)->required()
+                                ->suffix(config('sanabel.currency')),
+
+                            Forms\Components\TextInput::make('creditor_address_ar')
+                                ->label(__('sanabel.debt.creditor_address_ar')),
+
+                            Forms\Components\TextInput::make('creditor_phone_encrypted')
+                                ->label(__('sanabel.debt.creditor_phone'))->tel(),
+
+                            Forms\Components\TextInput::make('months')
+                                ->label(__('sanabel.debt.months'))
+                                ->numeric()->minValue(0),
+
+                            Forms\Components\Toggle::make('has_due_date')
+                                ->label(__('sanabel.debt.has_due_date'))
+                                ->live(),
+
+                            Forms\Components\DatePicker::make('due_date')
+                                ->label(__('sanabel.debt.due_date'))
+                                ->visible(fn (Forms\Get $get) => (bool) $get('has_due_date')),
+
+                            Forms\Components\Textarea::make('reason_ar')
+                                ->label(__('sanabel.debt.reason_ar'))
+                                ->rows(2)
+                                ->columnSpanFull(),
+                        ])->columns(2),
+
+                    Forms\Components\Repeater::make('supportSources')
+                        ->relationship()
+                        ->label(__('sanabel.support_source.plural'))
+                        ->schema([
+                            Forms\Components\TextInput::make('name_ar')
+                                ->label(__('sanabel.support_source.name_ar'))
+                                ->required(),
+
+                            Forms\Components\Select::make('kind')
+                                ->label(__('sanabel.support_source.kind'))
+                                ->helperText(__('sanabel.support_source.one_off_help'))
+                                ->options(__('sanabel.support_source.kinds')),
+
+                            Forms\Components\TextInput::make('amount')
+                                ->label(__('sanabel.support_source.amount'))
+                                ->numeric()->minValue(0)
+                                ->suffix(config('sanabel.currency')),
+
+                            // The month this payment answers, and only this
+                            // month: it comes off that month's remaining need
+                            // the way a partial donation does.
+                            Forms\Components\DatePicker::make('coverage_month')
+                                ->label(__('sanabel.support_source.coverage_month'))
+                                ->helperText(__('sanabel.support_source.coverage_month_help'))
+                                ->displayFormat('Y-m')
+                                ->format('Y-m-01'),
+
+                            Forms\Components\DatePicker::make('paid_on')
+                                ->label(__('sanabel.support_source.paid_on')),
+
+                            Forms\Components\Textarea::make('notes_ar')
+                                ->label(__('sanabel.support_source.notes_ar'))
+                                ->rows(2)
+                                ->columnSpanFull(),
+                        ])->columns(2),
+
+                    Forms\Components\Repeater::make('caregivers')
+                        ->relationship(modifyQueryUsing: fn ($query) => self::unhide(
+                            $query,
+                            ['national_id_encrypted'],
+                        ))
+                        ->label(__('sanabel.caregiver.plural'))
+                        ->schema([
+                            Forms\Components\TextInput::make('name_ar')
+                                ->label(__('sanabel.caregiver.name_ar')),
+
+                            Forms\Components\Select::make('relation')
+                                ->label(__('sanabel.caregiver.relation'))
+                                ->options(__('sanabel.caregiver.relations'))
+                                ->live(),
+
+                            Forms\Components\TextInput::make('relation_other_ar')
+                                ->label(__('sanabel.caregiver.relation_other_ar'))
+                                ->visible(fn (Forms\Get $get) => $get('relation') === 'other'),
+
+                            Forms\Components\TextInput::make('national_id_encrypted')
+                                ->label(__('sanabel.caregiver.national_id'))
+                                ->maxLength(64),
+
+                            Forms\Components\TextInput::make('income_source_ar')
+                                ->label(__('sanabel.caregiver.income_source_ar')),
+
+                            Forms\Components\TextInput::make('monthly_support')
+                                ->label(__('sanabel.caregiver.monthly_support'))
+                                ->numeric()->minValue(0)
+                                ->suffix(config('sanabel.currency')),
+
+                            Forms\Components\Toggle::make('smokes')
+                                ->label(__('sanabel.caregiver.smokes')),
+
+                            Forms\Components\Toggle::make('neighbours_help')
+                                ->label(__('sanabel.caregiver.neighbours_help')),
+
+                            Forms\Components\Textarea::make('notes_ar')
+                                ->label(__('sanabel.caregiver.notes_ar'))
+                                ->rows(2)
+                                ->columnSpanFull(),
                         ])->columns(2),
                 ]),
 

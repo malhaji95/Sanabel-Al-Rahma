@@ -412,6 +412,20 @@ return [
         'monthly_support' => 'ما يقدمه للأسرة شهرياً',
         'neighbours_help' => 'هل يساعد الجيران الأسرة',
         'notes_ar' => 'ملاحظات',
+        'relations' => [
+            'father' => 'أب',
+            'mother' => 'أم',
+            'husband' => 'زوج',
+            'wife' => 'زوجة',
+            'son' => 'ابن',
+            'daughter' => 'ابنة',
+            'brother' => 'أخ',
+            'sister' => 'أخت',
+            'son_in_law' => 'زوج البنت',
+            'brother_in_law' => 'أخ الزوج',
+            'neighbours' => 'الجيران',
+            'other' => 'غيرهم',
+        ],
     ],
 
     'asset' => [
