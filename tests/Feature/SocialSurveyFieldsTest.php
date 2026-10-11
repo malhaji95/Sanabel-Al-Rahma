@@ -16,7 +16,8 @@ use Illuminate\Support\Facades\DB;
  | The association's own social survey, carried into the file: 104 columns on
  | their responses sheet and 19 on their dependants sheet. These assert the
  | two rules that shaped it — every number belonging to anybody is encrypted,
- | and the new money columns are recorded without the engine reading them.
+ | and a money row the association has not answered the question on is the
+ | record of what was said, never an input to the engine.
  */
 
 beforeEach(function () {
@@ -96,7 +97,7 @@ it('encrypts every identity and telephone number, whosever it is', function () {
     }
 });
 
-it('records the new money columns without letting the engine read them', function () {
+it('reads none of the new money rows until somebody answers the question on them', function () {
     $before = app(NeedEngine::class)->compute($this->family->fresh());
 
     Asset::create([
@@ -126,8 +127,20 @@ it('records the new money columns without letting the engine read them', functio
         'amount' => 400_000,
     ]);
 
-    // Whether any of these should move a score is the association's decision,
-    // and it has not been made. Until then they are the record, not an input.
+    // The association answered these on 11 October, and each answer they gave
+    // turns on a field nobody has filled in on the rows above:
+    //
+    //   - livestock needs `is_stable` (T-52, LivestockIncomeTest)
+    //   - support from elsewhere needs a `coverage_month` (T-51,
+    //     SupportFromElsewhereTest)
+    //
+    // A debt is the one that stays out for good: it never entered the monthly
+    // need, so it is neither added to it nor taken off it, and a qualifying
+    // debt goes down its own path later.
+    //
+    // So an unanswered row moves nothing, which is what this holds: the
+    // delegate recording what was said never silently changes a family's
+    // figures.
     expect(app(NeedEngine::class)->compute($this->family->fresh()))->toBe($before);
 });
 

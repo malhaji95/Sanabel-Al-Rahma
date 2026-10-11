@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Exceptions\ReferenceValueMissing;
 use App\Models\Beneficiary;
+use App\Models\Livestock;
 use App\Models\Scopes\RegionScope;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -94,7 +95,14 @@ class NeedEngine
 
         $monthlyNeed = $membersTotal + $adjustmentsTotal + $rent['amount'] + $manualAdjustment;
 
-        $stableIncome = (int) $incomes->where('is_stable', true)->sum('amount');
+        // A steady net income from animals is income, a seasonal one is not
+        // (approved 11 Oct 2026). It is read here rather than mirrored into an
+        // `incomes` row, so the two can never drift apart.
+        $livestockIncome = (int) $beneficiary->livestock()->get()
+            ->filter(fn (Livestock $l) => $l->countsAsIncome())
+            ->sum('monthly_income');
+
+        $stableIncome = (int) $incomes->where('is_stable', true)->sum('amount') + $livestockIncome;
         // This month's money against this month's need (approved 24 Sep 2026).
         // A payment another body made for the same month counts here and only
         // here: approved 11 October, it answers the need like a partial
@@ -127,6 +135,7 @@ class NeedEngine
                 'members_total' => $membersTotal,
                 'adjustments_total' => $adjustmentsTotal,
                 'external_support' => $external,
+                'livestock_income' => $livestockIncome,
             ],
         ];
     }
