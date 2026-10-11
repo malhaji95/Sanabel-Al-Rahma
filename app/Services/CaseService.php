@@ -240,11 +240,24 @@ class CaseService
         );
     }
 
+    /**
+     * T-59 (PAY-05) — two people, never one.
+     *
+     * Nobody approves their own request. It mattered least on a band and most
+     * on the wallet: one account could otherwise raise a change to where a
+     * family's money is sent and wave it through itself.
+     */
     public function approveChange(ChangeRequest $request, User $reviewer): ChangeRequest
     {
+        if ($request->requested_by && (int) $request->requested_by === (int) $reviewer->getKey()) {
+            throw new \RuntimeException(__('sanabel.cases.change_needs_another_person'));
+        }
+
         return DB::transaction(function () use ($request, $reviewer) {
             $model = $request->entity_type::findOrFail($request->entity_id);
-            $model->fill($request->payload_json)->save();
+
+            // The one path allowed to write a live file's payment details.
+            Beneficiary::applyingApprovedChange(fn () => $model->fill($request->payload_json)->save());
 
             $request->forceFill([
                 'status' => 'approved',

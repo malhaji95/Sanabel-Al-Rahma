@@ -55,6 +55,40 @@ class EditBeneficiary extends EditRecord
                         ->success()->send();
                 }),
 
+            /*
+             | T-59 (PAY-05) — where the family's money goes.
+             |
+             | On a live file the wallet field is read-only, and this is the
+             | only way to change it: the request is raised here and somebody
+             | other than whoever raised it approves it on the change-request
+             | screen. Offered only to the roles that may ask for a change.
+             */
+            Actions\Action::make('requestPaymentChange')
+                ->label(__('sanabel.cases.request_payment_change'))
+                ->icon('heroicon-o-banknotes')
+                ->color('warning')
+                ->visible(fn () => BeneficiaryResource::paymentDetailsLocked($this->record)
+                    && auth()->user()->can_('request_change'))
+                ->modalDescription(__('sanabel.cases.request_payment_change_help'))
+                ->form([
+                    Forms\Components\TextInput::make('wallet_encrypted')
+                        ->label(__('sanabel.beneficiary.wallet'))
+                        ->required(),
+                    Forms\Components\Textarea::make('reason_ar')
+                        ->label(__('sanabel.actions.reason'))
+                        ->required(),
+                ])
+                ->action(function (array $data) {
+                    app(CaseService::class)->requestChange(
+                        $this->record,
+                        auth()->user(),
+                        ['wallet_encrypted' => $data['wallet_encrypted']],
+                        $data['reason_ar'],
+                    );
+
+                    Notification::make()->title(__('sanabel.cases.payment_change_requested'))->success()->send();
+                }),
+
             // The two field steps sit before the admin's button, in the order
             // they must happen; each disappears once it has been taken.
             Actions\Action::make('verifyInField')

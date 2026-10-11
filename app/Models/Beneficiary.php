@@ -222,6 +222,54 @@ class Beneficiary extends Model
         return $query->where('status', 'published');
     }
 
+    /*
+     | T-59 (PAY-05) — where the family's money is sent is not edited in place
+     | on a live file.
+     |
+     | The association's own path for an edit after approval is a change
+     | request that somebody else approves, and the machinery was already
+     | there; nothing forced the wallet through it, so a single account with
+     | panel access could redirect a family's payments and the only trace
+     | would be the audit row. This is the guard rather than a form rule,
+     | because a form rule is one screen and this has to hold on every path:
+     | the panel, the API and a console command alike.
+     */
+    private static bool $applyingApprovedChange = false;
+
+    /** Opened only by CaseService while it applies a change a reviewer approved. */
+    public static function applyingApprovedChange(callable $apply): mixed
+    {
+        self::$applyingApprovedChange = true;
+
+        try {
+            return $apply();
+        } finally {
+            self::$applyingApprovedChange = false;
+        }
+    }
+
+    protected static function booted(): void
+    {
+        static::updating(function (self $case) {
+            if (self::$applyingApprovedChange) {
+                return;
+            }
+
+            if (! $case->isDirty(ChangeRequest::PAYMENT_FIELDS)) {
+                return;
+            }
+
+            // A file still being built is edited freely; it is a live file
+            // whose payments are already flowing that needs the second pair
+            // of eyes.
+            if (! in_array($case->getOriginal('status'), ChangeRequest::LIVE_STATUSES, true)) {
+                return;
+            }
+
+            throw new \RuntimeException(__('sanabel.cases.payment_change_needs_approval'));
+        });
+    }
+
     /** sha256 of the normalised national id — rule 11, exact match blocks a second file. */
     public static function hashNationalId(string $nationalId): string
     {

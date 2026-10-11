@@ -72,11 +72,10 @@ function donorUser(): User
 /** A case with every identifying field populated, so a leak has something to leak. */
 function fullCase(Region $region): Beneficiary
 {
-    $case = publishedCase($region);
-    $case->update([
-        'wallet_encrypted' => '0912345678',
-        'urgency_deadline_at' => now()->addDays(3),
-    ]);
+    // The wallet is set as the file is created, not edited onto it
+    // afterwards: T-59 refuses a direct wallet edit on a live file.
+    $case = publishedCase($region, attributes: ['wallet_encrypted' => '0912345678']);
+    $case->update(['urgency_deadline_at' => now()->addDays(3)]);
     $case->housing->update([
         'housing_type' => 'rent',
         'monthly_rent' => 37_531,

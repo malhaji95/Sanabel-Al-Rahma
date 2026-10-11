@@ -90,9 +90,16 @@ class BeneficiaryResource extends Resource
                         ->maxDate(now()),
 
                     Forms\Components\TextInput::make('phone_encrypted')->label(__('sanabel.beneficiary.phone'))->tel(),
+                    // T-59 — on a live file this is read-only, and the change
+                    // goes through the header action beside it so that
+                    // somebody other than whoever asked for it approves it.
                     Forms\Components\TextInput::make('wallet_encrypted')
                         ->label(__('sanabel.beneficiary.wallet'))
-                        ->helperText(__('sanabel.beneficiary.wallet_optional')),
+                        ->helperText(fn (?Beneficiary $record) => self::paymentDetailsLocked($record)
+                            ? __('sanabel.cases.wallet_locked_help')
+                            : __('sanabel.beneficiary.wallet_optional'))
+                        ->disabled(fn (?Beneficiary $record) => self::paymentDetailsLocked($record))
+                        ->dehydrated(fn (?Beneficiary $record) => ! self::paymentDetailsLocked($record)),
 
                     Forms\Components\Select::make('association_id')
                         ->label(__('sanabel.beneficiary.association'))
@@ -790,6 +797,13 @@ class BeneficiaryResource extends Resource
             ])
             ->defaultSort('id', 'desc')
             ->paginated([25, 50, 100]);
+    }
+
+    /** T-59 — a file whose payments are already flowing. */
+    public static function paymentDetailsLocked(?Beneficiary $record): bool
+    {
+        return $record !== null
+            && in_array($record->status, \App\Models\ChangeRequest::LIVE_STATUSES, true);
     }
 
     /**

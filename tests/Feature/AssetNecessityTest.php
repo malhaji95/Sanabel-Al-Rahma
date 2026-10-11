@@ -91,6 +91,14 @@ it('does not touch the need, the score or the ranking', function () {
     // The effect on eligibility or priority is the association's decision and
     // they have not made it. Until they do, the figure is reported and the
     // family's own numbers are exactly where they were.
-    expect($engine->compute($this->family->fresh()))->toBe($needBefore)
+    //
+    // The figures, not the whole array: the snapshot carries the second it was
+    // computed in, and under a full suite run the two calls straddle one.
+    $figures = fn (array $need) => array_intersect_key(
+        $need,
+        array_flip(['monthly_need', 'stable_income', 'received', 'gap', 'f']),
+    );
+
+    expect($figures($engine->compute($this->family->fresh())))->toBe($figures($needBefore))
         ->and($this->ranking->rank($this->family->fresh()))->toBe($rankBefore);
 });

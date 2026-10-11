@@ -37,8 +37,9 @@ it('says nothing rather than showing a blank when no wallet was entered', functi
 });
 
 it('keeps a family wallet out of donor output entirely', function () {
-    $case = publishedCase($this->region);
-    $case->update(['wallet_encrypted' => '0922222222']);
+    // Set as the file is created: T-59 refuses a direct wallet edit on a live
+    // file, and this test is about what a donor is shown, not about that.
+    $case = publishedCase($this->region, attributes: ['wallet_encrypted' => '0922222222']);
 
     $masked = json_encode((new MaskedCaseResource($case->refresh()))->resolve());
 
