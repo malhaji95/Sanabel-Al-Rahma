@@ -8,6 +8,7 @@ use App\Services\TransferRouting;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Tables\Table;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -46,6 +47,18 @@ class AppServiceProvider extends ServiceProvider
         DateTimePicker::configureUsing(fn (DateTimePicker $picker) => $picker
             ->native(false)
             ->displayFormat($picker instanceof DatePicker ? 'd/m/Y' : 'd/m/Y H:i'));
+
+        /*
+         | T-60 — AUTH-04. Filament's own default page-size list offers "all",
+         | which on the families or the donations table means one click pulls
+         | every row the account can reach into a single response. Every list
+         | is paginated (CLAUDE.md §5), so the cap belongs here rather than in
+         | twenty table definitions, and a table that wants its own sizes still
+         | sets them.
+         */
+        Table::configureUsing(fn (Table $table) => $table
+            ->paginated([25, 50, 100])
+            ->defaultPaginationPageOption(25));
 
         $this->registerRateLimits();
 
