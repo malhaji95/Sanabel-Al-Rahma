@@ -47,10 +47,53 @@ class AppServiceProvider extends ServiceProvider
             ->native(false)
             ->displayFormat($picker instanceof DatePicker ? 'd/m/Y' : 'd/m/Y H:i'));
 
-        // T-38 — the national-ID search is the one route worth rate limiting.
-        RateLimiter::for('national-id', fn (Request $request) => Limit::perMinute(10)->by($request->user()?->id ?: $request->ip()));
+        $this->registerRateLimits();
 
         // Rule 3 — nothing is hard-deleted. Guarded here as well as in the policies.
         Model::preventLazyLoading(false);
+    }
+
+    /**
+     * T-57 — APP-04 and IAM-03 of the security roadmap.
+     *
+     * Before this, one route in the whole application was rate limited. Every
+     * limit is keyed to the signed-in account where there is one and to the
+     * address otherwise, so one noisy delegate cannot spend the association's
+     * whole allowance, and an unauthenticated caller is counted on its own.
+     *
+     * The numbers are config, not code, so a limit is raised without a deploy.
+     */
+    private function registerRateLimits(): void
+    {
+        $limits = config('sanabel.security.rate_limits');
+
+        $byActor = fn (Request $request) => $request->user()?->id ?: $request->ip();
+
+        // Reads.
+        RateLimiter::for('api', fn (Request $request) => Limit::perMinute($limits['api'])->by($byActor($request)));
+
+        // Writes: a basket hold, a declared transfer, an approval.
+        RateLimiter::for('api-write', fn (Request $request) => Limit::perMinute($limits['api_write'])->by($byActor($request)));
+
+        // A field app coming back online pushes its queued visits in a burst.
+        RateLimiter::for('sync', fn (Request $request) => Limit::perMinute($limits['sync'])->by($byActor($request)));
+
+        // The one route that takes a national ID (T-38).
+        RateLimiter::for('national-id', fn (Request $request) => Limit::perMinute($limits['national_id'])->by($byActor($request)));
+
+        /*
+         | The public login form, which had no limit at all. Keyed on the email
+         | being tried as well as the address, so guessing at one account is
+         | counted separately from an address trying many — and the hourly cap
+         | is what stops a slow trickle that stays under the per-minute one.
+         */
+        RateLimiter::for('login', function (Request $request) use ($limits) {
+            $key = mb_strtolower((string) $request->input('email')).'|'.$request->ip();
+
+            return [
+                Limit::perMinute($limits['login'])->by($key),
+                Limit::perHour($limits['login_per_hour'])->by($key),
+            ];
+        });
     }
 }

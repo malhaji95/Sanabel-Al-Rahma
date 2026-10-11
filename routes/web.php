@@ -31,7 +31,12 @@ Route::get('/cases', BrowseCases::class)->name('cases.browse');
 Route::get('/cases/{fileNumber}', [PublicController::class, 'case'])->name('opportunity');
 
 Route::get('/login', [LoginController::class, 'show'])->name('login')->middleware('guest');
-Route::post('/login', [LoginController::class, 'store'])->middleware('guest');
+
+// T-57 — the public login form had no limit at all, while the panels carried
+// Filament's own five a minute. Keyed on the email being tried as well as the
+// address, with an hourly cap that catches a slow trickle under the per-minute
+// one.
+Route::post('/login', [LoginController::class, 'store'])->middleware(['guest', 'throttle:login']);
 Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
 // Donor portal (T-26).

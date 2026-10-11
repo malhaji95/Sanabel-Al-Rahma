@@ -73,6 +73,28 @@ return [
             ],
         ],
 
+        /*
+         | T-57 — APP-04 and IAM-03. Requests a minute, per signed-in account
+         | and per address for anyone not signed in. Numbers, so the
+         | association raises one without a deploy if a delegate on a bad line
+         | keeps hitting it.
+         */
+        'rate_limits' => [
+            // The public login form had no limit at all; the panels' own login
+            // carries Filament's five a minute.
+            'login' => env('SANABEL_RATE_LOGIN', 5),
+            'login_per_hour' => env('SANABEL_RATE_LOGIN_HOUR', 20),
+            // Reads: a donor paging a list, a delegate opening files.
+            'api' => env('SANABEL_RATE_API', 90),
+            // Writes: a basket hold, a declared transfer, an approval.
+            'api_write' => env('SANABEL_RATE_API_WRITE', 30),
+            // A field app coming back online pushes its queued visits in a
+            // burst, so this one is deliberately looser than the other writes.
+            'sync' => env('SANABEL_RATE_SYNC', 60),
+            // The one route that takes a national ID (T-38).
+            'national_id' => env('SANABEL_RATE_NATIONAL_ID', 10),
+        ],
+
         'hsts' => [
             'enabled' => env('SANABEL_HSTS_ENABLED', true),
             'max_age' => env('SANABEL_HSTS_MAX_AGE', 31536000),
