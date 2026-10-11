@@ -20,6 +20,20 @@ return Application::configure(basePath: dirname(__DIR__))
          | Service accounts (T-37) keep working: a token still authenticates.
          */
         $middleware->statefulApi();
+
+        /*
+         | T-56 — the defensive response headers, on every route including the
+         | API and the signed media route, so nothing is served without them.
+         */
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+
+        /*
+         | Render terminates TLS at its edge and forwards over http, so without
+         | this Laravel reads the request as insecure: it builds http:// URLs,
+         | never sets a Secure cookie and never sends HSTS. The proxy is the
+         | platform's own, in front of the container.
+         */
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

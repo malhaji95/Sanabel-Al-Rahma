@@ -19,6 +19,71 @@ return [
     'orphan_relation_keys' => ['orphan', 'يتيم'],
 
     /*
+     | T-56 — the response headers a browser needs in order to defend the page
+     | (APP-06 of the security roadmap). Data, not code, so a directive is
+     | tightened without a deploy.
+     */
+    'security' => [
+        'headers' => [
+            // Never guess a type: an uploaded file that sniffs as script is
+            // the classic way a private bucket becomes an XSS vector.
+            'X-Content-Type-Options' => 'nosniff',
+            // frame-ancestors below says the same thing to a modern browser;
+            // this is for the ones that do not read it.
+            'X-Frame-Options' => 'DENY',
+            // A file number must not travel to another site in a Referer.
+            'Referrer-Policy' => env('SANABEL_REFERRER_POLICY', 'no-referrer'),
+            // The field app needs the delegate's position for the survey's GPS
+            // question. Nothing here uses a camera, a microphone or payment.
+            'Permissions-Policy' => env(
+                'SANABEL_PERMISSIONS_POLICY',
+                'geolocation=(self), camera=(), microphone=(), payment=(), usb=()',
+            ),
+            'Cross-Origin-Opener-Policy' => 'same-origin',
+            'X-Permitted-Cross-Domain-Policies' => 'none',
+        ],
+
+        'csp' => [
+            'enabled' => env('SANABEL_CSP_ENABLED', true),
+            // Turn this on to watch what a tightened policy would break before
+            // it breaks it.
+            'report_only' => env('SANABEL_CSP_REPORT_ONLY', false),
+            'directives' => [
+                'default-src' => ["'self'"],
+                // Livewire injects inline script and Alpine compiles with
+                // `new Function`. Both have to stay until the front end is
+                // built with nonces; no other origin may load script either
+                // way, which is where most of the value is.
+                'script-src' => ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+                'style-src' => ["'self'", "'unsafe-inline'"],
+                // The typeface is self-hosted; nothing is fetched from a CDN.
+                'font-src' => ["'self'", 'data:'],
+                'img-src' => ["'self'", 'data:', 'blob:'],
+                'connect-src' => ["'self'"],
+                'media-src' => ["'self'"],
+                // The delegate field app registers a service worker.
+                'worker-src' => ["'self'", 'blob:'],
+                'manifest-src' => ["'self'"],
+                'object-src' => ["'none'"],
+                'base-uri' => ["'self'"],
+                // A login form cannot be pointed at somebody else's server.
+                'form-action' => ["'self'"],
+                'frame-ancestors' => ["'none'"],
+                'upgrade-insecure-requests' => [],
+            ],
+        ],
+
+        'hsts' => [
+            'enabled' => env('SANABEL_HSTS_ENABLED', true),
+            'max_age' => env('SANABEL_HSTS_MAX_AGE', 31536000),
+            'include_subdomains' => env('SANABEL_HSTS_SUBDOMAINS', true),
+            // Submitted once and painful to undo, so it is their call on their
+            // own domain.
+            'preload' => env('SANABEL_HSTS_PRELOAD', false),
+        ],
+    ],
+
+    /*
      | Defaults used only when the matching row is missing from the `settings` table.
      | Everything operational lives in `settings` so it changes without a deploy.
      */

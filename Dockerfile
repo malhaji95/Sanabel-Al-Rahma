@@ -81,6 +81,16 @@ RUN mkdir -p storage/framework/cache/data storage/framework/sessions \
 #   DB_SSLMODE           'prefer' silently falls back to plaintext, and a
 #                        managed database is reached across the internet
 #   QUEUE/CACHE/SESSION  no Redis in a single small container
+#   SESSION_SECURE_*     T-56 (IAM-02). Laravel's own default leaves the Secure
+#                        flag unset, so the session cookie was eligible to be
+#                        sent over plain http. Encrypted at rest too, because a
+#                        session row carries whatever the panel put in it.
+#                        Same-site stays 'lax', not 'strict': families and donors
+#                        arrive on shared links from WhatsApp, and 'strict' would
+#                        drop the cookie on that first navigation and bounce a
+#                        signed-in donor to the login screen. 'lax' already
+#                        withholds the cookie from a cross-site POST, which with
+#                        Laravel's CSRF token is what the roadmap asks for
 #   SANABEL_MEDIA_DISK   the container's own disk; point this at a bucket for
 #                        anything that has to survive a redeploy
 #   DEMO_SEED            40 generated families so a demo has something to show.
@@ -108,6 +118,9 @@ ENV HOME=/app \
     QUEUE_CONNECTION=database \
     CACHE_STORE=database \
     SESSION_DRIVER=database \
+    SESSION_SECURE_COOKIE=true \
+    SESSION_ENCRYPT=true \
+    SESSION_SAME_SITE=lax \
     SANABEL_MEDIA_DISK=media_local \
     MAIL_MAILER=log \
     DEMO_SEED=true
