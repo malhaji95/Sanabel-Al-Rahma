@@ -79,6 +79,15 @@ class BeneficiaryResource extends Resource
                     Forms\Components\TextInput::make('first_name')->label(__('sanabel.beneficiary.first_name'))->required(),
                     Forms\Components\TextInput::make('father_name')->label(__('sanabel.beneficiary.father_name'))->required(),
                     Forms\Components\TextInput::make('family_name')->label(__('sanabel.beneficiary.family_name'))->required(),
+
+                    Forms\Components\Select::make('gender')
+                        ->label(__('sanabel.beneficiary.gender'))
+                        ->options(__('sanabel.gender')),
+
+                    Forms\Components\DatePicker::make('birth_date')
+                        ->label(__('sanabel.beneficiary.birth_date'))
+                        ->maxDate(now()),
+
                     Forms\Components\TextInput::make('phone_encrypted')->label(__('sanabel.beneficiary.phone'))->tel(),
                     Forms\Components\TextInput::make('wallet_encrypted')
                         ->label(__('sanabel.beneficiary.wallet'))
@@ -98,9 +107,39 @@ class BeneficiaryResource extends Resource
                         ->searchable()
                         ->required(),
 
+                    Forms\Components\TextInput::make('town_ar')
+                        ->label(__('sanabel.beneficiary.town_ar')),
+
+                    Forms\Components\TextInput::make('latitude')
+                        ->label(__('sanabel.beneficiary.latitude'))
+                        ->helperText(__('sanabel.beneficiary.gps_help'))
+                        ->numeric()->minValue(-90)->maxValue(90),
+
+                    Forms\Components\TextInput::make('longitude')
+                        ->label(__('sanabel.beneficiary.longitude'))
+                        ->numeric()->minValue(-180)->maxValue(180),
+
                     Forms\Components\Select::make('marital_status')
                         ->label(__('sanabel.beneficiary.marital_status'))
                         ->options(__('sanabel.marital_status')),
+
+                    // هل يعمل صاحب العلاقة — and where, only if he does.
+                    Forms\Components\Toggle::make('works')
+                        ->label(__('sanabel.beneficiary.works'))
+                        ->live(),
+
+                    Forms\Components\TextInput::make('workplace_ar')
+                        ->label(__('sanabel.beneficiary.workplace_ar'))
+                        ->visible(fn (Forms\Get $get) => (bool) $get('works')),
+
+                    Forms\Components\Toggle::make('has_quran_memorizers')
+                        ->label(__('sanabel.beneficiary.has_quran_memorizers'))
+                        ->live(),
+
+                    Forms\Components\TextInput::make('quran_memorizer_count')
+                        ->label(__('sanabel.beneficiary.quran_memorizer_count'))
+                        ->numeric()->minValue(0)
+                        ->visible(fn (Forms\Get $get) => (bool) $get('has_quran_memorizers')),
 
                     Forms\Components\Select::make('support_type')
                         ->label(__('sanabel.beneficiary.support_type'))
@@ -132,10 +171,24 @@ class BeneficiaryResource extends Resource
 
                 Forms\Components\Wizard\Step::make(__('sanabel.beneficiary.step_members'))->schema([
                     Forms\Components\Repeater::make('members')
-                        ->relationship()
+                        // $hidden keeps the identity number out of
+                        // attributesToArray(), which is the array Filament
+                        // fills a repeater row from, so it reached the screen
+                        // empty and saving wrote the blank back over it. Named
+                        // here and nowhere else, so nothing is unhidden that
+                        // the screen does not show.
+                        ->relationship(modifyQueryUsing: fn ($query) => self::unhide($query, ['national_id_encrypted']))
                         ->label(__('sanabel.beneficiary.members'))
                         ->schema([
                             Forms\Components\TextInput::make('name_ar')->label(__('sanabel.household_member.name'))->required(),
+
+                            // Somebody else's identity number is still an
+                            // identity number: encrypted at rest like the head
+                            // of household's.
+                            Forms\Components\TextInput::make('national_id_encrypted')
+                                ->label(__('sanabel.household_member.national_id'))
+                                ->maxLength(64),
+
                             Forms\Components\Select::make('relation')
                                 ->label(__('sanabel.household_member.relation'))
                                 ->options(__('sanabel.relation'))
@@ -148,6 +201,31 @@ class BeneficiaryResource extends Resource
                                         $state,
                                     ),
                                 )),
+                            Forms\Components\TextInput::make('relation_other_ar')
+                                ->label(__('sanabel.household_member.relation_other_ar'))
+                                ->visible(fn (Forms\Get $get) => $get('relation') === 'other'),
+
+                            // The survey gives a full date; the engine reads the
+                            // year. Filling the date fills the year from it, so
+                            // the two can never say different things.
+                            Forms\Components\DatePicker::make('birth_date')
+                                ->label(__('sanabel.household_member.birth_date'))
+                                ->helperText(__('sanabel.household_member.birth_date_help'))
+                                ->maxDate(now())
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
+                                    if (! $state) {
+                                        return;
+                                    }
+
+                                    $year = (int) \Illuminate\Support\Carbon::parse($state)->year;
+                                    $set('birth_year', $year);
+                                    $set('person_class', DependencyRules::personClass(
+                                        (int) date('Y') - $year,
+                                        $get('relation'),
+                                    ));
+                                }),
+
                             Forms\Components\TextInput::make('birth_year')
                                 ->label(__('sanabel.household_member.birth_year'))
                                 ->numeric()->minValue(1900)->maxValue((int) date('Y'))
@@ -173,7 +251,42 @@ class BeneficiaryResource extends Resource
                                 ->disabled()
                                 ->dehydrated(),
 
+                            Forms\Components\Select::make('marital_status')
+                                ->label(__('sanabel.household_member.marital_status'))
+                                ->options(__('sanabel.marital_status'))
+                                ->live(),
+
+                            Forms\Components\TextInput::make('spouse_name_ar')
+                                ->label(__('sanabel.household_member.spouse_name_ar'))
+                                ->visible(fn (Forms\Get $get) => $get('marital_status') === 'married'),
+
+                            Forms\Components\Select::make('occupation')
+                                ->label(__('sanabel.household_member.occupation'))
+                                ->options(__('sanabel.occupation')),
+
                             Forms\Components\Toggle::make('is_student')->label(__('sanabel.household_member.is_student'))->live(),
+
+                            Forms\Components\TextInput::make('school_grade_ar')
+                                ->label(__('sanabel.household_member.school_grade_ar'))
+                                ->visible(fn (Forms\Get $get) => (bool) $get('is_student')),
+
+                            Forms\Components\Toggle::make('works')
+                                ->label(__('sanabel.household_member.works'))
+                                ->live(),
+
+                            Forms\Components\TextInput::make('workplace_ar')
+                                ->label(__('sanabel.household_member.workplace_ar'))
+                                ->visible(fn (Forms\Get $get) => (bool) $get('works')),
+
+                            Forms\Components\Toggle::make('is_quran_memorizer')
+                                ->label(__('sanabel.household_member.is_quran_memorizer')),
+
+                            Forms\Components\TextInput::make('certificate_ar')
+                                ->label(__('sanabel.household_member.certificate_ar')),
+
+                            Forms\Components\TextInput::make('skills_ar')
+                                ->label(__('sanabel.household_member.skills_ar')),
+
                             Forms\Components\Toggle::make('has_documented_condition')
                                 ->label(__('sanabel.household_member.has_documented_condition'))
                                 ->helperText(__('sanabel.household_member.condition_help'))
@@ -237,10 +350,23 @@ class BeneficiaryResource extends Resource
                             ->label(__('sanabel.housing.type'))
                             ->options(__('sanabel.housing_type'))->required()->live(),
 
+                        // Free text beside the list, not a new housing type:
+                        // the engine reads housing_type (shelter raises an
+                        // adjustment, rent raises the rent reference), so a new
+                        // option there would quietly change a need.
+                        Forms\Components\TextInput::make('type_other_ar')
+                            ->label(__('sanabel.housing.type_other_ar'))
+                            ->helperText(__('sanabel.housing.type_other_help')),
+
                         Forms\Components\TextInput::make('monthly_rent')
                             ->label(__('sanabel.housing.rent'))
                             ->numeric()->minValue(0)->default(0)
                             ->suffix(config('sanabel.currency'))
+                            ->visible(fn (Forms\Get $get) => $get('housing_type') === 'rent'),
+
+                        Forms\Components\Select::make('rent_period')
+                            ->label(__('sanabel.housing.rent_period'))
+                            ->options(__('sanabel.rent_period'))
                             ->visible(fn (Forms\Get $get) => $get('housing_type') === 'rent'),
 
                         Forms\Components\TextInput::make('habitable_rooms')
@@ -248,18 +374,47 @@ class BeneficiaryResource extends Resource
                             ->helperText(__('sanabel.housing.rooms_help'))
                             ->numeric()->minValue(0)->default(1)->required(),
 
+                        Forms\Components\TextInput::make('bathrooms')
+                            ->label(__('sanabel.housing.bathrooms'))
+                            ->numeric()->minValue(0),
+
+                        Forms\Components\Toggle::make('has_kitchen')
+                            ->label(__('sanabel.housing.has_kitchen')),
+
                         Forms\Components\Select::make('safety_band')->label(__('sanabel.housing.safety'))->options(__('sanabel.bands.safety'))->default(0)->required(),
                         Forms\Components\Select::make('services_band')->label(__('sanabel.housing.services'))->options(__('sanabel.bands.services'))->default(0)->required(),
                         Forms\Components\Select::make('eviction_band')->label(__('sanabel.housing.eviction'))->options(__('sanabel.bands.eviction'))->default(0)->required(),
 
                         Forms\Components\TextInput::make('landlord_name_ar')->label(__('sanabel.housing.landlord_name')),
                         Forms\Components\TextInput::make('landlord_phone_encrypted')->label(__('sanabel.housing.landlord_phone'))->tel(),
-                    ])->columns(2),
+                    ])
+                        ->columns(2)
+                        // A Group has no query to hook, so the hidden columns
+                        // are read off the row itself. Same reason as unhide().
+                        ->mutateRelationshipDataBeforeFillUsing(function (array $data, Forms\Components\Group $component) {
+                            $housing = $component->getCachedExistingRecord();
+
+                            foreach (['landlord_name_ar', 'landlord_phone_encrypted'] as $column) {
+                                $data[$column] = $housing?->{$column};
+                            }
+
+                            return $data;
+                        }),
+
+                    // The survey asks it under housing; the column is on the
+                    // file, so it sits outside the housing group.
+                    Forms\Components\Textarea::make('furnishing_ar')
+                        ->label(__('sanabel.housing.furnishing_ar'))
+                        ->rows(2)
+                        ->columnSpanFull(),
                 ]),
 
                 Forms\Components\Wizard\Step::make(__('sanabel.beneficiary.step_health'))->schema([
                     Forms\Components\Repeater::make('healthRecords')
-                        ->relationship()
+                        ->relationship(modifyQueryUsing: fn ($query) => self::unhide(
+                            $query,
+                            ['description_ar', 'doctor_phone_encrypted'],
+                        ))
                         ->label(__('sanabel.beneficiary.health'))
                         ->schema([
                             Forms\Components\Select::make('severity_band')->label(__('sanabel.health.severity'))->options(__('sanabel.bands.severity'))->default(0)->required(),
@@ -270,9 +425,52 @@ class BeneficiaryResource extends Resource
                                 ->helperText(__('sanabel.health.cost_help'))
                                 ->numeric()->minValue(0)->default(0)
                                 ->suffix(config('sanabel.currency')),
+                            Forms\Components\Toggle::make('ongoing_treatment')
+                                ->label(__('sanabel.health.ongoing_treatment'))
+                                ->live(),
+
+                            Forms\Components\TextInput::make('treatment_place_ar')
+                                ->label(__('sanabel.health.treatment_place_ar'))
+                                ->visible(fn (Forms\Get $get) => (bool) $get('ongoing_treatment')),
+
+                            Forms\Components\TextInput::make('doctor_name_ar')
+                                ->label(__('sanabel.health.doctor_name_ar')),
+
+                            // A doctor's number is a telephone number too.
+                            Forms\Components\TextInput::make('doctor_phone_encrypted')
+                                ->label(__('sanabel.health.doctor_phone'))->tel(),
+
+                            Forms\Components\Textarea::make('medicines_ar')
+                                ->label(__('sanabel.health.medicines_ar'))
+                                ->rows(2)
+                                ->columnSpanFull(),
+
                             Forms\Components\Textarea::make('description_ar')->label(__('sanabel.health.description'))->columnSpanFull(),
                         ])->columns(2),
                 ]),
+
+                // What the family themselves propose, and who took the survey.
+                // Recorded for the committee; the engine reads none of it.
+                Forms\Components\Wizard\Step::make(__('sanabel.beneficiary.step_proposal'))->schema([
+                    Forms\Components\Textarea::make('livelihood_proposal_ar')
+                        ->label(__('sanabel.beneficiary.livelihood_proposal_ar'))
+                        ->helperText(__('sanabel.beneficiary.proposal_help'))
+                        ->rows(3)
+                        ->columnSpanFull(),
+
+                    Forms\Components\Textarea::make('proposal_skills_ar')
+                        ->label(__('sanabel.beneficiary.proposal_skills_ar'))
+                        ->rows(2)
+                        ->columnSpanFull(),
+
+                    Forms\Components\TextInput::make('proposal_cost')
+                        ->label(__('sanabel.beneficiary.proposal_cost'))
+                        ->numeric()->minValue(0)
+                        ->suffix(config('sanabel.currency')),
+
+                    Forms\Components\TextInput::make('surveyed_by_ar')
+                        ->label(__('sanabel.beneficiary.surveyed_by_ar')),
+                ])->columns(2),
 
                 Forms\Components\Wizard\Step::make(__('sanabel.beneficiary.step_urgency'))->schema([
                     Forms\Components\DateTimePicker::make('urgency_deadline_at')
@@ -369,6 +567,23 @@ class BeneficiaryResource extends Resource
             ])
             ->defaultSort('id', 'desc')
             ->paginated([25, 50, 100]);
+    }
+
+    /**
+     * Put an encrypted column back on the rows a repeater fills from.
+     *
+     * `$hidden` keeps these out of `attributesToArray()`, which is the array
+     * Filament fills a form from, so they arrived at the screen empty and
+     * saving wrote the blanks back over them — the same bug
+     * EncryptedFieldEditTest caught on the family's own phone and wallet.
+     * Each column is named at its own call site, so nothing is unhidden that
+     * the screen does not actually show.
+     *
+     * @param  array<int,string>  $columns
+     */
+    private static function unhide($query, array $columns)
+    {
+        return $query->afterQuery(fn ($records) => $records->each->makeVisible($columns));
     }
 
     /** dependent and unable_to_earn are always derived, never taken from the form. */
