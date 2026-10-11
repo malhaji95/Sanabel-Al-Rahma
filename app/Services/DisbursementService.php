@@ -67,7 +67,9 @@ class DisbursementService
 
     /**
      * What this family may still be paid for this month: their need, less what
-     * has already been confirmed for the same month on another line.
+     * has already been confirmed for the same month on another line, and less
+     * what another body paid for the same month (approved 11 October). The
+     * association does not pay a need somebody else has already answered.
      */
     public function remainingForPeriod(Beneficiary $beneficiary, Carbon $period): int
     {
@@ -78,7 +80,9 @@ class DisbursementService
             ->whereNotIn('status', ['rejected', 'failed'])
             ->sum('amount');
 
-        return max(0, $need - $alreadyOwed);
+        $external = $this->coverage->externalForMonth($beneficiary, $period);
+
+        return max(0, $need - $alreadyOwed - $external);
     }
 
     /** The treasurer gathers confirmed payments into one order. */

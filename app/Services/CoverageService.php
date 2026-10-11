@@ -6,6 +6,7 @@ use App\Models\Beneficiary;
 use App\Models\Campaign;
 use App\Models\DonationAllocation;
 use App\Models\Setting;
+use App\Models\SupportSource;
 use Illuminate\Support\Carbon;
 
 /**
@@ -146,6 +147,52 @@ class CoverageService
     }
 
     /**
+     * What another association or body actually paid towards this month's need.
+     *
+     * Approved 11 October: such a payment is treated exactly as a partial
+     * donation — it answers the month it is recorded against and no other. It
+     * is coverage, not income, so it never reaches stable income or the score,
+     * and it is deliberately left out of the surplus carry below: a one-off
+     * payment does not travel to the next month.
+     */
+    public function externalForMonth(Beneficiary $beneficiary, ?Carbon $month = null): int
+    {
+        $month = ($month ?? $this->currentMonth())->copy()->startOfMonth();
+
+        if ($beneficiary->relationLoaded('supportSources')) {
+            return (int) $beneficiary->supportSources
+                ->filter(fn (SupportSource $s) => $s->isPayment()
+                    && $s->coverage_month->isSameMonth($month))
+                ->sum('amount');
+        }
+
+        return (int) SupportSource::query()
+            ->where('beneficiary_id', $beneficiary->getKey())
+            ->whereDate('coverage_month', $month->toDateString())
+            ->sum('amount');
+    }
+
+    /** The same figure for many families in one query, keyed by beneficiary id. */
+    public function externalForMonthForMany(iterable $beneficiaries, ?Carbon $month = null): array
+    {
+        $month = ($month ?? $this->currentMonth())->copy()->startOfMonth();
+        $ids = collect($beneficiaries)->map(fn (Beneficiary $b) => $b->getKey())->all();
+
+        if ($ids === []) {
+            return [];
+        }
+
+        return SupportSource::query()
+            ->whereIn('beneficiary_id', $ids)
+            ->whereDate('coverage_month', $month->toDateString())
+            ->groupBy('beneficiary_id')
+            ->selectRaw('beneficiary_id, sum(amount) as paid')
+            ->get()
+            ->mapWithKeys(fn ($row) => [(int) $row->beneficiary_id => (int) $row->paid])
+            ->all();
+    }
+
+    /**
      * Last month's surplus, carried into this one.
      *
      * The association decided on 6 October that a transfer larger than the
@@ -161,16 +208,21 @@ class CoverageService
             - $this->needAmount($beneficiary));
     }
 
-    /** What this month has to spend: its own money, plus last month's surplus. */
+    /**
+     * What answers this month's need: this association's own verified money,
+     * last month's surplus, and what another body paid for this month.
+     */
     public function fundedForMonth(Beneficiary $beneficiary, ?Carbon $month = null): int
     {
-        return $this->confirmedForMonth($beneficiary, $month) + $this->carriedInto($beneficiary, $month);
+        return $this->confirmedForMonth($beneficiary, $month)
+            + $this->carriedInto($beneficiary, $month)
+            + $this->externalForMonth($beneficiary, $month);
     }
 
     /**
-     * The same figure for many families, in two queries rather than two per
-     * family: this month's money, and last month's, which the carry is read
-     * from.
+     * The same figure for many families, in three queries rather than three
+     * per family: this month's money, last month's, which the carry is read
+     * from, and what other bodies paid for this month.
      *
      * @return array<int,int>
      */
@@ -181,12 +233,13 @@ class CoverageService
 
         $thisMonth = $this->confirmedForMonthForMany($families, $month);
         $lastMonth = $this->confirmedForMonthForMany($families, $month->copy()->subMonth());
+        $external = $this->externalForMonthForMany($families, $month);
 
-        return $families->mapWithKeys(function (Beneficiary $family) use ($thisMonth, $lastMonth) {
+        return $families->mapWithKeys(function (Beneficiary $family) use ($thisMonth, $lastMonth, $external) {
             $id = $family->getKey();
             $carried = max(0, ($lastMonth[$id] ?? 0) - $this->needAmount($family));
 
-            return [$id => ($thisMonth[$id] ?? 0) + $carried];
+            return [$id => ($thisMonth[$id] ?? 0) + $carried + ($external[$id] ?? 0)];
         })->all();
     }
 

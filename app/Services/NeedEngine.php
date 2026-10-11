@@ -96,7 +96,12 @@ class NeedEngine
 
         $stableIncome = (int) $incomes->where('is_stable', true)->sum('amount');
         // This month's money against this month's need (approved 24 Sep 2026).
-        $received = $this->coverage->confirmedForMonth($beneficiary);
+        // A payment another body made for the same month counts here and only
+        // here: approved 11 October, it answers the need like a partial
+        // donation, and it is never income, so it leaves `stable_income` and
+        // therefore `f` untouched.
+        $external = $this->coverage->externalForMonth($beneficiary, $asOf);
+        $received = $this->coverage->confirmedForMonth($beneficiary) + $external;
 
         $gap = max(0, $monthlyNeed - $stableIncome - $received);
 
@@ -121,6 +126,7 @@ class NeedEngine
                 'is_renting' => $isRenting,
                 'members_total' => $membersTotal,
                 'adjustments_total' => $adjustmentsTotal,
+                'external_support' => $external,
             ],
         ];
     }
