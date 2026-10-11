@@ -49,6 +49,13 @@ return [
         'priority_critical_below' => 41,
         'priority_middle_below' => 61,
         'referral_validity_days' => 30,
+        // T-53 — above this total value, a family's surplus (investment or
+        // non-essential, sellable) assets bear on eligibility or priority. The
+        // association approves the criteria separately, so there is no default:
+        // null means no criteria are in force and the total is reported only.
+        // Assets held as necessary for the home, for work or for a living are
+        // never part of the total, whatever they are worth.
+        'surplus_asset_threshold' => null,
         // Where a donor sends the money when neither the family nor its
         // association says otherwise: direct|association|both.
         'default_transfer_mode' => 'association',

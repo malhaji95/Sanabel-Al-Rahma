@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\Asset;
 use App\Models\Beneficiary;
 use App\Models\Region;
+use App\Models\Setting;
 use Illuminate\Support\Collection;
 
 /**
@@ -47,6 +49,51 @@ class RankingService
             'priority' => $eligible ? round(min(100, $currentScore + $waitingBonus), 2) : 0.0,
             'eligible' => $eligible,
         ];
+    }
+
+    /**
+     * What the family's surplus assets are reckoned to be worth.
+     *
+     * Approved 11 October: an asset held as necessary for the home, for work
+     * or for a living is recorded and lowers nothing, whatever it is worth, so
+     * it is never in this total. Nor is an asset nobody has answered the
+     * question on: unanswered is not "surplus".
+     */
+    public function surplusAssetValue(Beneficiary $beneficiary): int
+    {
+        if ($beneficiary->relationLoaded('assets')) {
+            return (int) $beneficiary->assets
+                ->filter(fn (Asset $a) => $a->isSurplus())
+                ->sum('estimated_value');
+        }
+
+        return (int) $beneficiary->assets()->where('necessity', 'surplus')->sum('estimated_value');
+    }
+
+    /**
+     * Whether that total has passed the line the association drew.
+     *
+     * Null while they have drawn no line: the criteria are theirs to approve
+     * and the threshold is data, so until a number is set this reports nothing
+     * and bears on nothing. That it is a stored number rather than a clerk's
+     * judgement is what they asked for.
+     *
+     * Nothing in rank() reads this. The effect on eligibility or priority is
+     * the decision they are still to make, and inventing one here would be
+     * putting a rule in their mouth.
+     */
+    public function surplusAssetsOverThreshold(Beneficiary $beneficiary): ?bool
+    {
+        $threshold = Setting::value(
+            'surplus_asset_threshold',
+            config('sanabel.setting_defaults.surplus_asset_threshold')
+        );
+
+        if ($threshold === null || $threshold === '') {
+            return null;
+        }
+
+        return $this->surplusAssetValue($beneficiary) > (int) $threshold;
     }
 
     public function waitingBonus(Beneficiary $beneficiary): int

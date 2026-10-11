@@ -133,6 +133,8 @@ it('reads none of the new money rows until somebody answers the question on them
     //   - livestock needs `is_stable` (T-52, LivestockIncomeTest)
     //   - support from elsewhere needs a `coverage_month` (T-51,
     //     SupportFromElsewhereTest)
+    //   - an asset needs its `necessity` (T-53, AssetNecessityTest), and even
+    //     then only a threshold the association has yet to set would read it
     //
     // A debt is the one that stays out for good: it never entered the monthly
     // need, so it is neither added to it nor taken off it, and a qualifying

@@ -11,6 +11,14 @@ class SettingSeeder extends Seeder
     public function run(): void
     {
         foreach (config('sanabel.setting_defaults') as $key => $value) {
+            // A null default is a setting the association has still to decide,
+            // listed in config so the key is on the record. There is no row to
+            // write until they decide it, and the code that reads it treats a
+            // missing row as "no rule in force".
+            if ($value === null) {
+                continue;
+            }
+
             Setting::firstOrCreate(['key' => $key], ['value_json' => $value]);
         }
 
