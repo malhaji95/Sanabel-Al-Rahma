@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\Asset;
-use App\Models\Setting;
 use App\Services\NeedEngine;
 use App\Services\RankingService;
 
@@ -12,8 +11,11 @@ use App\Services\RankingService;
  | be sold bears on eligibility or priority, under criteria the association
  | approves separately — and by a rule in the system, not a clerk's judgement.
  |
- | Those criteria are not approved yet, so the threshold is data with no
- | default: while it is unset the total is reported and changes nothing.
+ | T-64, 12 October: asked for the value above which that happens, they
+ | answered there is no such value — «يجب تقييمها يدوي». The committee judges
+ | each case, so nothing here computes a verdict; what the system owes them is
+ | the researcher's description, and the surplus total is reported so they read
+ | one number instead of adding up a list.
  */
 
 beforeEach(function () {
@@ -56,31 +58,56 @@ it('adds up the surplus ones only', function () {
     expect($this->ranking->surplusAssetValue($this->family))->toBe(5_500_000);
 });
 
-it('reports nothing about the threshold while the association has set none', function () {
+it('compares the surplus total to nothing at all', function () {
     owns($this->family, 'land', 90_000_000, 'surplus');
 
-    expect($this->ranking->surplusAssetsOverThreshold($this->family))->toBeNull();
+    // There is no threshold to compare it to and no method that would: the
+    // committee judges by hand (12 October). The figure is reported, full stop.
+    expect($this->ranking->surplusAssetValue($this->family))->toBe(90_000_000)
+        ->and(method_exists($this->ranking, 'surplusAssetsOverThreshold'))->toBeFalse()
+        ->and(config('sanabel.setting_defaults'))->not->toHaveKey('surplus_asset_threshold');
 });
 
-it('answers against the number the association stored, once they store one', function () {
-    Setting::updateOrCreate(['key' => 'surplus_asset_threshold'], ['value_json' => 5_000_000]);
+it('records whether an asset is worked, and whether the family controls it', function () {
+    // The second question is the one a value could never have answered: a
+    // quarter of an inherited field, unsellable without five brothers, is
+    // worth a great deal and feeds nobody.
+    $field = owns($this->family, 'land', 40_000_000, 'surplus');
+    $field->update([
+        'is_exploited' => false,
+        'has_control' => false,
+        'details_ar' => 'ربع أرض موروثة مع خمسة أشقاء، غير مزروعة ولا تُباع بلا موافقتهم',
+    ]);
 
-    owns($this->family, 'land', 4_000_000, 'surplus');
-    expect($this->ranking->surplusAssetsOverThreshold($this->family))->toBeFalse();
+    $field->refresh();
 
-    owns($this->family, 'shop', 2_000_000, 'surplus');
-    expect($this->ranking->surplusAssetsOverThreshold($this->family->fresh()))->toBeTrue();
+    expect($field->is_exploited)->toBeFalse()
+        ->and($field->has_control)->toBeFalse()
+        ->and($field->details_ar)->toContain('أشقاء')
+        // Still in the total, because the committee is the one that weighs it.
+        ->and($this->ranking->surplusAssetValue($this->family))->toBe(40_000_000);
 });
 
-it('keeps a necessary asset out even once a threshold is in force', function () {
-    Setting::updateOrCreate(['key' => 'surplus_asset_threshold'], ['value_json' => 1_000_000]);
-    owns($this->family, 'tractor', 50_000_000, 'essential');
+it('reads an asset as assessed only once all four answers are there', function () {
+    $asset = owns($this->family, 'shop', 5_000_000, 'surplus');
 
-    expect($this->ranking->surplusAssetsOverThreshold($this->family))->toBeFalse();
+    expect($asset->isAssessed())->toBeFalse();
+
+    $asset->update(['is_exploited' => true, 'has_control' => true, 'details_ar' => 'محل مؤجر للغير']);
+
+    expect($asset->fresh()->isAssessed())->toBeTrue();
+});
+
+it('leaves an imported asset readable as unassessed rather than refusing it', function () {
+    // The old system never asked these questions, so a migrated row arrives
+    // without them. It must still import.
+    $imported = owns($this->family, 'car', 3_000_000, null);
+
+    expect($imported->isAssessed())->toBeFalse()
+        ->and($imported->exists)->toBeTrue();
 });
 
 it('does not touch the need, the score or the ranking', function () {
-    Setting::updateOrCreate(['key' => 'surplus_asset_threshold'], ['value_json' => 1_000_000]);
     $engine = app(NeedEngine::class);
 
     $needBefore = $engine->compute($this->family);
@@ -88,9 +115,8 @@ it('does not touch the need, the score or the ranking', function () {
 
     owns($this->family, 'land', 80_000_000, 'surplus');
 
-    // The effect on eligibility or priority is the association's decision and
-    // they have not made it. Until they do, the figure is reported and the
-    // family's own numbers are exactly where they were.
+    // The committee's judgement is what moves a family, not this figure. So
+    // the family's own numbers are exactly where they were.
     //
     // The figures, not the whole array: the snapshot carries the second it was
     // computed in, and under a full suite run the two calls straddle one.

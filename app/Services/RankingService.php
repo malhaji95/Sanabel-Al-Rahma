@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Asset;
 use App\Models\Beneficiary;
 use App\Models\Region;
-use App\Models\Setting;
 use Illuminate\Support\Collection;
 
 /**
@@ -54,10 +53,17 @@ class RankingService
     /**
      * What the family's surplus assets are reckoned to be worth.
      *
-     * Approved 11 October: an asset held as necessary for the home, for work
-     * or for a living is recorded and lowers nothing, whatever it is worth, so
-     * it is never in this total. Nor is an asset nobody has answered the
-     * question on: unanswered is not "surplus".
+     * Reported, never acted on. Approved 11 October: an asset held as
+     * necessary for the home, for work or for a living is recorded and lowers
+     * nothing, whatever it is worth, so it is never in this total; nor is an
+     * asset nobody has answered the question on, because unanswered is not
+     * "surplus".
+     *
+     * On 12 October, asked for a value above which this total should bear on
+     * eligibility, the association answered that there is no such value and
+     * the committee judges each case by hand. There is therefore nothing here
+     * that compares it to anything: rank() does not read it, and the figure
+     * exists so a committee reads one number instead of adding up a list.
      */
     public function surplusAssetValue(Beneficiary $beneficiary): int
     {
@@ -68,32 +74,6 @@ class RankingService
         }
 
         return (int) $beneficiary->assets()->where('necessity', 'surplus')->sum('estimated_value');
-    }
-
-    /**
-     * Whether that total has passed the line the association drew.
-     *
-     * Null while they have drawn no line: the criteria are theirs to approve
-     * and the threshold is data, so until a number is set this reports nothing
-     * and bears on nothing. That it is a stored number rather than a clerk's
-     * judgement is what they asked for.
-     *
-     * Nothing in rank() reads this. The effect on eligibility or priority is
-     * the decision they are still to make, and inventing one here would be
-     * putting a rule in their mouth.
-     */
-    public function surplusAssetsOverThreshold(Beneficiary $beneficiary): ?bool
-    {
-        $threshold = Setting::value(
-            'surplus_asset_threshold',
-            config('sanabel.setting_defaults.surplus_asset_threshold')
-        );
-
-        if ($threshold === null || $threshold === '') {
-            return null;
-        }
-
-        return $this->surplusAssetValue($beneficiary) > (int) $threshold;
     }
 
     public function waitingBonus(Beneficiary $beneficiary): int

@@ -503,14 +503,29 @@ class BeneficiaryResource extends Resource
                                 ->numeric()->minValue(0)
                                 ->suffix(config('sanabel.currency')),
 
+                            // T-64 — the two questions a number could not
+                            // answer, asked of the researcher on the visit.
+                            Forms\Components\Toggle::make('is_exploited')
+                                ->label(__('sanabel.asset.is_exploited'))
+                                ->helperText(__('sanabel.asset.is_exploited_help')),
+
+                            Forms\Components\Toggle::make('has_control')
+                                ->label(__('sanabel.asset.has_control'))
+                                ->helperText(__('sanabel.asset.has_control_help')),
+
+                            // Required: the committee judges by hand, so its
+                            // only material is what the researcher wrote.
                             Forms\Components\Textarea::make('details_ar')
                                 ->label(__('sanabel.asset.details_ar'))
-                                ->rows(2)
+                                ->helperText(__('sanabel.asset.details_required_help'))
+                                ->required()
+                                ->rows(3)
                                 ->columnSpanFull(),
                         ])->columns(2),
 
-                    // Read-only: the rule's own output, so the committee sees
-                    // the figure rather than adding it up by hand.
+                    // Read-only, and compared to nothing: the association
+                    // decided on 12 October that the committee judges by hand,
+                    // so this is here to save them adding up a list.
                     Forms\Components\Placeholder::make('surplus_asset_total')
                         ->label(__('sanabel.asset.surplus_total'))
                         ->helperText(__('sanabel.asset.surplus_total_help'))

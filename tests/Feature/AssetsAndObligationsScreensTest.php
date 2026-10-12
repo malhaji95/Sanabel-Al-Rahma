@@ -24,14 +24,16 @@ beforeEach(function () {
     $this->case = familyOf($this->region, adults: 1, children: 1);
 });
 
-it('records an asset with the question answered on it', function () {
+it('records an asset with every question answered on it', function () {
     livewire(EditBeneficiary::class, ['record' => $this->case->getRouteKey()])
         ->fillForm(['assets' => [[
             'kind' => 'tractor',
             'necessity' => 'essential',
             'necessity_reason_ar' => 'يعمل عليه صاحبه',
             'estimated_value' => 40_000_000,
-            'details_ar' => 'جرار قديم',
+            'is_exploited' => true,
+            'has_control' => true,
+            'details_ar' => 'جرار قديم يعمل عليه بالأجرة',
         ]]])
         ->call('save')
         ->assertHasNoFormErrors();
@@ -42,7 +44,26 @@ it('records an asset with the question answered on it', function () {
         ->and($asset->necessity)->toBe('essential')
         ->and($asset->necessity_reason_ar)->toBe('يعمل عليه صاحبه')
         ->and($asset->estimated_value)->toBe(40_000_000)
-        ->and($asset->isEssential())->toBeTrue();
+        ->and($asset->is_exploited)->toBeTrue()
+        ->and($asset->has_control)->toBeTrue()
+        ->and($asset->isEssential())->toBeTrue()
+        ->and($asset->isAssessed())->toBeTrue();
+});
+
+it('refuses an asset with no note on it', function () {
+    // T-64 — the committee judges by hand, so its only material is what the
+    // researcher wrote. An asset with no description is of no use to them.
+    livewire(EditBeneficiary::class, ['record' => $this->case->getRouteKey()])
+        ->fillForm(['assets' => [[
+            'kind' => 'land',
+            'necessity' => 'surplus',
+            'estimated_value' => 9_000_000,
+            'details_ar' => null,
+        ]]])
+        ->call('save')
+        ->assertHasFormErrors();
+
+    expect($this->case->assets()->count())->toBe(0);
 });
 
 it('records a herd, and its steady income reaches the need calculation', function () {

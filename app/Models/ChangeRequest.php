@@ -79,6 +79,9 @@ class ChangeRequest extends Model
         'severity_band', 'economic_impact_band', 'care_burden_band', 'monthly_medical_cost',
         'description_ar', 'ongoing_treatment', 'treatment_place_ar', 'medicines_ar',
         'doctor_name_ar', 'doctor_phone_encrypted',
+        // What the family owns, as the researcher answered it (T-64).
+        'necessity', 'necessity_reason_ar', 'is_exploited', 'has_control',
+        'kind_other_ar', 'estimated_value',
         // Where the money is sent. Locked on a live file, and this is the path.
         'wallet_encrypted',
         // The two the engine reads, and the region the rates come from.

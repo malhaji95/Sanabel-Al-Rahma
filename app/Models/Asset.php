@@ -14,11 +14,17 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  *
  * Approved 11 October: owning something must not lower entitlement by itself.
  * An asset needed for the home, for work or for a living is recorded and
- * lowers nothing. A surplus, investment or non-essential asset that could be
- * sold has an effect, under criteria the association approves separately.
+ * lowers nothing.
  *
- * The answer is the delegate's, recorded here. Nothing in the code decides it
- * from `kind`: the same tractor is a livelihood to one family and an
+ * And on 12 October, asked for a value above which a surplus asset bears on
+ * eligibility, they answered that there is no such number: the committee
+ * judges each case by hand. So nothing here computes a verdict. What the
+ * system owes them is the researcher's description — whether it is worked or
+ * idle, whether the family actually controls it, and a written note on its
+ * nature and details.
+ *
+ * Every answer is the researcher's, recorded here. Nothing in the code decides
+ * one from `kind`: the same tractor is a livelihood to one family and an
  * investment to another, which is exactly why they asked for the question.
  */
 class Asset extends Model
@@ -35,7 +41,11 @@ class Asset extends Model
 
     protected function casts(): array
     {
-        return ['estimated_value' => 'integer'];
+        return [
+            'estimated_value' => 'integer',
+            'is_exploited' => 'boolean',
+            'has_control' => 'boolean',
+        ];
     }
 
     public function beneficiary(): BelongsTo
@@ -56,5 +66,18 @@ class Asset extends Model
     public function isEssential(): bool
     {
         return $this->necessity === 'essential';
+    }
+
+    /**
+     * Whether the researcher has answered enough for a committee to judge it.
+     * Nothing enforces this on an imported row — the old system never asked
+     * these questions — so it is a reading, not a constraint.
+     */
+    public function isAssessed(): bool
+    {
+        return $this->necessity !== null
+            && $this->is_exploited !== null
+            && $this->has_control !== null
+            && filled($this->details_ar);
     }
 }
