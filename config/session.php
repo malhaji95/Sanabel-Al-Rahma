@@ -73,7 +73,16 @@ return [
     |
     */
 
-    'connection' => env('SESSION_CONNECTION'),
+    /*
+     | T-68 — correct by construction rather than by remembering.
+     |
+     | This key means a database connection under the database driver and a
+     | Redis connection under the redis one, so it cannot carry one fixed
+     | default. Choosing redis sessions therefore lands them on their own
+     | keyspace without a second environment variable having to be set
+     | alongside; choosing database sessions leaves it alone.
+     */
+    'connection' => env('SESSION_CONNECTION', env('SESSION_DRIVER') === 'redis' ? 'session' : null),
 
     /*
     |--------------------------------------------------------------------------

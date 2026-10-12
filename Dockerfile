@@ -80,7 +80,24 @@ RUN mkdir -p storage/framework/cache/data storage/framework/sessions \
 #                        a file named after the database
 #   DB_SSLMODE           'prefer' silently falls back to plaintext, and a
 #                        managed database is reached across the internet
-#   QUEUE/CACHE/SESSION  no Redis in a single small container
+#   QUEUE/CACHE/SESSION  no Redis in a single small container, so these fall
+#                        back to PostgreSQL. CLAUDE.md 1 names Redis queues as
+#                        the stack, and T-68 has the configuration ready: on a
+#                        host that has Redis, set these five and nothing else
+#                        changes, because the keyspace separation is computed
+#                        rather than configured.
+#
+#                          REDIS_HOST=<host>
+#                          REDIS_PASSWORD=<secret>
+#                          CACHE_STORE=redis
+#                          QUEUE_CONNECTION=redis
+#                          SESSION_DRIVER=redis
+#
+#                        The cache, the session and the queue then take one
+#                        Redis database each (1, 2, 3), so clearing the cache
+#                        does not sign every user out and flushing the queue
+#                        does not either. The whole suite passes on both sets
+#                        of drivers.
 #   SESSION_SECURE_*     T-56 (IAM-02). Laravel's own default leaves the Secure
 #                        flag unset, so the session cookie was eligible to be
 #                        sent over plain http. Encrypted at rest too, because a
