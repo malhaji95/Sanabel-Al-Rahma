@@ -113,6 +113,8 @@ class Beneficiary extends Model
             'wallet_encrypted' => 'encrypted',
             'last_assessment_at' => 'datetime',
             'next_assessment_due_at' => 'datetime',
+            'anonymise_requested_at' => 'datetime',
+            'anonymised_at' => 'datetime',
             'approved_at' => 'datetime',
             'field_verified_at' => 'datetime',
             'endorsed_at' => 'datetime',
@@ -232,6 +234,12 @@ class Beneficiary extends Model
     public function scopePublished($query)
     {
         return $query->where('status', 'published');
+    }
+
+    /** T-65 — the personal data is gone; the record and its history are not. */
+    public function isAnonymised(): bool
+    {
+        return $this->anonymised_at !== null;
     }
 
     /*

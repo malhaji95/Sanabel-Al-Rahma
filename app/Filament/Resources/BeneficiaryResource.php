@@ -778,6 +778,14 @@ class BeneficiaryResource extends Resource
                 Tables\Columns\TextColumn::make('file_number')->label(__('sanabel.beneficiary.file_number'))->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('legacy_file_no')->label(__('sanabel.beneficiary.legacy_file_no'))
                     ->searchable()->toggleable(isToggledHiddenByDefault: true),
+                // T-65 — a file whose personal data has been destroyed, and
+                // one with a request standing against it.
+                Tables\Columns\TextColumn::make('anonymised_at')
+                    ->label(__('sanabel.anonymise.badge'))
+                    ->badge()->color('gray')
+                    ->formatStateUsing(fn () => __('sanabel.anonymise.badge'))
+                    ->placeholder('')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('case_classification')
                     ->label(__('sanabel.beneficiary.case_classification'))
                     ->badge()

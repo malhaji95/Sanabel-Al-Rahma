@@ -4,6 +4,7 @@ namespace App\Filament\Resources\BeneficiaryResource\Pages;
 
 use App\Filament\Resources\BeneficiaryResource;
 use App\Models\Beneficiary;
+use App\Services\AnonymiseService;
 use App\Services\AssessmentService;
 use App\Services\CaseService;
 use Filament\Actions;
@@ -162,6 +163,62 @@ class EditBeneficiary extends EditRecord
                     app(CaseService::class)->publish($this->record);
 
                     Notification::make()->title(__('sanabel.actions.published'))->success()->send();
+                }),
+
+            /*
+             | T-65 — the law being carried out, not an edit.
+             |
+             | Two people, as on the disbursement path: one asks and states the
+             | legal basis, another carries it out, and the person who asked is
+             | refused. It cannot be undone, so one person acting alone is not
+             | enough. Both buttons are admin-only.
+             */
+            Actions\Action::make('requestAnonymise')
+                ->label(__('sanabel.anonymise.request'))
+                ->icon('heroicon-o-eye-slash')
+                ->color('warning')
+                ->visible(fn () => auth()->user()->isAdmin()
+                    && ! $this->record->isAnonymised()
+                    && ! $this->record->anonymise_requested_by)
+                ->modalDescription(__('sanabel.anonymise.request_help'))
+                ->form([
+                    Forms\Components\Textarea::make('reason_ar')
+                        ->label(__('sanabel.anonymise.reason'))
+                        ->required()
+                        ->rows(3),
+                ])
+                ->action(function (array $data) {
+                    try {
+                        app(AnonymiseService::class)
+                            ->request($this->record, auth()->user(), $data['reason_ar']);
+                    } catch (\RuntimeException $e) {
+                        Notification::make()->title($e->getMessage())->danger()->send();
+
+                        return;
+                    }
+
+                    Notification::make()->title(__('sanabel.anonymise.requested'))->success()->send();
+                }),
+
+            Actions\Action::make('executeAnonymise')
+                ->label(__('sanabel.anonymise.execute'))
+                ->icon('heroicon-o-eye-slash')
+                ->color('danger')
+                ->visible(fn () => auth()->user()->isAdmin()
+                    && ! $this->record->isAnonymised()
+                    && (bool) $this->record->anonymise_requested_by)
+                ->requiresConfirmation()
+                ->modalDescription(__('sanabel.anonymise.execute_help'))
+                ->action(function () {
+                    try {
+                        app(AnonymiseService::class)->execute($this->record, auth()->user());
+                    } catch (\RuntimeException $e) {
+                        Notification::make()->title($e->getMessage())->danger()->send();
+
+                        return;
+                    }
+
+                    Notification::make()->title(__('sanabel.anonymise.done'))->success()->send();
                 }),
 
             Actions\Action::make('close')
