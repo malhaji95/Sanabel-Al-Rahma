@@ -28,6 +28,16 @@ class Beneficiary extends Model
      * by hand, so the fund stays reportable and a free-text box does not turn
      * into a second account of the household.
      */
+    /**
+     * The survey's own «تصنيف الحالة». Added on 12 October for filtering, and
+     * not a zakat category: فقير and مسكين are two of the eight channels, but
+     * مرض and أرمل are not channels at all, so the two questions stay apart
+     * and the zakat channel stays the management's own call.
+     */
+    public const CASE_CLASSIFICATIONS = [
+        'poor', 'needy', 'orphan', 'widowed', 'illness', 'debtor', 'other',
+    ];
+
     public const ZAKAT_CATEGORIES = [
         'poor', 'needy', 'workers', 'hearts', 'slaves', 'debtors', 'cause', 'wayfarer',
     ];
@@ -35,7 +45,7 @@ class Beneficiary extends Model
     protected $fillable = [
         'file_number', 'legacy_file_no', 'user_id', 'national_id_encrypted', 'national_id_hash', 'first_name', 'father_name',
         'family_name', 'phone_encrypted', 'region_id', 'association_id', 'marital_status', 'wallet_encrypted',
-        'support_type', 'zakat_category', 'is_shareable', 'previous_aid_ar',
+        'support_type', 'zakat_category', 'case_classification', 'legacy_review_json', 'is_shareable', 'previous_aid_ar',
         // The association's own social survey, carried into the file.
         'gender', 'birth_date', 'town_ar', 'latitude', 'longitude', 'works', 'workplace_ar',
         'has_quran_memorizers', 'quran_memorizer_count', 'livelihood_proposal_ar',
@@ -93,6 +103,8 @@ class Beneficiary extends Model
     {
         return [
             'is_shareable' => 'boolean',
+            // The old system's researcher review, kept as an archive (T-63).
+            'legacy_review_json' => 'array',
             'birth_date' => 'date',
             'works' => 'boolean',
             'has_quran_memorizers' => 'boolean',

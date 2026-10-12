@@ -163,6 +163,15 @@ class BeneficiaryResource extends Resource
                             ->mapWithKeys(fn (string $k) => [$k => __('sanabel.zakat.categories.'.$k)])
                             ->all()),
 
+                    // T-63 — their survey's own classification. For filtering,
+                    // and deliberately not the zakat channel beside it.
+                    Forms\Components\Select::make('case_classification')
+                        ->label(__('sanabel.beneficiary.case_classification'))
+                        ->helperText(__('sanabel.beneficiary.case_classification_help'))
+                        ->options(collect(Beneficiary::CASE_CLASSIFICATIONS)
+                            ->mapWithKeys(fn (string $k) => [$k => __('sanabel.case_classification.'.$k)])
+                            ->all()),
+
                     Forms\Components\Toggle::make('is_shareable')
                         ->label(__('sanabel.beneficiary.is_shareable'))
                         ->helperText(__('sanabel.beneficiary.is_shareable_help'))
@@ -700,6 +709,21 @@ class BeneficiaryResource extends Resource
 
                     Forms\Components\TextInput::make('surveyed_by_ar')
                         ->label(__('sanabel.beneficiary.surveyed_by_ar')),
+
+                    /*
+                     | T-63 — what the old system's researcher wrote. An
+                     | archive to look back at: the file itself re-entered as a
+                     | draft and went through this system's own chain, so this
+                     | is shown and never edited, and nothing reads it.
+                     */
+                    Forms\Components\Placeholder::make('legacy_review')
+                        ->label(__('sanabel.beneficiary.legacy_review'))
+                        ->helperText(__('sanabel.beneficiary.legacy_review_help'))
+                        ->visible(fn (?Beneficiary $record) => filled($record?->legacy_review_json))
+                        ->content(fn (?Beneficiary $record) => collect($record?->legacy_review_json ?? [])
+                            ->map(fn ($value, $key) => $key.': '.(is_scalar($value) ? $value : json_encode($value, JSON_UNESCAPED_UNICODE)))
+                            ->implode(' | ') ?: __('sanabel.beneficiary.legacy_review_empty'))
+                        ->columnSpanFull(),
                 ])->columns(2),
 
                 Forms\Components\Wizard\Step::make(__('sanabel.beneficiary.step_urgency'))->schema([
@@ -739,6 +763,11 @@ class BeneficiaryResource extends Resource
                 Tables\Columns\TextColumn::make('file_number')->label(__('sanabel.beneficiary.file_number'))->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('legacy_file_no')->label(__('sanabel.beneficiary.legacy_file_no'))
                     ->searchable()->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('case_classification')
+                    ->label(__('sanabel.beneficiary.case_classification'))
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state) => $state ? __('sanabel.case_classification.'.$state) : '—')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('family_name')->label(__('sanabel.beneficiary.family_name'))->searchable(),
                 Tables\Columns\TextColumn::make('region.name_ar')->label(__('sanabel.beneficiary.region'))->sortable(),
                 Tables\Columns\TextColumn::make('support_type')
@@ -788,6 +817,12 @@ class BeneficiaryResource extends Resource
                 Tables\Filters\SelectFilter::make('region_id')
                     ->label(__('sanabel.beneficiary.region'))
                     ->options(fn () => Region::pluck('name_ar', 'id')),
+                // T-63 — what they added it for.
+                Tables\Filters\SelectFilter::make('case_classification')
+                    ->label(__('sanabel.beneficiary.case_classification'))
+                    ->options(collect(Beneficiary::CASE_CLASSIFICATIONS)
+                        ->mapWithKeys(fn (string $k) => [$k => __('sanabel.case_classification.'.$k)])
+                        ->all()),
                 Tables\Filters\TernaryFilter::make('duplicate_review_flag')
                     ->label(__('sanabel.beneficiary.duplicate_flag')),
             ])
