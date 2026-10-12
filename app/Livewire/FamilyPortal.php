@@ -97,6 +97,11 @@ class FamilyPortal extends Component
                     ->get()
                 : collect(),
             'confirmDays' => DisbursementService::confirmDays(),
-        ]);
+        // T-67 — the page layout. Without it Livewire falls back to its own
+        // default, components.layouts.app, which this project does not have,
+        // and the route answers 500. The other three full-page components all
+        // name it; this one did not, and Livewire::test() renders a component
+        // without a layout, so the suite never saw it.
+        ])->layout('layouts.app');
     }
 }

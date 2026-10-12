@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Exceptions\DuplicateTransactionRef;
 use App\Exceptions\ReservationUnavailable;
 use App\Http\Resources\MaskedCaseResource;
+use App\Models\Basket;
 use App\Models\BasketItem;
 use App\Payments\PaymentGateway;
 use App\Services\BasketService;
@@ -95,15 +96,28 @@ class DonorBasket extends Component
         $this->thanks = true;
     }
 
-    private function basket()
+    /**
+     * T-67 — null for a signed-in account that has no donor record yet.
+     *
+     * currentFor() demands a Donor, and a user carrying the donor role does
+     * not necessarily have the row: it is created when they first give. The
+     * basket page therefore answered 500 for a donor who had never donated,
+     * which is every donor on their first visit. The page now shows the empty
+     * basket, which is the truth.
+     */
+    private function basket(): ?Basket
     {
-        return app(BasketService::class)->currentFor(auth()->user()->donor);
+        $donor = auth()->user()?->donor;
+
+        return $donor ? app(BasketService::class)->currentFor($donor) : null;
     }
 
     public function render()
     {
         $basket = $this->basket();
-        $items = $basket->items()->with(['beneficiary', 'campaign'])->get();
+        $items = $basket
+            ? $basket->items()->with(['beneficiary', 'campaign'])->get()
+            : collect();
 
         return view('livewire.donor-basket', [
             'basket' => $basket,
@@ -116,7 +130,7 @@ class DonorBasket extends Component
                 'campaign' => $item->campaign?->title_ar,
                 'case' => (new MaskedCaseResource($item->beneficiary))->resolve(),
             ]),
-            'total' => $basket->total(),
+            'total' => $basket?->total() ?? 0,
             // One destination for everything in the basket.
             'transferWallet' => app(TransferRouting::class)->wallet(),
         ])->layout('layouts.app');

@@ -103,6 +103,29 @@ it('ships a session cookie that cannot travel in clear, and is encrypted at rest
     expect(config('session.http_only'))->toBeTrue();
 });
 
+it('names a layout on every full-page component, so the policy is on the page', function () {
+    /*
+     | A component rendered without the page layout is served without the
+     | document shell, which is where the meta tags and the asset links live.
+     | More to the point, it answers 500: Livewire falls back to its own
+     | default layout, which this project does not have. Found by opening the
+     | pages in a browser, which no test did; FullPageRoutesTest now opens
+     | each one over HTTP, and this holds the cause rather than the symptom.
+     */
+    foreach (glob(base_path('app/Livewire/*.php')) as $component) {
+        $source = file_get_contents($component);
+
+        // Only the ones routed as a page; the rest are rendered inside one.
+        if (! str_contains(file_get_contents(base_path('routes/web.php')), basename($component, '.php'))) {
+            continue;
+        }
+
+        expect(str_contains($source, "layout('layouts.app')"))->toBeTrue(
+            basename($component).' is routed as a page and names no layout',
+        );
+    }
+});
+
 it('reads a proxied TLS request as secure, so the cookie and HSTS are set', function () {
     // Render terminates TLS at its edge and forwards over http. Without the
     // trusted proxy the app reads every request as insecure and silently never
