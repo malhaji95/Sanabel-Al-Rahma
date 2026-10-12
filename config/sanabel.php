@@ -182,5 +182,13 @@ return [
         // Where a donor sends the money when neither the family nor its
         // association says otherwise: direct|association|both.
         'default_transfer_mode' => 'association',
+        // How long a closed file keeps its personal data before it may be
+        // anonymised. The association settled on five years on 12 Oct 2026,
+        // reading it off the Saudi commercial-register period for an
+        // establishment, and asked whether it could be moved later: it is a
+        // setting, so it moves from the settings screen without a deploy.
+        // The period runs from the file's last activity, not from its
+        // creation, so a family still being helped is never due.
+        'anonymise_after_years' => 5,
     ],
 ];

@@ -15,16 +15,18 @@ use App\Models\Disbursement;
 use App\Models\DistributionItem;
 use App\Models\HealthRecord;
 use App\Models\HouseholdMember;
-use App\Models\JobProfile;
 use App\Models\Housing;
 use App\Models\Income;
+use App\Models\JobProfile;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\Referral;
+use App\Models\Setting;
 use App\Models\SupportSource;
 use App\Models\User;
 use App\Models\Visit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -53,6 +55,17 @@ use Illuminate\Support\Facades\Storage;
  */
 class AnonymiseService
 {
+    /**
+     * Who may do this at all, named by the association on 12 October: the
+     * chairman of the board of trustees and the executive director.
+     *
+     * A role check and not only a permission, in the manner of the council's
+     * read-only rule: the system administrator holds every permission key, and
+     * the association did not name the system administrator. Destroying a
+     * family's identity is not an administrative convenience.
+     */
+    public const AUTHORISED_ROLES = ['board_director', 'executive_director'];
+
     /**
      * What is cleared, per record. Everything not named here survives, which
      * is the direction that fails safe for the association's own reporting;
@@ -213,15 +226,83 @@ class AnonymiseService
         JobProfile::class => ['status' => 'hidden'],
     ];
 
-    /** One person asks, and says why the law requires it. */
+    public function isAuthorised(User $user, string $permission): bool
+    {
+        return $user->hasRole(...self::AUTHORISED_ROLES) && $user->can_($permission);
+    }
+
+    /** The statutory period, in years. Data, so the association moves it. */
+    public static function retentionYears(): int
+    {
+        return (int) Setting::value('anonymise_after_years', config('sanabel.setting_defaults.anonymise_after_years'));
+    }
+
+    /**
+     * When the file was last part of the association's work: the last payment
+     * out, the last assessment, the day it was published or approved, or
+     * failing all of those the day it was opened.
+     *
+     * It is deliberately not `updated_at`: a clerk correcting a spelling would
+     * otherwise push a family's retention five years out, and a bulk edit
+     * would push every family's.
+     */
+    public function lastActivityAt(Beneficiary $case): Carbon
+    {
+        $dates = [
+            $case->disbursements()->whereNotNull('executed_at')->max('executed_at'),
+            $case->last_assessment_at,
+            $case->published_at,
+            $case->approved_at,
+            $case->created_at,
+        ];
+
+        $dates = array_values(array_filter(array_map(
+            fn ($date) => $date ? Carbon::parse($date) : null,
+            $dates
+        )));
+
+        return collect($dates)->max() ?? now();
+    }
+
+    /** The day the file's personal data may be destroyed, and not before. */
+    public function retentionRunsOutAt(Beneficiary $case): Carbon
+    {
+        return $this->lastActivityAt($case)->copy()->addYears(self::retentionYears());
+    }
+
+    public function retentionHasRunOut(Beneficiary $case): bool
+    {
+        return $this->retentionRunsOutAt($case)->isPast();
+    }
+
+    /**
+     * One person asks, and says why the law requires it.
+     *
+     * Two gates, both of them the association's own words of 12 October: the
+     * personal data may be destroyed «عندما يوجب القانون ذلك وبعد انتهاء مدة
+     * الاحتفاظ النظامية» — so a legal basis in writing, and a period that has
+     * actually run out. And they named who may ask: the chairman of the board
+     * of trustees and the executive director, nobody else.
+     */
     public function request(Beneficiary $case, User $requester, string $reasonAr): Beneficiary
     {
         if ($case->isAnonymised()) {
             throw new \RuntimeException(__('sanabel.anonymise.already_done'));
         }
 
+        if (! $this->isAuthorised($requester, 'request_anonymise')) {
+            throw new \RuntimeException(__('sanabel.anonymise.not_authorised'));
+        }
+
         if (trim($reasonAr) === '') {
             throw new \RuntimeException(__('sanabel.anonymise.reason_required'));
+        }
+
+        if (! $this->retentionHasRunOut($case)) {
+            throw new \RuntimeException(__('sanabel.anonymise.retention_not_over', [
+                'years' => self::retentionYears(),
+                'date' => $this->retentionRunsOutAt($case)->toDateString(),
+            ]));
         }
 
         $case->forceFill([
@@ -241,6 +322,10 @@ class AnonymiseService
     {
         if ($case->isAnonymised()) {
             throw new \RuntimeException(__('sanabel.anonymise.already_done'));
+        }
+
+        if (! $this->isAuthorised($actor, 'execute_anonymise')) {
+            throw new \RuntimeException(__('sanabel.anonymise.not_authorised'));
         }
 
         if (! $case->anonymise_requested_by) {

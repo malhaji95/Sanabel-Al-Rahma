@@ -3,6 +3,7 @@
 use App\Models\AuditLog;
 use App\Models\Beneficiary;
 use App\Models\Media;
+use App\Models\Setting;
 use App\Services\AnonymiseService;
 use App\Services\CoverageService;
 use App\Services\DuplicateService;
@@ -30,6 +31,18 @@ beforeEach(function () {
     $this->region = regionWithRates();
     $this->officer = userWithRole('case_officer', ['region_id' => $this->region->id]);
     $this->admin = userWithRole('admin', ['region_id' => $this->region->id]);
+
+    // T-71 — the two the association named on 12 October. One asks, the other
+    // carries it out, and the rule that they cannot be the same person makes
+    // them each other's check.
+    $this->chairman = userWithRole('board_director', ['region_id' => $this->region->id]);
+    $this->director = userWithRole('executive_director', ['region_id' => $this->region->id]);
+
+    // These tests are about what is destroyed. When it may be destroyed is the
+    // retention period, which has its own tests below, so it is out of the way
+    // here.
+    Setting::put('anonymise_after_years', 0);
+
     $this->service = app(AnonymiseService::class);
 });
 
@@ -79,8 +92,8 @@ it('destroys the person and keeps the record', function () {
     $need = app(CoverageService::class)->needAmount($case);
     $members = $case->members()->count();
 
-    $this->service->request($case, $this->officer, 'انتهت مدة الاحتفاظ النظامية وصدر التزام قانوني بالإتلاف');
-    $this->service->execute($case->fresh(), $this->admin);
+    $this->service->request($case, $this->chairman, 'انتهت مدة الاحتفاظ النظامية وصدر التزام قانوني بالإتلاف');
+    $this->service->execute($case->fresh(), $this->director);
 
     $case = Beneficiary::withoutGlobalScopes()->find($case->getKey());
 
@@ -111,8 +124,8 @@ it('destroys the person and keeps the record', function () {
 it('sweeps every record hanging off the file, not just the file', function () {
     $case = familyWithEverything($this->region);
 
-    $this->service->request($case, $this->officer, 'سند قانوني');
-    $this->service->execute($case->fresh(), $this->admin);
+    $this->service->request($case, $this->chairman, 'سند قانوني');
+    $this->service->execute($case->fresh(), $this->director);
 
     $case->refresh();
 
@@ -151,8 +164,8 @@ it('destroys the papers themselves, not only their rows', function () {
 
     expect(Storage::disk('media_test')->exists($key))->toBeTrue();
 
-    $this->service->request($case, $this->officer, 'سند قانوني');
-    $this->service->execute($case->fresh(), $this->admin);
+    $this->service->request($case, $this->chairman, 'سند قانوني');
+    $this->service->execute($case->fresh(), $this->director);
 
     // An identity card photograph is the identity.
     expect(Storage::disk('media_test')->exists($key))->toBeFalse()
@@ -166,8 +179,8 @@ it('closes their own portal account', function () {
     $account = userWithRole('beneficiary', ['name' => 'محمد أحمد', 'email' => 'm@example.test']);
     $case->forceFill(['user_id' => $account->getKey()])->save();
 
-    $this->service->request($case, $this->officer, 'سند قانوني');
-    $this->service->execute($case->fresh(), $this->admin);
+    $this->service->request($case, $this->chairman, 'سند قانوني');
+    $this->service->execute($case->fresh(), $this->director);
 
     $account->refresh();
 
@@ -187,8 +200,8 @@ it('keeps the audit trail and takes the values out of it', function () {
 
     expect($rowsBefore)->toBeGreaterThan(0);
 
-    $this->service->request($case, $this->officer, 'سند قانوني');
-    $this->service->execute($case->fresh(), $this->admin);
+    $this->service->request($case, $this->chairman, 'سند قانوني');
+    $this->service->execute($case->fresh(), $this->director);
 
     $rows = DB::table('audit_log')
         ->where('entity_type', Beneficiary::class)
@@ -210,16 +223,16 @@ it('keeps the audit trail and takes the values out of it', function () {
 it('writes one audit row for the act, naming what went and never a value', function () {
     $case = familyWithEverything($this->region);
 
-    $this->service->request($case, $this->officer, 'انتهت مدة الاحتفاظ');
-    $this->service->execute($case->fresh(), $this->admin);
+    $this->service->request($case, $this->chairman, 'انتهت مدة الاحتفاظ');
+    $this->service->execute($case->fresh(), $this->director);
 
     $row = AuditLog::where('action', 'anonymised')
         ->where('entity_id', $case->getKey())->first();
 
     expect($row)->not->toBeNull()
-        ->and($row->actor_id)->toBe($this->admin->getKey())
+        ->and($row->actor_id)->toBe($this->director->getKey())
         ->and($row->after_json['reason_ar'])->toBe('انتهت مدة الاحتفاظ')
-        ->and($row->after_json['requested_by'])->toBe($this->officer->getKey())
+        ->and($row->after_json['requested_by'])->toBe($this->chairman->getKey())
         ->and($row->after_json['cleared'])->toHaveKeys(['beneficiary', 'media', 'audit_rows'])
         // Column names and counts, not values.
         ->and(json_encode($row->after_json, JSON_UNESCAPED_UNICODE))->not->toContain('حي المنشية');
@@ -229,12 +242,12 @@ it('needs two people, and refuses the one who asked', function () {
     $case = familyWithEverything($this->region);
 
     // Not asked for at all.
-    expect(fn () => $this->service->execute($case, $this->admin))->toThrow(RuntimeException::class);
+    expect(fn () => $this->service->execute($case, $this->director))->toThrow(RuntimeException::class);
 
-    $this->service->request($case, $this->officer, 'سند قانوني');
+    $this->service->request($case, $this->chairman, 'سند قانوني');
 
     // Asked for by the same person who would carry it out.
-    expect(fn () => $this->service->execute($case->fresh(), $this->officer))
+    expect(fn () => $this->service->execute($case->fresh(), $this->chairman))
         ->toThrow(RuntimeException::class);
 
     expect($case->fresh()->isAnonymised())->toBeFalse()
@@ -244,19 +257,19 @@ it('needs two people, and refuses the one who asked', function () {
 it('refuses a request with no legal basis behind it', function () {
     $case = familyWithEverything($this->region);
 
-    expect(fn () => $this->service->request($case, $this->officer, '   '))
+    expect(fn () => $this->service->request($case, $this->chairman, '   '))
         ->toThrow(RuntimeException::class);
 })->group('FILE-04');
 
 it('refuses to do it twice', function () {
     $case = familyWithEverything($this->region);
 
-    $this->service->request($case, $this->officer, 'سند قانوني');
-    $this->service->execute($case->fresh(), $this->admin);
+    $this->service->request($case, $this->chairman, 'سند قانوني');
+    $this->service->execute($case->fresh(), $this->director);
 
-    expect(fn () => $this->service->execute($case->fresh(), $this->admin))
+    expect(fn () => $this->service->execute($case->fresh(), $this->director))
         ->toThrow(RuntimeException::class)
-        ->and(fn () => $this->service->request($case->fresh(), $this->officer, 'سند'))
+        ->and(fn () => $this->service->request($case->fresh(), $this->chairman, 'سند'))
         ->toThrow(RuntimeException::class);
 })->group('FILE-04');
 
@@ -266,8 +279,8 @@ it('leaves the family unfindable by the number that was destroyed', function () 
 
     expect(app(DuplicateService::class)->existingFile($nationalId)?->getKey())->toBe($case->getKey());
 
-    $this->service->request($case, $this->officer, 'سند قانوني');
-    $this->service->execute($case->fresh(), $this->admin);
+    $this->service->request($case, $this->chairman, 'سند قانوني');
+    $this->service->execute($case->fresh(), $this->director);
 
     // The hash is an HMAC of the identity number: keeping it would let anyone
     // with the key and a list of candidate numbers put the name back.
@@ -277,8 +290,8 @@ it('leaves the family unfindable by the number that was destroyed', function () 
 it('never shows an anonymised file to a donor as a person', function () {
     $case = familyWithEverything($this->region);
 
-    $this->service->request($case, $this->officer, 'سند قانوني');
-    $this->service->execute($case->fresh(), $this->admin);
+    $this->service->request($case, $this->chairman, 'سند قانوني');
+    $this->service->execute($case->fresh(), $this->director);
 
     $payload = json_encode(
         (new \App\Http\Resources\MaskedCaseResource($case->fresh()))->resolve(),
@@ -369,8 +382,8 @@ it('takes down the public content about the family, not only empties it', functi
         'status' => 'published',
     ]);
 
-    $this->service->request($case, $this->officer, 'سند قانوني');
-    $this->service->execute($case->fresh(), $this->admin);
+    $this->service->request($case, $this->chairman, 'سند قانوني');
+    $this->service->execute($case->fresh(), $this->director);
 
     $post->refresh();
     $campaign->refresh();
@@ -426,8 +439,8 @@ it('destroys every file belonging to the family, wherever it hangs', function ()
         expect($disk->exists($paper->storage_key))->toBeTrue();
     }
 
-    $this->service->request($case, $this->officer, 'سند قانوني');
-    $this->service->execute($case->fresh(), $this->admin);
+    $this->service->request($case, $this->chairman, 'سند قانوني');
+    $this->service->execute($case->fresh(), $this->director);
 
     foreach ([$identity, $report, $consent, $proof] as $paper) {
         expect($disk->exists($paper->storage_key))->toBeFalse(class_basename($paper).' survived')
@@ -449,8 +462,8 @@ it('takes the values out of the change requests that moved them', function () {
         'الاسرة بدلت رقمها',
     );
 
-    $this->service->request($case->fresh(), $this->officer, 'سند قانوني');
-    $this->service->execute($case->fresh(), $this->admin);
+    $this->service->request($case->fresh(), $this->chairman, 'سند قانوني');
+    $this->service->execute($case->fresh(), $this->director);
 
     $rows = DB::table('change_requests')->where('beneficiary_id', $case->getKey())->get();
     $everything = $rows->map(fn ($r) => (string) $r->payload_json.(string) $r->old_json.(string) $r->reason_ar)->implode(' ');
@@ -474,8 +487,8 @@ it('clears the complaint the family filed from their own account', function () {
         'status' => 'open',
     ]);
 
-    $this->service->request($case->fresh(), $this->officer, 'سند قانوني');
-    $this->service->execute($case->fresh(), $this->admin);
+    $this->service->request($case->fresh(), $this->chairman, 'سند قانوني');
+    $this->service->execute($case->fresh(), $this->director);
 
     $complaint->refresh();
 
@@ -493,8 +506,8 @@ it('leaves no trace of the family in any free text or file, anywhere', function 
     $case->deliveries()->create(['type' => 'in_kind', 'note_ar' => 'استلم ابو خالد بحي المنشية', 'confirmed_at' => now()]);
     storyAbout($case, $this->officer);
 
-    $this->service->request($case, $this->officer, 'سند قانوني');
-    $this->service->execute($case->fresh(), $this->admin);
+    $this->service->request($case, $this->chairman, 'سند قانوني');
+    $this->service->execute($case->fresh(), $this->director);
 
     $needles = ['حي المنشية', '0911111111', '0922222222', 'OLD-1042', 'أبو فؤاد', 'د. سامر', '0944555666', '0955111222'];
 

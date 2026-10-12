@@ -106,6 +106,10 @@ class RoleAndPermissionSeeder extends Seeder
             'handle_complaint' => 'all', 'manage_campaigns' => 'all', 'approve_content' => 'all',
             'approve_disbursement' => 'all',
             'file_complaint' => 'own', 'view_reports' => 'all',
+            // 12 Oct 2026 — anonymisation is theirs and the chairman's, nobody
+            // else's. The chairman holds every key, so this is the other half
+            // of the pair, and the two-person rule makes them each other's.
+            'request_anonymise' => 'all', 'execute_anonymise' => 'all',
         ],
 
         // Same powers, own account, own name on every action. The time-bounded

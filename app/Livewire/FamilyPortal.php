@@ -20,6 +20,12 @@ use Livewire\Component;
  * Everything here belongs to the family looking at it. There is no file
  * number in a parameter and nothing to change in an address bar: the file is
  * found from the account.
+ *
+ * It also shows them the wallet the association holds for them, asked for on
+ * 12 October so a family can check that the account on their file is the one
+ * they actually use before a payment goes to it. Their own number, on their
+ * own page, behind their own login: rule 2 governs what a donor sees, and a
+ * donor sees none of this.
  */
 class FamilyPortal extends Component
 {
@@ -88,6 +94,9 @@ class FamilyPortal extends Component
 
         return view('livewire.family-portal', [
             'family' => $family,
+            // Decrypted here rather than in the view, and only for the account
+            // the file belongs to.
+            'wallet' => $family?->wallet_encrypted,
             'coverage' => $family ? app(CoverageService::class)->coveragePercent($family) : 0,
             'need' => $family ? app(CoverageService::class)->needAmount($family) : 0,
             'payments' => $family
@@ -97,11 +106,11 @@ class FamilyPortal extends Component
                     ->get()
                 : collect(),
             'confirmDays' => DisbursementService::confirmDays(),
-        // T-67 — the page layout. Without it Livewire falls back to its own
-        // default, components.layouts.app, which this project does not have,
-        // and the route answers 500. The other three full-page components all
-        // name it; this one did not, and Livewire::test() renders a component
-        // without a layout, so the suite never saw it.
+            // T-67 — the page layout. Without it Livewire falls back to its own
+            // default, components.layouts.app, which this project does not have,
+            // and the route answers 500. The other three full-page components all
+            // name it; this one did not, and Livewire::test() renders a component
+            // without a layout, so the suite never saw it.
         ])->layout('layouts.app');
     }
 }

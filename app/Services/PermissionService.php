@@ -27,6 +27,10 @@ class PermissionService
         // quietly holds two of them.
         'confirm_disbursement', 'raise_disbursement_order', 'approve_disbursement',
         'execute_disbursement', 'reconcile_disbursement',
+        // Anonymisation, two keys for the two people it takes. The association
+        // named the holders on 12 October: the chairman of the board of
+        // trustees and the executive director.
+        'request_anonymise', 'execute_anonymise',
     ];
 
     public const READ_PERMISSIONS = [

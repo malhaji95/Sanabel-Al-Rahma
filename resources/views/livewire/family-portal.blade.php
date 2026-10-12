@@ -29,6 +29,18 @@
             </div>
         </div>
 
+        {{-- The account the association pays into, so the family can tell the
+             desk if it is wrong before the money moves (12 Oct 2026). --}}
+        <div class="card mt-4">
+            <p class="text-sm" style="color: var(--text-muted);">{{ __('sanabel.portal.my_wallet') }}</p>
+            @if ($wallet)
+                <p class="tabular mt-1 text-lg font-semibold" dir="ltr">{{ $wallet }}</p>
+                <p class="mt-1 text-sm" style="color: var(--text-muted);">{{ __('sanabel.portal.my_wallet_check') }}</p>
+            @else
+                <p class="mt-1 text-sm">{{ __('sanabel.portal.no_wallet') }}</p>
+            @endif
+        </div>
+
         <h2 class="mt-8 text-lg font-semibold">{{ __('sanabel.portal.payments') }}</h2>
 
         @if ($payments->isEmpty())
