@@ -60,7 +60,7 @@ it('walks a case from creation to approval across four accounts', function () {
 
     expect($approved->status)->toBe('approved')
         ->and($approved->approved_by)->toBe($this->admin->id);
-});
+})->group('AUTH-01');
 
 it('keeps the creator out of the approval, whichever role created it', function () {
     foreach (['case_officer', 'admin'] as $roleKey) {
@@ -76,7 +76,7 @@ it('keeps the creator out of the approval, whichever role created it', function 
         expect(fn () => app(CaseService::class)->approve($case, $creator))
             ->toThrow(RuntimeException::class);
     }
-});
+})->group('APP-01');
 
 it('holds each account inside its own region', function () {
     $otherRegion = regionWithRates();
@@ -86,7 +86,7 @@ it('holds each account inside its own region', function () {
     expect($this->supervisor->can('view', $mine))->toBeTrue()
         ->and($this->supervisor->can('view', $theirs))->toBeFalse()
         ->and($this->delegate->can('view', $theirs))->toBeFalse();
-});
+})->group('AUTH-02');
 
 it('separates the money from the case entirely', function () {
     $case = publishedCase($this->region);
@@ -100,7 +100,7 @@ it('separates the money from the case entirely', function () {
     expect($this->delegate->can_('verify_payment'))->toBeFalse()
         ->and($this->supervisor->can_('verify_payment'))->toBeFalse()
         ->and($this->officer->can_('verify_payment'))->toBeFalse();
-});
+})->group('AUTH-05');
 
 it('will not let the donor who paid confirm the transfer', function () {
     $donorRecord = Donor::factory()->create(['user_id' => $this->donor->id]);
@@ -121,7 +121,7 @@ it('will not let the donor who paid confirm the transfer', function () {
 
     expect($donation->fresh()->status)->toBe('verified')
         ->and($donation->fresh()->verified_by)->toBe($this->finance->id);
-});
+})->group('AUTH-05');
 
 it('denies the council every write while letting it read', function () {
     $council = userWithRole('council');
@@ -132,4 +132,4 @@ it('denies the council every write while letting it read', function () {
         ->and($council->can('update', $case))->toBeFalse()
         ->and($council->can_('verify_payment'))->toBeFalse()
         ->and($council->can_('edit_config'))->toBeFalse();
-});
+})->group('AUTH-01');

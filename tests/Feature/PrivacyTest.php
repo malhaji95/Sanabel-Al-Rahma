@@ -105,7 +105,7 @@ it('leaks nothing identifying on the donor case list route', function () {
     assertNoLeak($response->getContent(), $case);
     expect(array_keys($response->json('data.0')))
         ->toEqualCanonicalizing(MaskedCaseResource::ALLOWED_KEYS);
-});
+})->group('AUTH-03');
 
 it('leaks nothing identifying on the donor single case route', function () {
     $case = fullCase($this->region);
@@ -115,7 +115,7 @@ it('leaks nothing identifying on the donor single case route', function () {
     $response->assertOk();
     assertNoLeak($response->getContent(), $case);
     expect(array_keys($response->json('data')))->toEqualCanonicalizing(MaskedCaseResource::ALLOWED_KEYS);
-});
+})->group('AUTH-03');
 
 it('leaks nothing identifying on the donor basket route', function () {
     $case = fullCase($this->region);
@@ -131,7 +131,7 @@ it('leaks nothing identifying on the donor basket route', function () {
     assertNoLeak($response->getContent(), $case);
     expect(array_keys($response->json('items.0.case')))
         ->toEqualCanonicalizing(MaskedCaseResource::ALLOWED_KEYS);
-});
+})->group('AUTH-03');
 
 it('leaks nothing identifying on the donor my-donations route', function () {
     $case = fullCase($this->region);
@@ -154,7 +154,7 @@ it('leaks nothing identifying on the donor my-donations route', function () {
 
     $response->assertOk();
     assertNoLeak($response->getContent(), $case);
-});
+})->group('AUTH-03');
 
 it('leaks nothing identifying on the donor campaign routes', function () {
     $case = fullCase($this->region);
@@ -172,7 +172,7 @@ it('leaks nothing identifying on the donor campaign routes', function () {
     assertNoLeak($index->getContent(), $case);
     assertNoLeak($show->getContent(), $case);
     expect(array_keys($show->json('data.case')))->toEqualCanonicalizing(MaskedCaseResource::ALLOWED_KEYS);
-});
+})->group('AUTH-03');
 
 it('leaks nothing identifying on the donor job market route', function () {
     $case = fullCase($this->region);
@@ -186,7 +186,7 @@ it('leaks nothing identifying on the donor job market route', function () {
 
     $response->assertOk();
     assertNoLeak($response->getContent(), $case);
-});
+})->group('AUTH-03');
 
 it('never publishes anything identifying a child', function () {
     $case = fullCase($this->region);
@@ -199,7 +199,7 @@ it('never publishes anything identifying a child', function () {
         ->and($body)->not->toContain((string) $child->birth_year)
         // Children appear only as a count inside an age band.
         ->and($response->json('data.age_bands.child'))->toBeGreaterThan(0);
-});
+})->group('AUTH-03');
 
 it('gives the donor a band and a label instead of the exact rent, diagnosis and score', function () {
     $case = fullCase($this->region);
@@ -213,7 +213,7 @@ it('gives the donor a band and a label instead of the exact rent, diagnosis and 
         ->and($data['has_chronic_illness'])->toBeTrue()
         ->and($data)->not->toHaveKey('base_score')
         ->and($data['urgency_label'])->toBe(__('sanabel.masked.urgency.high'));
-});
+})->group('AUTH-03');
 
 it('refuses a donor on every internal full-case route', function () {
     $case = fullCase($this->region);
@@ -224,4 +224,4 @@ it('refuses a donor on every internal full-case route', function () {
     $this->actingAs($donor, 'sanctum')->postJson(route('coordination.lookup'), [
         'national_id' => '12345678901',
     ])->assertForbidden();
-});
+})->group('AUTH-02');

@@ -56,7 +56,7 @@ it('renders a real page, not a bare component', function () {
     expect($html)->toContain('<!DOCTYPE html>')
         ->and($html)->toContain('dir="rtl"')
         ->and($html)->toContain('lang="ar"');
-});
+})->group('APP-06');
 
 it('holds every full-page component to the same contract', function () {
     $donor = userWithRole('donor', ['region_id' => $this->region->id]);
@@ -75,4 +75,4 @@ it('holds every full-page component to the same contract', function () {
         $response->assertOk();
         expect($response->getContent())->toContain('dir="rtl"');
     }
-});
+})->group('APP-06');

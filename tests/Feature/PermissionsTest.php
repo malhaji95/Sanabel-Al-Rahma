@@ -61,7 +61,7 @@ it('rejects council on every write route', function (string $method, string $rou
     'request job contact' => ['POST', '/api/donor/jobs/{profile}/contact', [
         'requester_name_ar' => 'أ', 'contact' => '0999',
     ]],
-]);
+])->group('AUTH-01');
 
 it('denies council every write permission and allows it read permissions', function () {
     $council = userWithRole('council');
@@ -74,7 +74,7 @@ it('denies council every write permission and allows it read permissions', funct
     expect($permissions->has($council, 'view_full_case'))->toBeTrue()
         ->and($permissions->has($council, 'view_reports'))->toBeTrue()
         ->and($council->isReadOnly())->toBeTrue();
-});
+})->group('AUTH-01');
 
 it('stops an association from opening a case outside its city', function () {
     $association = userWithRole('association', ['region_id' => $this->region->id]);
@@ -96,7 +96,7 @@ it('stops an association from opening a case outside its city', function () {
     // Not found rather than forbidden: the region scope removes the row from
     // the query, so the association cannot even learn the file exists.
     $this->actingAs($association, 'sanctum')->getJson(route('cases.show', $otherCity))->assertNotFound();
-});
+})->group('AUTH-02');
 
 it('returns four values only from the coordination lookup', function () {
     $association = userWithRole('association', ['region_id' => $this->region->id]);
@@ -118,7 +118,7 @@ it('returns four values only from the coordination lookup', function () {
     expect($body)->not->toContain($case->first_name)
         ->and($body)->not->toContain($case->family_name)
         ->and($body)->not->toContain($case->file_number);
-});
+})->group('AUTH-02');
 
 it('shows a provider only the file number, validity and discount type', function () {
     $providerUser = userWithRole('service_provider');
@@ -144,7 +144,7 @@ it('shows a provider only the file number, validity and discount type', function
     expect($body)->not->toContain($case->first_name)
         ->and($body)->not->toContain($case->family_name)
         ->and($body)->not->toContain((string) $case->national_id_encrypted);
-});
+})->group('AUTH-02');
 
 it('stops a provider from reading a referral issued to another provider', function () {
     $mine = userWithRole('service_provider');
@@ -162,7 +162,7 @@ it('stops a provider from reading a referral issued to another provider', functi
     $this->actingAs($mine, 'sanctum')
         ->getJson(route('referrals.verify', $referral->code))
         ->assertForbidden();
-});
+})->group('AUTH-02');
 
 it('stops the creator from being the final approver', function () {
     $officer = userWithRole('case_officer');
@@ -181,7 +181,7 @@ it('stops the creator from being the final approver', function () {
 
     expect($admin->can('approve', $case->refresh()))->toBeTrue()
         ->and(app(CaseService::class)->approve($case, $admin)->status)->toBe('approved');
-});
+})->group('APP-01');
 
 it('scopes a delegate to their own region subtree', function () {
     $area = Region::factory()->create(['parent_id' => $this->region->id]);
@@ -198,7 +198,7 @@ it('scopes a delegate to their own region subtree', function () {
 
     expect($ids)->toContain($inScope->id)
         ->and($ids)->not->toContain($outOfScope->id);
-});
+})->group('AUTH-02');
 
 it('never hard-deletes a case or a donation', function () {
     $admin = userWithRole('admin');
@@ -214,7 +214,7 @@ it('never hard-deletes a case or a donation', function () {
 
     expect(Beneficiary::withTrashed()->find($case->id))->not->toBeNull()
         ->and(Beneficiary::withTrashed()->find($case->id)->deleted_at)->not->toBeNull();
-});
+})->group('OPS-02');
 
 it('gives the finance role the payment queue and nothing about the family', function () {
     $finance = userWithRole('finance');
@@ -222,7 +222,7 @@ it('gives the finance role the payment queue and nothing about the family', func
     expect($finance->can('viewAny', Donation::class))->toBeTrue()
         ->and($finance->can('viewAny', Beneficiary::class))->toBeFalse()
         ->and($finance->can('viewAny', User::class))->toBeFalse();
-});
+})->group('AUTH-05');
 
 it('lets the content manager run the site without opening a family file', function () {
     $content = userWithRole('content_manager');
@@ -232,7 +232,7 @@ it('lets the content manager run the site without opening a family file', functi
         // The whole point of the role: managing content is not a way in.
         ->and($content->can('viewAny', Beneficiary::class))->toBeFalse()
         ->and($content->can('viewAny', Donation::class))->toBeFalse();
-});
+})->group('AUTH-01');
 
 it('does not treat the user list as a report', function () {
     // view_reports is held by almost every staff role; it must not double as a
@@ -243,4 +243,4 @@ it('does not treat the user list as a report', function () {
     }
 
     expect(userWithRole('admin')->can('viewAny', User::class))->toBeTrue();
-});
+})->group('AUTH-01');

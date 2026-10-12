@@ -21,7 +21,7 @@ it('limits the public login form, which had no limit at all', function () {
     }
 
     $post()->assertStatus(429);
-});
+})->group('IAM-03');
 
 it('counts a login attempt against the email tried, not only the address', function () {
     $attempts = config('sanabel.security.rate_limits.login');
@@ -36,7 +36,7 @@ it('counts a login attempt against the email tried, not only the address', funct
     $this->post('/login', ['email' => 'one@example.test', 'password' => 'wrong'])->assertStatus(429);
     expect($this->post('/login', ['email' => 'two@example.test', 'password' => 'wrong'])->status())
         ->not->toBe(429);
-});
+})->group('IAM-03');
 
 it('limits every API route, reads tighter on the writes', function () {
     $limits = config('sanabel.security.rate_limits');
@@ -53,7 +53,7 @@ it('limits every API route, reads tighter on the writes', function () {
 
     // And a write is capped below the read it sits beside.
     expect($limits['api_write'])->toBeLessThan($limits['api']);
-});
+})->group('APP-04');
 
 it('gives the field app a looser limit than the other writes', function () {
     $limits = config('sanabel.security.rate_limits');
@@ -65,7 +65,7 @@ it('gives the field app a looser limit than the other writes', function () {
         ->first(fn ($route) => $route->uri() === 'api/visits/sync');
 
     expect($sync->gatherMiddleware())->toContain('throttle:sync');
-});
+})->group('APP-04');
 
 it('keeps the national-ID lookup the tightest route of all', function () {
     $limits = config('sanabel.security.rate_limits');
@@ -76,7 +76,7 @@ it('keeps the national-ID lookup the tightest route of all', function () {
         ->first(fn ($route) => $route->uri() === 'api/coordination/lookup');
 
     expect($lookup->gatherMiddleware())->toContain('throttle:national-id');
-});
+})->group('APP-04');
 
 it('limits the Livewire endpoint, which the api/ check missed', function () {
     // T-66. The browser does not write through api/: the donor portal, the
@@ -91,7 +91,7 @@ it('limits the Livewire endpoint, which the api/ check missed', function () {
         ->and($route->gatherMiddleware())->toContain('throttle:livewire')
         // 'web' has to stay: dropping it takes the session and CSRF with it.
         ->and($route->gatherMiddleware())->toContain('web');
-});
+})->group('APP-04');
 
 it('leaves no POST route in the application unlimited', function () {
     // The api/-only version of this check is what let the Livewire endpoint
@@ -106,7 +106,7 @@ it('leaves no POST route in the application unlimited', function () {
         ->values();
 
     expect($open)->toBeEmpty();
-});
+})->group('APP-04');
 
 it('keeps the Livewire limit generous enough for a clerk on a long file', function () {
     // A live form sends a request per field, so a clerk working through a
@@ -115,7 +115,7 @@ it('keeps the Livewire limit generous enough for a clerk on a long file', functi
     $limits = config('sanabel.security.rate_limits');
 
     expect($limits['livewire'])->toBeGreaterThan($limits['api']);
-});
+})->group('APP-04');
 
 it('counts a signed-in account separately from an address', function () {
     // Otherwise one delegate on a shared office line spends the whole
@@ -136,4 +136,4 @@ it('counts a signed-in account separately from an address', function () {
     $this->actingAs($other);
 
     expect($this->getJson('/api/cases')->status())->not->toBe(429);
-});
+})->group('IAM-03');

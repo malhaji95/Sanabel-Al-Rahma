@@ -127,7 +127,7 @@ it('blocks a second file for the same national ID and merges without deleting hi
         ->and($duplicate->fresh()->deleted_at)->toBeNull()
         ->and((int) $case->fresh()->allocations()->sum('amount'))->toBe(5_000)
         ->and($duplicate->fresh()->allocations()->count())->toBe(0);
-});
+})->group('APP-01');
 
 it('flags a suspicious duplicate for review instead of merging it automatically', function () {
     $first = familyOf($this->region);
@@ -141,7 +141,7 @@ it('flags a suspicious duplicate for review instead of merging it automatically'
         // Never an auto-merge.
         ->and($second->fresh()->merged_into_id)->toBeNull()
         ->and($second->fresh()->status)->not->toBe('merged');
-});
+})->group('APP-01');
 
 it('logs every write to a case and to money, without personal data', function () {
     $case = publishedCase($this->region);
@@ -163,7 +163,7 @@ it('logs every write to a case and to money, without personal data', function ()
     expect($created->after_json['national_id_encrypted'])->toBe('[redacted]')
         ->and($created->after_json['phone_encrypted'])->toBe('[redacted]')
         ->and($created->after_json['national_id_hash'])->toBe('[redacted]');
-});
+})->group('OPS-01');
 
 it('keeps the audit log append-only', function () {
     $case = publishedCase($this->region);
@@ -173,7 +173,7 @@ it('keeps the audit log append-only', function () {
         ->toThrow(RuntimeException::class, 'append-only')
         ->and(fn () => $entry->delete())
         ->toThrow(RuntimeException::class, 'append-only');
-});
+})->group('OPS-02');
 
 it('flags an overdue reassessment without stopping existing support', function () {
     $case = publishedCase($this->region);

@@ -37,7 +37,7 @@ it('opens the audit log and shows what a change looked like before and after', f
         ->and($entry->before_json)->toHaveKey('support_type')
         ->and($entry->after_json['support_type'])->toBe('one_time')
         ->and($entry->created_at)->not->toBeNull();
-});
+})->group('OPS-01');
 
 it('never writes to the audit log from the panel', function () {
     $entry = AuditLog::create([
@@ -47,7 +47,7 @@ it('never writes to the audit log from the panel', function () {
     expect(AuditLogResource::canCreate())->toBeFalse()
         ->and(fn () => $entry->update(['action' => 'updated']))->toThrow(RuntimeException::class)
         ->and(fn () => $entry->delete())->toThrow(RuntimeException::class);
-});
+})->group('OPS-02');
 
 it('keeps the log away from a role with no business in it', function () {
     foreach (['delegate', 'service_provider', 'donor'] as $role) {
@@ -58,7 +58,7 @@ it('keeps the log away from a role with no business in it', function () {
     // Oversight exists precisely to read it.
     expect(userWithRole('oversight_director')->can('viewAny', AuditLog::class))->toBeTrue()
         ->and(userWithRole('council')->can('viewAny', AuditLog::class))->toBeTrue();
-});
+})->group('OPS-01');
 
 it('builds the matrix from the same rows the policies read', function () {
     $page = new PermissionMatrix;
@@ -74,7 +74,7 @@ it('builds the matrix from the same rows the policies read', function () {
 
     expect($page->grant($treasurer, $execute))->toBe('all')
         ->and($page->grant($treasurer, $approve))->toBeNull();
-});
+})->group('AUTH-01');
 
 it('strikes every write off a role that only looks', function () {
     $page = new PermissionMatrix;
@@ -89,7 +89,7 @@ it('strikes every write off a role that only looks', function () {
         // And the reads are still there, or the page would say nothing.
         expect($page->grant($role, Permission::where('key', 'view_reports')->first()))->toBe('all');
     }
-});
+})->group('AUTH-01');
 
 it('opens the matrix to the roles that oversee, and to nobody else', function () {
     foreach (['admin', 'board_director', 'council', 'oversight_director'] as $role) {
@@ -101,4 +101,4 @@ it('opens the matrix to the roles that oversee, and to nobody else', function ()
         $this->actingAs(userWithRole($role));
         expect(PermissionMatrix::canAccess())->toBeFalse("{$role} should not see the matrix");
     }
-});
+})->group('AUTH-01');

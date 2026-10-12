@@ -30,4 +30,4 @@ it('fills a fresh system with something to show', function () {
 
     // Rule 11 — generated families only, and the seeder says so.
     expect(Beneficiary::first()->file_number)->toStartWith('DEMO-');
-});
+})->group('DATA-06');

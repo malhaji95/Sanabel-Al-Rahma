@@ -18,7 +18,7 @@ function apiRoutes(): Illuminate\Support\Collection
 
 it('has an API surface, so this test is testing something', function () {
     expect(apiRoutes())->not->toBeEmpty();
-});
+})->group('APP-03');
 
 it('puts every API route behind authentication', function () {
     $open = apiRoutes()
@@ -28,7 +28,7 @@ it('puts every API route behind authentication', function () {
         ->values();
 
     expect($open)->toBeEmpty();
-});
+})->group('APP-03', 'AUTH-02');
 
 it('puts every API route behind a rate limit', function () {
     $open = apiRoutes()
@@ -38,7 +38,7 @@ it('puts every API route behind a rate limit', function () {
         ->values();
 
     expect($open)->toBeEmpty();
-});
+})->group('APP-03', 'APP-04');
 
 it('answers an unauthenticated caller with 401 rather than data', function () {
     // The middleware list says it; this checks the routes actually behave.
@@ -50,7 +50,7 @@ it('answers an unauthenticated caller with 401 rather than data', function () {
     ] as [$method, $uri]) {
         $this->{$method.'Json'}($uri)->assertUnauthorized();
     }
-});
+})->group('APP-03', 'AUTH-02');
 
 it('states the inventory, so a new route is a deliberate addition', function () {
     // Adding a route makes this fail. That is the point: the list is reviewed
@@ -93,4 +93,4 @@ it('states the inventory, so a new route is a deliberate addition', function () 
         'POST api/referrals/{code}/redeem',
         'POST api/visits/sync',
     ]);
-});
+})->group('APP-03');

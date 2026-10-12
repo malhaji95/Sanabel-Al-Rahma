@@ -29,7 +29,7 @@ it('walks a file from draft to approved through both sign-offs', function () {
     expect($this->cases->verifyInField($case, $this->delegate)->status)->toBe('verified');
     expect($this->cases->endorse($case->refresh(), $this->supervisor)->status)->toBe('pending_approval');
     expect($this->cases->approve($case->refresh(), $this->admin)->status)->toBe('approved');
-});
+})->group('APP-01');
 
 it('records who verified and who endorsed, with the time of each', function () {
     $case = draftCase($this->region);
@@ -41,7 +41,7 @@ it('records who verified and who endorsed, with the time of each', function () {
         ->and($case->field_verified_at)->not->toBeNull()
         ->and($case->endorsed_by)->toBe($this->supervisor->id)
         ->and($case->endorsed_at)->not->toBeNull();
-});
+})->group('OPS-01');
 
 it('refuses the admin a file the field has not signed off', function () {
     $case = draftCase($this->region);
@@ -63,7 +63,7 @@ it('refuses an endorsement from whoever verified the file in the field', functio
 
     expect(fn () => $this->cases->endorse($case->refresh(), $this->supervisor))
         ->toThrow(RuntimeException::class);
-});
+})->group('APP-01');
 
 it('refuses the steps out of order', function () {
     $case = draftCase($this->region);
@@ -75,7 +75,7 @@ it('refuses the steps out of order', function () {
 
     expect(fn () => $this->cases->verifyInField($case->refresh(), $this->delegate))
         ->toThrow(RuntimeException::class);
-});
+})->group('APP-01');
 
 it('offers neither step to a user outside the file region', function () {
     $elsewhere = regionWithRates();
@@ -86,7 +86,7 @@ it('offers neither step to a user outside the file region', function () {
     $this->cases->verifyInField($case, userWithRole('delegate', ['region_id' => $elsewhere->id]));
 
     expect($this->supervisor->can('endorse', $case->refresh()))->toBeFalse();
-});
+})->group('AUTH-02');
 
 it('does not let a delegate stand in for the area supervisor', function () {
     $case = draftCase($this->region);
@@ -98,7 +98,7 @@ it('does not let a delegate stand in for the area supervisor', function () {
     // supervising looks at the file.
     expect($other->can('endorse', $case->refresh()))->toBeFalse()
         ->and($this->supervisor->can('endorse', $case->refresh()))->toBeTrue();
-});
+})->group('APP-01');
 
 it('sends a file back through the field after a reassessment is asked for', function () {
     $case = draftCase($this->region, ['status' => 'needs_reassessment']);

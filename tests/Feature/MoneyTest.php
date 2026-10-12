@@ -18,7 +18,7 @@ beforeEach(function () {
 it('resolves the payment gateway to the manual driver', function () {
     expect(app(PaymentGateway::class))->toBeInstanceOf(ManualDriver::class)
         ->and(app(PaymentGateway::class)->key())->toBe('manual');
-});
+})->group('PAY-01');
 
 it('rejects a duplicate transaction_ref', function () {
     $donor = Donor::factory()->create();
@@ -34,7 +34,7 @@ it('rejects a duplicate transaction_ref', function () {
         ->toThrow(DuplicateTransactionRef::class);
 
     expect(Donation::where('transaction_ref', 'TRX-DUPLICATE')->count())->toBe(1);
-});
+})->group('PAY-03');
 
 it('changes coverage only after verification, never on upload', function () {
     $region = regionWithRates();
@@ -60,7 +60,7 @@ it('changes coverage only after verification, never on upload', function () {
     app(DonationService::class)->verify($donation->fresh(), userWithRole('admin')->id);
 
     expect($coverage->confirmedSupport($family->fresh()))->toBe($before + 9_000);
-});
+})->group('PAY-04');
 
 it('returns a reason on rejection and changes nothing else', function () {
     $region = regionWithRates();
@@ -84,7 +84,7 @@ it('returns a reason on rejection and changes nothing else', function () {
         ->and($rejected->reject_reason)->toBe('الإيصال غير مقروء')
         ->and(app(CoverageService::class)->confirmedSupport($family->fresh()))->toBe(0)
         ->and($rejected->donor->fresh()->donations_count)->toBe(0);
-});
+})->group('PAY-04');
 
 it('never updates a verified donation and creates a reversal row instead', function () {
     $region = regionWithRates();
@@ -116,7 +116,7 @@ it('never updates a verified donation and creates a reversal row instead', funct
         ->and($donation->fresh()->amount)->toBe(12_000)
         // The reversal cancels the coverage out.
         ->and(app(CoverageService::class)->confirmedSupport($family->fresh()))->toBe(0);
-});
+})->group('PAY-04');
 
 it('never allocates membership money to a family', function () {
     $region = regionWithRates();
@@ -132,7 +132,7 @@ it('never allocates membership money to a family', function () {
     ]))->toThrow(RuntimeException::class, 'can never be allocated to a family');
 
     expect(Fund::byKey(Fund::MEMBERSHIP)->can_fund_families)->toBeFalse();
-});
+})->group('AUTH-05');
 
 it('lets a family with no wallet receive help paid to a provider', function () {
     $region = regionWithRates();

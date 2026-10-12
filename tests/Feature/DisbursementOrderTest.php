@@ -58,7 +58,7 @@ it('walks one payment from confirmation to reconciliation', function () {
 
     expect($line->refresh()->status)->toBe('reconciled')
         ->and($line->reconciled_by)->toBe($this->accountant->id);
-});
+})->group('PAY-04');
 
 it('will not pay a family more than their month still needs', function () {
     $family = publishedCase($this->region);
@@ -89,7 +89,7 @@ it('refuses an order raised and approved by the same account', function () {
     expect($this->treasurer->can_('approve_disbursement'))->toBeFalse()
         ->and($this->director->can_('approve_disbursement'))->toBeTrue()
         ->and($this->director->can_('execute_disbursement'))->toBeFalse();
-});
+})->group('PAY-05');
 
 it('freezes the order the moment it is approved', function () {
     $family = publishedCase($this->region);
@@ -107,7 +107,7 @@ it('freezes the order the moment it is approved', function () {
 
     expect(fn () => $this->service->remove($line->refresh()))
         ->toThrow(RuntimeException::class);
-});
+})->group('PAY-05');
 
 it('lets one line be set aside while the rest of the order goes through', function () {
     $keep = publishedCase($this->region);
@@ -186,4 +186,4 @@ it('writes every signature into the audit log', function () {
 
     expect($entries)->not->toBeEmpty()
         ->and($entries->pluck('action')->unique()->values()->all())->toContain('created', 'updated');
-});
+})->group('OPS-01');

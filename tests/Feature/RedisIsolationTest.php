@@ -35,7 +35,7 @@ it('gives the cache, the session and the queue a database each', function () {
     expect($dbs->unique())->toHaveCount(4)
         ->and($dbs['cache'])->not->toBe($dbs['session'])
         ->and($dbs['queue'])->not->toBe($dbs['session']);
-});
+})->group('PERF-02');
 
 it('points the session at its own keyspace the moment redis is chosen, with nothing else to set', function () {
     /*
@@ -58,7 +58,7 @@ it('points the session at its own keyspace the moment redis is chosen, with noth
 
     expect($run(['SESSION_DRIVER' => 'redis']))->toContain("'session'")
         ->and($run(['SESSION_DRIVER' => 'database']))->toContain('NULL');
-});
+})->group('PERF-02');
 
 it('clears the cache without signing anybody out', function () {
     // The accident this prevents. On one keyspace, clearing the cache takes
@@ -82,7 +82,7 @@ it('clears the cache without signing anybody out', function () {
         ->and($session->get('sanabel_test_session_key'))->toBe('still here');
 
     $session->del('sanabel_test_session_key');
-})->skip(fn () => ! redisReachable(), 'redis is not reachable here');
+})->skip(fn () => ! redisReachable(), 'redis is not reachable here')->group('PERF-02');
 
 it('keeps a queued job out of the session keyspace', function () {
     config(['queue.default' => 'redis']);
@@ -99,7 +99,7 @@ it('keeps a queued job out of the session keyspace', function () {
 
     Redis::connection('queue')->flushdb();
     $session->del('sanabel_test_session_key');
-})->skip(fn () => ! redisReachable(), 'redis is not reachable here');
+})->skip(fn () => ! redisReachable(), 'redis is not reachable here')->group('PERF-02');
 
 it('needs no new package for any of it', function () {
     // CLAUDE.md §3 — no new packages without asking. The phpredis extension

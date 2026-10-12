@@ -25,7 +25,7 @@ it('refuses to boot the container without an application key', function () {
     expect($entrypoint)->toContain('APP_KEY is not set')
         ->toContain('exit 1')
         ->not->toContain('key:generate --force');
-});
+})->group('CICD-03');
 
 it('does not ship a stale package manifest in the image', function () {
     // bootstrap/cache/packages.php lists dev packages when built locally, and
@@ -35,7 +35,7 @@ it('does not ship a stale package manifest in the image', function () {
 
     expect(file_get_contents(base_path('docker/entrypoint.sh')))
         ->toContain('package:discover');
-});
+})->group('CICD-05');
 
 it('runs the queue worker and the scheduler alongside the web server', function () {
     // One free container has to carry all of it. Without the scheduler,
@@ -49,7 +49,7 @@ it('runs the queue worker and the scheduler alongside the web server', function 
         ->toContain('schedule:work')
         // So `supervisorctl status` works from a shell on the running service.
         ->toContain('[supervisorctl]');
-});
+})->group('CICD-05');
 
 it('locks composer to the PHP version the project targets', function () {
     // Resolved on a newer PHP, the lock quietly demands that newer PHP and the
@@ -69,7 +69,7 @@ it('locks composer to the PHP version the project targets', function () {
         ->pluck('name');
 
     expect($tooNew)->toBeEmpty();
-});
+})->group('CICD-05');
 
 it('lets a managed database demand TLS', function () {
     // 'prefer' negotiates TLS but falls back to plaintext without complaining,
@@ -79,7 +79,7 @@ it('lets a managed database demand TLS', function () {
     // The image carries it, so it holds however the service was created.
     expect(file_get_contents(base_path('Dockerfile')))
         ->toContain('DB_SSLMODE=require');
-});
+})->group('CICD-05');
 
 it('carries every runtime default in the image, not only in the blueprint', function () {
     /*
@@ -104,7 +104,7 @@ it('carries every runtime default in the image, not only in the blueprint', func
     ] as $default) {
         expect($dockerfile)->toContain($default);
     }
-});
+})->group('CICD-05');
 
 it('gives the supervised workers a HOME they can read', function () {
     /*
@@ -133,4 +133,4 @@ it('leaves only secrets for the operator to supply', function () {
     expect($matches[1])->toEqualCanonicalizing([
         'APP_KEY', 'APP_URL', 'DB_HOST', 'DB_DATABASE', 'DB_USERNAME', 'DB_PASSWORD',
     ]);
-});
+})->group('CICD-03');

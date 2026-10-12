@@ -26,7 +26,7 @@ it('sends the defensive headers on a public page', function () {
         ->toContain('microphone=()')
         // The field app needs it for the survey's GPS question.
         ->toContain('geolocation=(self)');
-});
+})->group('APP-06');
 
 it('sends them on the API too, not only on the rendered pages', function () {
     // 401 is the point: the headers are appended globally, so even a refusal
@@ -35,7 +35,7 @@ it('sends them on the API too, not only on the rendered pages', function () {
         ->assertUnauthorized()
         ->assertHeader('X-Content-Type-Options', 'nosniff')
         ->assertHeader('X-Frame-Options', 'DENY');
-});
+})->group('APP-06');
 
 it('states a content policy that allows no other origin', function () {
     $policy = $this->get('/')->headers->get('Content-Security-Policy');
@@ -50,7 +50,7 @@ it('states a content policy that allows no other origin', function () {
         ->and($policy)->toContain('upgrade-insecure-requests')
         // The field app registers a service worker.
         ->and($policy)->toContain("worker-src 'self' blob:");
-});
+})->group('APP-02', 'PAY-06');
 
 it('allows no third-party script or style origin at all', function () {
     $policy = $this->get('/')->headers->get('Content-Security-Policy');
@@ -66,7 +66,7 @@ it('allows no third-party script or style origin at all', function () {
     foreach ([$script[1], $style[1], $connect[1]] as $sources) {
         expect($sources)->not->toContain('http://')->not->toContain('https://');
     }
-});
+})->group('APP-02', 'PAY-06');
 
 it('sends HSTS over TLS and never over plain http', function () {
     expect($this->get('/')->headers->get('Strict-Transport-Security'))->toBeNull();
@@ -78,7 +78,7 @@ it('sends HSTS over TLS and never over plain http', function () {
         ->toContain('includeSubDomains')
         // Submitted once and painful to undo: their call, on their domain.
         ->not->toContain('preload');
-});
+})->group('APP-06');
 
 it('can be put in report-only mode to see what a tighter policy would break', function () {
     config(['sanabel.security.csp.report_only' => true]);
@@ -87,7 +87,7 @@ it('can be put in report-only mode to see what a tighter policy would break', fu
 
     expect($response->headers->get('Content-Security-Policy'))->toBeNull()
         ->and($response->headers->get('Content-Security-Policy-Report-Only'))->not->toBeNull();
-});
+})->group('APP-06');
 
 it('ships a session cookie that cannot travel in clear, and is encrypted at rest', function () {
     // Laravel's own default leaves Secure unset, so the cookie was eligible to
@@ -101,7 +101,7 @@ it('ships a session cookie that cannot travel in clear, and is encrypted at rest
 
     // http_only is Laravel's default and must stay on: no script reads it.
     expect(config('session.http_only'))->toBeTrue();
-});
+})->group('IAM-02');
 
 it('names a layout on every full-page component, so the policy is on the page', function () {
     /*
@@ -124,7 +124,7 @@ it('names a layout on every full-page component, so the policy is on the page', 
             basename($component).' is routed as a page and names no layout',
         );
     }
-});
+})->group('APP-06');
 
 it('reads a proxied TLS request as secure, so the cookie and HSTS are set', function () {
     // Render terminates TLS at its edge and forwards over http. Without the
@@ -133,4 +133,4 @@ it('reads a proxied TLS request as secure, so the cookie and HSTS are set', func
     $app = file_get_contents(base_path('bootstrap/app.php'));
 
     expect($app)->toContain('trustProxies');
-});
+})->group('IAM-02');

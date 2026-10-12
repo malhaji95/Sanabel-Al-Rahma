@@ -106,7 +106,7 @@ it('destroys the person and keeps the record', function () {
         ->and(app(CoverageService::class)->needAmount($case))->toBe($need)
         ->and($case->assessments()->count())->toBeGreaterThan(0)
         ->and($case->isAnonymised())->toBeTrue();
-});
+})->group('FILE-04');
 
 it('sweeps every record hanging off the file, not just the file', function () {
     $case = familyWithEverything($this->region);
@@ -137,7 +137,7 @@ it('sweeps every record hanging off the file, not just the file', function () {
             ->and($member->person_class)->not->toBeNull()
             ->and($member->birth_year)->not->toBeNull();
     }
-});
+})->group('FILE-04');
 
 it('destroys the papers themselves, not only their rows', function () {
     $case = familyWithEverything($this->region);
@@ -159,7 +159,7 @@ it('destroys the papers themselves, not only their rows', function () {
         // The row is archived, not erased (rule 3), and serves nothing.
         ->and(Media::withTrashed()->whereKey($media->getKey())->exists())->toBeTrue()
         ->and(Media::withTrashed()->find($media->getKey())->isServable())->toBeFalse();
-});
+})->group('FILE-04');
 
 it('closes their own portal account', function () {
     $case = familyWithEverything($this->region);
@@ -174,7 +174,7 @@ it('closes their own portal account', function () {
     expect($account->name)->toBe('مطموس')
         ->and($account->email)->not->toContain('m@example.test')
         ->and($account->is_active)->toBeFalse();
-});
+})->group('FILE-04');
 
 it('keeps the audit trail and takes the values out of it', function () {
     $case = familyWithEverything($this->region);
@@ -205,7 +205,7 @@ it('keeps the audit trail and takes the values out of it', function () {
         ->not->toContain('0911111111')
         ->not->toContain('حي المنشية')
         ->not->toContain('OLD-1042');
-});
+})->group('OPS-02');
 
 it('writes one audit row for the act, naming what went and never a value', function () {
     $case = familyWithEverything($this->region);
@@ -223,7 +223,7 @@ it('writes one audit row for the act, naming what went and never a value', funct
         ->and($row->after_json['cleared'])->toHaveKeys(['beneficiary', 'media', 'audit_rows'])
         // Column names and counts, not values.
         ->and(json_encode($row->after_json, JSON_UNESCAPED_UNICODE))->not->toContain('حي المنشية');
-});
+})->group('OPS-01');
 
 it('needs two people, and refuses the one who asked', function () {
     $case = familyWithEverything($this->region);
@@ -239,14 +239,14 @@ it('needs two people, and refuses the one who asked', function () {
 
     expect($case->fresh()->isAnonymised())->toBeFalse()
         ->and($case->fresh()->phone_encrypted)->toBe('0911111111');
-});
+})->group('FILE-04');
 
 it('refuses a request with no legal basis behind it', function () {
     $case = familyWithEverything($this->region);
 
     expect(fn () => $this->service->request($case, $this->officer, '   '))
         ->toThrow(RuntimeException::class);
-});
+})->group('FILE-04');
 
 it('refuses to do it twice', function () {
     $case = familyWithEverything($this->region);
@@ -258,7 +258,7 @@ it('refuses to do it twice', function () {
         ->toThrow(RuntimeException::class)
         ->and(fn () => $this->service->request($case->fresh(), $this->officer, 'سند'))
         ->toThrow(RuntimeException::class);
-});
+})->group('FILE-04');
 
 it('leaves the family unfindable by the number that was destroyed', function () {
     $case = familyWithEverything($this->region);
@@ -272,7 +272,7 @@ it('leaves the family unfindable by the number that was destroyed', function () 
     // The hash is an HMAC of the identity number: keeping it would let anyone
     // with the key and a list of candidate numbers put the name back.
     expect(app(DuplicateService::class)->existingFile($nationalId))->toBeNull();
-});
+})->group('FILE-04');
 
 it('never shows an anonymised file to a donor as a person', function () {
     $case = familyWithEverything($this->region);
@@ -286,7 +286,7 @@ it('never shows an anonymised file to a donor as a person', function () {
     );
 
     expect($payload)->not->toContain('0911111111')->not->toContain('حي المنشية');
-});
+})->group('FILE-04');
 
 it('names only columns that exist, so a new personal column cannot be missed', function () {
     foreach (array_merge_recursive(
@@ -303,7 +303,7 @@ it('names only columns that exist, so a new personal column cannot be missed', f
                 ->toBeTrue($class.' names a column that does not exist: '.$column);
         }
     }
-});
+})->group('FILE-04');
 
 /*
  | The gap these cover: the first version of the sweep cleared the file and its
@@ -393,7 +393,7 @@ it('takes down the public content about the family, not only empties it', functi
         ->and($post->status)->toBe('hidden')
         ->and($campaign->is_published)->toBeFalse()
         ->and($profile->status)->toBe('hidden');
-});
+})->group('FILE-04');
 
 it('destroys every file belonging to the family, wherever it hangs', function () {
     $case = familyWithEverything($this->region);
@@ -435,7 +435,7 @@ it('destroys every file belonging to the family, wherever it hangs', function ()
     }
 
     expect($delivery->fresh()->note_ar)->toBeNull();
-});
+})->group('FILE-04');
 
 it('takes the values out of the change requests that moved them', function () {
     $case = familyWithEverything($this->region);
@@ -458,7 +458,7 @@ it('takes the values out of the change requests that moved them', function () {
     expect($rows)->not->toBeEmpty()
         ->and($everything)->not->toContain('0988777666')
         ->and($everything)->not->toContain('0911111111');
-});
+})->group('FILE-04');
 
 it('clears the complaint the family filed from their own account', function () {
     $case = familyWithEverything($this->region);
@@ -484,7 +484,7 @@ it('clears the complaint the family filed from their own account', function () {
         ->and($complaint->subject_ar)->toBe('مطموس')
         // The complaint itself survives as a record that one was filed.
         ->and($complaint->reference_no)->toBe('C-'.$case->getKey());
-});
+})->group('FILE-04');
 
 it('leaves no trace of the family in any free text or file, anywhere', function () {
     // The catch-all. If a new table starts carrying words about a family and
@@ -509,4 +509,4 @@ it('leaves no trace of the family in any free text or file, anywhere', function 
             expect($dump)->not->toContain($needle, $table.' still carries '.$needle);
         }
     }
-});
+})->group('FILE-04');

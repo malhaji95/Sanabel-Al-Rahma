@@ -27,7 +27,7 @@ it('matches the RFC 6238 TOTP test vectors', function (int $timestamp, string $e
     [1111111111, '14050471'],
     [1234567890, '89005924'],
     [2000000000, '69279037'],
-]);
+])->group('IAM-01');
 
 it('accepts a code one step either side and refuses one further out', function () {
     $totp = new Totp;
@@ -40,7 +40,7 @@ it('accepts a code one step either side and refuses one further out', function (
         ->and($totp->verify($secret, $totp->at($secret, $now + 120), $now))->toBeFalse()
         ->and($totp->verify($secret, '000000', $now))->toBeFalse()
         ->and($totp->verify($secret, 'abc', $now))->toBeFalse();
-});
+})->group('IAM-01');
 
 it('round-trips base32', function () {
     $totp = new Totp;
@@ -48,7 +48,7 @@ it('round-trips base32', function () {
     foreach (['', 'a', 'hello world', random_bytes(20)] as $input) {
         expect($totp->base32Decode($totp->base32Encode($input)))->toBe($input);
     }
-});
+})->group('IAM-01');
 
 it('sends an admin to the two-factor screen before any panel page', function () {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
@@ -57,7 +57,7 @@ it('sends an admin to the two-factor screen before any panel page', function () 
     $this->actingAs($admin)
         ->get(BeneficiaryResource::getUrl('index'))
         ->assertRedirect(TwoFactor::getUrl(panel: 'admin'));
-});
+})->group('IAM-01');
 
 it('lets an admin enrol and then reach the panel', function () {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
@@ -78,7 +78,7 @@ it('lets an admin enrol and then reach the panel', function () {
     $this->actingAs($admin)
         ->get(BeneficiaryResource::getUrl('index'))
         ->assertSuccessful();
-});
+})->group('IAM-01');
 
 it('refuses a wrong code and does not store the secret', function () {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
@@ -91,7 +91,7 @@ it('refuses a wrong code and does not store the secret', function () {
 
     expect($admin->fresh()->two_factor_secret)->toBeNull()
         ->and(session()->has(RequireTwoFactor::SESSION_KEY))->toBeFalse();
-});
+})->group('IAM-01');
 
 it('requires two factor for council as well, but not for a delegate', function () {
     expect(userWithRole('admin')->requiresTwoFactor())->toBeTrue()
@@ -105,7 +105,7 @@ it('requires two factor for council as well, but not for a delegate', function (
     $this->actingAs(userWithRole('delegate', ['region_id' => $this->region->id]))
         ->get(BeneficiaryResource::getUrl('index'))
         ->assertSuccessful();
-});
+})->group('IAM-01');
 
 it('rate limits the national ID lookup', function () {
     $association = userWithRole('association', ['region_id' => $this->region->id]);
@@ -120,7 +120,7 @@ it('rate limits the national ID lookup', function () {
     $this->actingAs($association, 'sanctum')
         ->postJson(route('coordination.lookup'), ['national_id' => '99999999999'])
         ->assertStatus(429);
-});
+})->group('IAM-03');
 
 it('never exposes a secret or a hash through a model', function () {
     $case = publishedCase($this->region);
@@ -136,7 +136,7 @@ it('never exposes a secret or a hash through a model', function () {
     foreach (['password', 'two_factor_secret', 'phone_encrypted', 'remember_token'] as $key) {
         expect($userJson)->not->toContain($key);
     }
-});
+})->group('DATA-04');
 
 it('keeps media private with a signed, expiring URL', function () {
     Storage::fake('media_test');
@@ -170,4 +170,4 @@ it('keeps media private with a signed, expiring URL', function () {
 
     expect(Media::withTrashed()->find($media->id))->not->toBeNull()
         ->and(Storage::disk('media_test')->exists($media->storage_key))->toBeTrue();
-});
+})->group('FILE-03');

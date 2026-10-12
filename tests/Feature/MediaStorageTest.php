@@ -24,7 +24,7 @@ it('keeps whichever media disk is in use private and outside the web root', func
             // 'serve' is what registers the signed, expiring route.
             ->and(config("filesystems.disks.{$disk}.serve"))->toBeTrue();
     }
-});
+})->group('FILE-01');
 
 it('defines the local media disk the deployment defaults to', function () {
     expect(config('filesystems.disks.media_local'))->toMatchArray([
@@ -40,7 +40,7 @@ it('defines the local media disk the deployment defaults to', function () {
     $config = require config_path('sanabel.php');
 
     expect($config['media_disk'])->toBe(env('SANABEL_MEDIA_DISK', 'media_local'));
-});
+})->group('FILE-01');
 
 it('stores a file on the local disk and only hands back a signed, expiring URL', function () {
     Storage::fake('media_test');
@@ -61,13 +61,13 @@ it('stores a file on the local disk and only hands back a signed, expiring URL',
         ->and($url)->toMatch('/(signature|expiration|Expires)/i')
         // No permanent, guessable URL exists for it.
         ->and($url)->not->toBe(Storage::disk('media_test')->path($media->storage_key));
-});
+})->group('FILE-03');
 
 it('keeps the S3 bucket configured as the private alternative', function () {
     // Switching to a bucket is an env change, not a code change.
     expect(config('filesystems.disks.media.driver'))->toBe('s3')
         ->and(config('filesystems.disks.media.visibility'))->toBe('private');
-});
+})->group('FILE-01');
 
 it('backs media up alongside the database while it lives on the local disk', function () {
     // Media is part of the record: a case closes only against a delivery proof,
@@ -76,4 +76,4 @@ it('backs media up alongside the database while it lives on the local disk', fun
 
     expect($backup)->toContain('storage/app/private/media')
         ->and($backup)->toContain('media_local');
-});
+})->group('OPS-05');

@@ -46,7 +46,7 @@ it('lets only one of two donors reserve the last remaining amount', function () 
         ->toThrow(ReservationUnavailable::class);
 
     expect(Basket::where('status', 'reserved')->count())->toBe(1);
-});
+})->group('PAY-03');
 
 it('takes a row lock inside a transaction when reserving', function () {
     // Rule 6 — the check and the write happen together, with the target rows
@@ -69,7 +69,7 @@ it('takes a row lock inside a transaction when reserving', function () {
     // so match the table name itself rather than one engine's syntax.
     expect($locking)->not->toBeNull()
         ->and($locking)->toContain('beneficiaries');
-});
+})->group('PAY-03');
 
 it('aligns the isolation level so the lock actually protects the check on MySQL', function () {
     /*
@@ -90,7 +90,7 @@ it('aligns the isolation level so the lock actually protects the check on MySQL'
         ->toContain("getDriverName() === 'mysql'")
         // Skipped inside an open transaction, which is why the suite is unaffected.
         ->toContain('transactionLevel() > 0');
-});
+})->group('PAY-03');
 
 it('lets a second reservation through once the first one is released', function () {
     $region = regionWithRates();
@@ -197,7 +197,7 @@ it('refuses to reserve a family beyond its remaining need', function () {
         ->toThrow(ReservationUnavailable::class);
 
     expect($basket->fresh()->status)->toBe('open');
-});
+})->group('PAY-03');
 
 it('counts verified coverage against the remaining need for a later reservation', function () {
     $region = regionWithRates();

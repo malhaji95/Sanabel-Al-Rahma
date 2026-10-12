@@ -32,7 +32,7 @@ it('opens a family edit form with the phone and wallet it already has', function
             'phone_encrypted' => '0911111111',
             'wallet_encrypted' => '0922222222',
         ]);
-});
+})->group('DATA-04');
 
 it('does not erase a family wallet when an unrelated field is saved', function () {
     $case = familyOf($this->region, attributes: [
@@ -52,4 +52,4 @@ it('does not erase a family wallet when an unrelated field is saved', function (
     expect($case->family_name)->toBe('اسم معدَّل')
         ->and($case->phone_encrypted)->toBe('0911111111')
         ->and($case->wallet_encrypted)->toBe('0922222222');
-});
+})->group('DATA-04');

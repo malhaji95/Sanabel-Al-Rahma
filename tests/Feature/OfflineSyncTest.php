@@ -57,7 +57,7 @@ it('creates one visit, not two, when the device syncs the same queue twice', fun
 
     expect(Visit::where('client_uuid', $queued['client_uuid'])->count())->toBe(1)
         ->and(Visit::count())->toBe(1);
-});
+})->group('PAY-03');
 
 it('is protected by a unique index on client_uuid, not only by application code', function () {
     $case = familyOf($this->region);
@@ -69,7 +69,7 @@ it('is protected by a unique index on client_uuid, not only by application code'
         'beneficiary_id' => $case->id,
         'client_uuid' => $uuid,
     ]))->toThrow(QueryException::class);
-});
+})->group('PAY-03');
 
 it('stores a new visit and flags a conflict when the server changed since the last sync', function () {
     $delegate = userWithRole('delegate', ['region_id' => $this->region->id]);
@@ -159,7 +159,7 @@ it('lets a session-authenticated delegate reach the sync endpoint', function () 
     $response = $this->actingAs($delegate)->postJson(route('visits.sync'), ['visits' => []]);
 
     expect($response->status())->not->toBe(401);
-});
+})->group('AUTH-02');
 
 it('never writes a visit to the device in the clear', function () {
     // The encryption itself is browser-side and was proved in a real browser:
@@ -191,7 +191,7 @@ it('never writes a visit to the device in the clear', function () {
     // and the sealed blob. Nothing from the visit itself.
     expect($writer[0])->toContain('seal(db, body)')
         ->and($fields)->toBe(['client_uuid', 'synced', 'queued_at', 'iv', 'sealed']);
-});
+})->group('DATA-04');
 
 /*
  | Where the visit took place, when the delegate chose to record it
@@ -234,4 +234,4 @@ it('shows a visit location only to the field and the executive line', function (
     }
 
     expect(App\Models\Visit::showsLocationTo(null))->toBeFalse();
-});
+})->group('AUTH-03');

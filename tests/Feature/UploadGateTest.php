@@ -29,7 +29,7 @@ it('refuses a type that is not on the list', function () {
         ->toThrow(RuntimeException::class);
 
     expect(Media::count())->toBe(0);
-});
+})->group('FILE-01');
 
 it('names the file by what it is, never by what it claims to be', function () {
     // A real JPEG called paper.php. The old code stored it with a .php
@@ -43,7 +43,7 @@ it('names the file by what it is, never by what it claims to be', function () {
         ->and($media->mime)->toBe('image/jpeg')
         // Nor by the family: no name and no national ID in the path.
         ->and($media->storage_key)->not->toContain($this->case->family_name);
-});
+})->group('FILE-01');
 
 it('refuses a file over the size limit', function () {
     config(['sanabel.media.max_bytes' => 1024]);
@@ -52,7 +52,7 @@ it('refuses a file over the size limit', function () {
 
     expect(fn () => $this->service->store($file, $this->case, 'identity', $this->delegate))
         ->toThrow(RuntimeException::class);
-});
+})->group('FILE-01');
 
 it('accepts the types a delegate actually photographs with', function () {
     foreach (['image/jpeg', 'image/png', 'application/pdf'] as $mime) {
@@ -61,7 +61,7 @@ it('accepts the types a delegate actually photographs with', function () {
 
     // An iPhone produces HEIC.
     expect(config('sanabel.media.allowed'))->toHaveKey('image/heic');
-});
+})->group('FILE-01');
 
 it('marks a file that passed its checks as clean and serves it', function () {
     $media = $this->service->store(
@@ -74,7 +74,7 @@ it('marks a file that passed its checks as clean and serves it', function () {
     expect($media->scan_status)->toBe(Media::CLEAN)
         ->and($media->scanned_at)->not->toBeNull()
         ->and($this->service->temporaryUrl($media))->toMatch('/(signature|expiration|Expires)/i');
-});
+})->group('FILE-02');
 
 it('holds a new upload and serves nothing when an outside scanner is required', function () {
     // FILE-02 needs a scanner the association provides. The gate is wired so
@@ -92,7 +92,7 @@ it('holds a new upload and serves nothing when an outside scanner is required', 
         ->and($media->isServable())->toBeFalse()
         ->and(fn () => $this->service->temporaryUrl($media))->toThrow(RuntimeException::class)
         ->and(fn () => $media->signedUrl())->toThrow(RuntimeException::class);
-});
+})->group('FILE-02');
 
 it('never serves a rejected file, through either path', function () {
     $media = $this->service->store(
@@ -108,7 +108,7 @@ it('never serves a rejected file, through either path', function () {
     expect(fn () => $this->service->temporaryUrl($media->fresh()))->toThrow(RuntimeException::class)
         ->and(fn () => $media->fresh()->signedUrl())->toThrow(RuntimeException::class)
         ->and(Media::withTrashed()->whereKey($media->getKey())->exists())->toBeTrue();
-});
+})->group('FILE-02');
 
 it('leaves the papers already on live files openable', function () {
     // The gate arrived after the association had been working for weeks.
@@ -118,4 +118,4 @@ it('leaves the papers already on live files openable', function () {
     ));
 
     expect($migration)->toContain("'scan_status' => 'clean'");
-});
+})->group('FILE-03');

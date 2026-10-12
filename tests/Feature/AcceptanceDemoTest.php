@@ -96,7 +96,7 @@ it('٤ — the person who created a case cannot approve it', function () {
 
     expect($other->can('approve', $case))->toBeTrue()
         ->and(app(CaseService::class)->approve($case, $other)->status)->toBe('approved');
-});
+})->group('APP-01');
 
 it('٥ — an edit after approval goes to review, and a material one recomputes', function () {
     $delegate = userWithRole('delegate', ['region_id' => $this->region->id]);

@@ -28,7 +28,7 @@ it('offers no "all" page size on the families list', function () {
     expect($table->getPaginationPageOptions())->not->toContain('all')
         ->and($table->getPaginationPageOptions())->not->toContain(-1)
         ->and(max($table->getPaginationPageOptions()))->toBeLessThanOrEqual(100);
-});
+})->group('AUTH-04');
 
 it('offers no "all" page size on the donations list either', function () {
     // This one stated no sizes of its own, so it was taking the framework's
@@ -37,14 +37,14 @@ it('offers no "all" page size on the donations list either', function () {
 
     expect($table->getPaginationPageOptions())->toBe([25, 50, 100])
         ->and($table->getDefaultPaginationPageOption())->toBe(25);
-});
+})->group('AUTH-04');
 
 it('puts the cap in one place, so a new resource inherits it', function () {
     // Twenty copies of the same call is twenty chances to forget it on the
     // twenty-first table.
     expect(file_get_contents(base_path('app/Providers/AppServiceProvider.php')))
         ->toContain('Table::configureUsing');
-});
+})->group('AUTH-04');
 
 it('lets no table choose a size above the cap for itself', function () {
     $files = array_merge(
@@ -64,4 +64,4 @@ it('lets no table choose a size above the cap for itself', function () {
             }
         }
     }
-});
+})->group('AUTH-04');

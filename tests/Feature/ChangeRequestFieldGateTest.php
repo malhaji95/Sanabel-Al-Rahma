@@ -39,7 +39,7 @@ it('refuses a payload that would publish a file past the approval chain', functi
     // person to wave through.
     expect(ChangeRequest::count())->toBe(0)
         ->and($case->fresh()->status)->toBe('draft');
-});
+})->group('AUTH-03');
 
 it('names the fields it refused, so a legitimate one is a one-line fix', function () {
     $case = familyOf($this->region, adults: 1, children: 1);
@@ -50,7 +50,7 @@ it('names the fields it refused, so a legitimate one is a one-line fix', functio
     } catch (RuntimeException $e) {
         expect($e->getMessage())->toContain('endorsed_by');
     }
-});
+})->group('AUTH-03');
 
 it('refuses each decision column on its own', function () {
     $case = familyOf($this->region, adults: 1, children: 1);
@@ -64,7 +64,7 @@ it('refuses each decision column on its own', function () {
         expect(fn () => $this->cases->requestChange($case, $this->officer, [$column => 'x'], 'سبب'))
             ->toThrow(RuntimeException::class);
     }
-});
+})->group('AUTH-03');
 
 it('refuses a mixed payload outright rather than keeping the safe half', function () {
     $case = familyOf($this->region, adults: 1, children: 1);
@@ -77,7 +77,7 @@ it('refuses a mixed payload outright rather than keeping the safe half', functio
     ))->toThrow(RuntimeException::class);
 
     expect(ChangeRequest::count())->toBe(0);
-});
+})->group('AUTH-03');
 
 it('still carries every change the association actually makes', function () {
     $case = publishedCase($this->region);
@@ -94,14 +94,14 @@ it('still carries every change the association actually makes', function () {
 
         expect($request->status)->toBe('pending');
     }
-});
+})->group('AUTH-03');
 
 it('refuses an empty payload', function () {
     $case = familyOf($this->region, adults: 1, children: 1);
 
     expect(fn () => $this->cases->requestChange($case, $this->officer, [], 'سبب'))
         ->toThrow(RuntimeException::class);
-});
+})->group('AUTH-03');
 
 it('keeps every decision column off the allowlist', function () {
     // The allowlist is data. This is what stops a column that records a
@@ -114,7 +114,7 @@ it('keeps every decision column off the allowlist', function () {
     ] as $column) {
         expect(ChangeRequest::CHANGEABLE_FIELDS)->not->toContain($column);
     }
-});
+})->group('AUTH-03');
 
 it('rehashes the national ID when a change request moves it', function () {
     // The hash is what rule 11 matches a duplicate on, and it is not a field a
@@ -134,7 +134,7 @@ it('rehashes the national ID when a change request moves it', function () {
         // And the file is findable by the new number, which is the point.
         ->and(app(DuplicateService::class)->existingFile('09998887776')?->getKey())
         ->toBe($case->getKey());
-});
+})->group('DATA-04');
 
 it('refuses the same payload through the API, not only the service', function () {
     // The service is the chokepoint both paths go through, so the API route
@@ -150,4 +150,4 @@ it('refuses the same payload through the API, not only the service', function ()
 
     expect(ChangeRequest::count())->toBe(0)
         ->and($case->fresh()->status)->toBe('draft');
-});
+})->group('AUTH-03', 'APP-03');

@@ -35,7 +35,7 @@ it('refuses a direct wallet edit on a live file, on every path', function () {
         ->toThrow(RuntimeException::class);
 
     expect($case->fresh()->wallet_encrypted)->not->toBe('0999000111');
-});
+})->group('PAY-05');
 
 it('lets a file still being built carry a wallet edit freely', function () {
     $draft = familyOf($this->region, adults: 1, children: 1);
@@ -45,7 +45,7 @@ it('lets a file still being built carry a wallet edit freely', function () {
     $draft->update(['wallet_encrypted' => '0999000111']);
 
     expect($draft->fresh()->wallet_encrypted)->toBe('0999000111');
-});
+})->group('PAY-05');
 
 it('applies the change only once somebody else approves it', function () {
     $case = publishedCase($this->region);
@@ -66,7 +66,7 @@ it('applies the change only once somebody else approves it', function () {
     $this->cases->approveChange($request, $this->admin);
 
     expect($case->fresh()->wallet_encrypted)->toBe('0999000111');
-});
+})->group('PAY-05');
 
 it('refuses to let the person who raised it approve it', function () {
     $case = publishedCase($this->region);
@@ -83,7 +83,7 @@ it('refuses to let the person who raised it approve it', function () {
 
     expect($request->fresh()->status)->toBe('pending')
         ->and($case->fresh()->wallet_encrypted)->not->toBe('0999000111');
-});
+})->group('PAY-05');
 
 it('holds that rule on every change, not only on a payment one', function () {
     $case = publishedCase($this->region);
@@ -97,7 +97,7 @@ it('holds that rule on every change, not only on a payment one', function () {
 
     expect(fn () => $this->cases->approveChange($request, $this->officer))
         ->toThrow(RuntimeException::class);
-});
+})->group('PAY-05');
 
 it('closes the window again after the approved change is written', function () {
     $case = publishedCase($this->region);
@@ -111,7 +111,7 @@ it('closes the window again after the approved change is written', function () {
     // refused exactly as before.
     expect(fn () => $case->fresh()->update(['wallet_encrypted' => '0999000222']))
         ->toThrow(RuntimeException::class);
-});
+})->group('PAY-05');
 
 it('names the wallet as the only payment detail the file carries', function () {
     // The association decided on 29 September that a donor never pays a family
@@ -119,7 +119,7 @@ it('names the wallet as the only payment detail the file carries', function () {
     expect(ChangeRequest::PAYMENT_FIELDS)->toBe(['wallet_encrypted'])
         ->and(ChangeRequest::isPaymentChange(['wallet_encrypted' => '1']))->toBeTrue()
         ->and(ChangeRequest::isPaymentChange(['family_name' => 'x']))->toBeFalse();
-});
+})->group('AUTH-03');
 
 it('leaves every other field on a live file editable', function () {
     $case = publishedCase($this->region);
@@ -127,7 +127,7 @@ it('leaves every other field on a live file editable', function () {
     $case->update(['family_name' => 'اسم معدَّل']);
 
     expect($case->fresh()->family_name)->toBe('اسم معدَّل');
-});
+})->group('AUTH-03');
 
 it('locks the wallet field on the screen for a live file and not for a draft', function () {
     expect(\App\Filament\Resources\BeneficiaryResource::paymentDetailsLocked(publishedCase($this->region)))
@@ -136,4 +136,4 @@ it('locks the wallet field on the screen for a live file and not for a draft', f
             familyOf($this->region, adults: 1, children: 1)
         ))->toBeFalse()
         ->and(\App\Filament\Resources\BeneficiaryResource::paymentDetailsLocked(null))->toBeFalse();
-});
+})->group('PAY-05');
