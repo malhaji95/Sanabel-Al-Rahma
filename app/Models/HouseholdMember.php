@@ -22,9 +22,11 @@ class HouseholdMember extends Model
         'national_id_encrypted', 'relation_other_ar', 'birth_date', 'marital_status',
         'spouse_name_ar', 'occupation', 'school_grade_ar', 'works', 'workplace_ar',
         'is_quran_memorizer', 'certificate_ar', 'skills_ar',
+        // T-69 - «تصنيف اليتم», and a married dependant's husband.
+        'is_orphan', 'spouse_national_id_encrypted',
     ];
 
-    protected $hidden = ['national_id_encrypted'];
+    protected $hidden = ['national_id_encrypted', 'spouse_national_id_encrypted'];
 
     /** طالب، موظف، باحث عن عمل، متقاعد، يتيم، غير ذلك */
     public const OCCUPATIONS = ['student', 'employed', 'job_seeker', 'retired', 'orphan', 'other'];
@@ -35,8 +37,11 @@ class HouseholdMember extends Model
         'is_student' => 'boolean',
         'has_documented_condition' => 'boolean',
         'birth_year' => 'integer',
-        // A dependant's identity number is as private as the head's.
+        // A dependant's identity number is as private as the head's, and so
+        // is her husband's (T-69).
         'national_id_encrypted' => 'encrypted',
+        'spouse_national_id_encrypted' => 'encrypted',
+        'is_orphan' => 'boolean',
         'birth_date' => 'date',
         'works' => 'boolean',
         'is_quran_memorizer' => 'boolean',

@@ -14,6 +14,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * T-10 — the beneficiary file, as a multi-step form.
@@ -118,6 +119,9 @@ class BeneficiaryResource extends Resource
                     Forms\Components\TextInput::make('town_ar')
                         ->label(__('sanabel.beneficiary.town_ar')),
 
+                    Forms\Components\TextInput::make('quarter_ar')
+                        ->label(__('sanabel.beneficiary.quarter_ar')),
+
                     Forms\Components\TextInput::make('latitude')
                         ->label(__('sanabel.beneficiary.latitude'))
                         ->helperText(__('sanabel.beneficiary.gps_help'))
@@ -165,9 +169,12 @@ class BeneficiaryResource extends Resource
 
                     // T-63 — their survey's own classification. For filtering,
                     // and deliberately not the zakat channel beside it.
-                    Forms\Components\Select::make('case_classification')
+                    // T-69 — a list, not one value: the filled dossier answers
+                    // «فقيرة، يتيمة».
+                    Forms\Components\Select::make('case_classifications')
                         ->label(__('sanabel.beneficiary.case_classification'))
                         ->helperText(__('sanabel.beneficiary.case_classification_help'))
+                        ->multiple()
                         ->options(collect(Beneficiary::CASE_CLASSIFICATIONS)
                             ->mapWithKeys(fn (string $k) => [$k => __('sanabel.case_classification.'.$k)])
                             ->all()),
@@ -194,7 +201,10 @@ class BeneficiaryResource extends Resource
                         // empty and saving wrote the blank back over it. Named
                         // here and nowhere else, so nothing is unhidden that
                         // the screen does not show.
-                        ->relationship(modifyQueryUsing: fn ($query) => self::unhide($query, ['national_id_encrypted']))
+                        ->relationship(modifyQueryUsing: fn ($query) => self::unhide(
+                            $query,
+                            ['national_id_encrypted', 'spouse_national_id_encrypted'],
+                        ))
                         ->label(__('sanabel.beneficiary.members'))
                         ->schema([
                             Forms\Components\TextInput::make('name_ar')->label(__('sanabel.household_member.name'))->required(),
@@ -276,6 +286,15 @@ class BeneficiaryResource extends Resource
                             Forms\Components\TextInput::make('spouse_name_ar')
                                 ->label(__('sanabel.household_member.spouse_name_ar'))
                                 ->visible(fn (Forms\Get $get) => $get('marital_status') === 'married'),
+
+                            Forms\Components\TextInput::make('spouse_national_id_encrypted')
+                                ->label(__('sanabel.household_member.spouse_national_id'))
+                                ->maxLength(64)
+                                ->visible(fn (Forms\Get $get) => $get('marital_status') === 'married'),
+
+                            // T-69 — «تصنيف اليتم», asked of each dependant.
+                            Forms\Components\Toggle::make('is_orphan')
+                                ->label(__('sanabel.household_member.is_orphan')),
 
                             Forms\Components\Select::make('occupation')
                                 ->label(__('sanabel.household_member.occupation'))
@@ -485,6 +504,13 @@ class BeneficiaryResource extends Resource
                                 ->label(__('sanabel.asset.kind_other_ar'))
                                 ->visible(fn (Forms\Get $get) => $get('kind') === 'other'),
 
+                            // T-69 — the dossier asks after the spouse's own
+                            // property, and a committee weighing what a family
+                            // controls needs to know whose it is.
+                            Forms\Components\Select::make('belongs_to')
+                                ->label(__('sanabel.asset.belongs_to'))
+                                ->options(__('sanabel.asset.belongs_to_options')),
+
                             // Asked of the delegate, never inferred from the
                             // kind: the same tractor is a livelihood to one
                             // family and an investment to another.
@@ -617,6 +643,9 @@ class BeneficiaryResource extends Resource
                                 ->label(__('sanabel.debt.due_date'))
                                 ->visible(fn (Forms\Get $get) => (bool) $get('has_due_date')),
 
+                            Forms\Components\TextInput::make('nature_ar')
+                                ->label(__('sanabel.debt.nature_ar')),
+
                             Forms\Components\Textarea::make('reason_ar')
                                 ->label(__('sanabel.debt.reason_ar'))
                                 ->rows(2)
@@ -694,7 +723,18 @@ class BeneficiaryResource extends Resource
                                 ->label(__('sanabel.caregiver.smokes')),
 
                             Forms\Components\Toggle::make('neighbours_help')
-                                ->label(__('sanabel.caregiver.neighbours_help')),
+                                ->label(__('sanabel.caregiver.neighbours_help'))
+                                ->live(),
+
+                            Forms\Components\TextInput::make('neighbours_support')
+                                ->label(__('sanabel.caregiver.neighbours_support'))
+                                ->numeric()->minValue(0)
+                                ->suffix(config('sanabel.currency'))
+                                ->visible(fn (Forms\Get $get) => (bool) $get('neighbours_help')),
+
+                            Forms\Components\TextInput::make('neighbours_relation')
+                                ->label(__('sanabel.caregiver.neighbours_relation'))
+                                ->visible(fn (Forms\Get $get) => (bool) $get('neighbours_help')),
 
                             Forms\Components\Textarea::make('notes_ar')
                                 ->label(__('sanabel.caregiver.notes_ar'))
@@ -741,10 +781,69 @@ class BeneficiaryResource extends Resource
                         ->columnSpanFull(),
                 ])->columns(2),
 
+                /*
+                 | T-69 — the four answers on the last two pages of the dossier.
+                 |
+                 | The visit consent is not decoration: it is what makes a
+                 | donor visit permissible at all. And the privacy pair is two
+                 | questions rather than one because their own sample answers
+                 | «اطلاع: لا» and «موافقة: نعم», and a system that cannot
+                 | record that cannot report it either.
+                 */
+                Forms\Components\Wizard\Step::make(__('sanabel.beneficiary.step_consents'))->schema([
+                    Forms\Components\Toggle::make('donor_visit_consent')
+                        ->label(__('sanabel.beneficiary.donor_visit_consent'))
+                        ->helperText(__('sanabel.beneficiary.donor_visit_consent_help'))
+                        ->live(),
+
+                    Forms\Components\DatePicker::make('donor_visit_consent_on')
+                        ->label(__('sanabel.beneficiary.donor_visit_consent_on'))
+                        ->maxDate(now())
+                        ->visible(fn (Forms\Get $get) => (bool) $get('donor_visit_consent')),
+
+                    Forms\Components\Toggle::make('privacy_policy_seen')
+                        ->label(__('sanabel.beneficiary.privacy_policy_seen'))
+                        ->live(),
+
+                    Forms\Components\Toggle::make('privacy_consent')
+                        ->label(__('sanabel.beneficiary.privacy_consent'))
+                        ->live(),
+
+                    // Shown rather than refused: the row is recorded as it was
+                    // given, and the person reading it is told what is wrong.
+                    Forms\Components\Placeholder::make('privacy_contradiction')
+                        ->label('')
+                        ->content(__('sanabel.beneficiary.privacy_contradiction'))
+                        ->visible(fn (Forms\Get $get) => (bool) $get('privacy_consent')
+                            && $get('privacy_policy_seen') === false)
+                        ->columnSpanFull(),
+
+                    Forms\Components\DatePicker::make('privacy_consent_on')
+                        ->label(__('sanabel.beneficiary.privacy_consent_on'))
+                        ->maxDate(now())
+                        ->visible(fn (Forms\Get $get) => (bool) $get('privacy_consent')),
+
+                    Forms\Components\TextInput::make('privacy_policy_version')
+                        ->label(__('sanabel.beneficiary.privacy_policy_version'))
+                        ->visible(fn (Forms\Get $get) => (bool) $get('privacy_consent')),
+
+                    Forms\Components\DatePicker::make('declaration_on')
+                        ->label(__('sanabel.beneficiary.declaration_on'))
+                        ->maxDate(now()),
+                ])->columns(2),
+
                 Forms\Components\Wizard\Step::make(__('sanabel.beneficiary.step_urgency'))->schema([
                     Forms\Components\DateTimePicker::make('urgency_deadline_at')
                         ->label(__('sanabel.beneficiary.urgency_deadline'))
                         ->helperText(__('sanabel.beneficiary.urgency_help')),
+
+                    // Recorded, never computed from: the engine reads the
+                    // income rows, as it always has.
+                    Forms\Components\TextInput::make('declared_monthly_income')
+                        ->label(__('sanabel.beneficiary.declared_monthly_income'))
+                        ->helperText(__('sanabel.beneficiary.declared_income_help'))
+                        ->numeric()->minValue(0)
+                        ->suffix(config('sanabel.currency')),
 
                     Forms\Components\TextInput::make('documented_debt')
                         ->label(__('sanabel.beneficiary.documented_debt'))
@@ -786,7 +885,7 @@ class BeneficiaryResource extends Resource
                     ->formatStateUsing(fn () => __('sanabel.anonymise.badge'))
                     ->placeholder('')
                     ->toggleable(),
-                Tables\Columns\TextColumn::make('case_classification')
+                Tables\Columns\TextColumn::make('case_classifications')
                     ->label(__('sanabel.beneficiary.case_classification'))
                     ->badge()
                     ->formatStateUsing(fn (?string $state) => $state ? __('sanabel.case_classification.'.$state) : '—')
@@ -841,11 +940,16 @@ class BeneficiaryResource extends Resource
                     ->label(__('sanabel.beneficiary.region'))
                     ->options(fn () => Region::pluck('name_ar', 'id')),
                 // T-63 — what they added it for.
-                Tables\Filters\SelectFilter::make('case_classification')
+                // A list column, so the filter asks the json whether it holds
+                // the value rather than comparing one string to another.
+                Tables\Filters\SelectFilter::make('case_classifications')
                     ->label(__('sanabel.beneficiary.case_classification'))
                     ->options(collect(Beneficiary::CASE_CLASSIFICATIONS)
                         ->mapWithKeys(fn (string $k) => [$k => __('sanabel.case_classification.'.$k)])
-                        ->all()),
+                        ->all())
+                    ->query(fn (Builder $query, array $data) => filled($data['value'] ?? null)
+                        ? $query->whereJsonContains('case_classifications', $data['value'])
+                        : $query),
                 Tables\Filters\TernaryFilter::make('duplicate_review_flag')
                     ->label(__('sanabel.beneficiary.duplicate_flag')),
             ])

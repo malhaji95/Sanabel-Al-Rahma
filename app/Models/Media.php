@@ -42,7 +42,10 @@ class Media extends Model
      * become a second description of the household.
      */
     public const FAMILY_KINDS = [
-        'identity', 'residence', 'lease', 'medical', 'debt', 'income', 'other',
+        'identity', 'residence', 'lease', 'medical', 'debt', 'income',
+        // T-69 — «شهادة وفاة الزوج», listed in the dossier's supporting
+        // documents with no kind here to carry it.
+        'death_certificate', 'other',
     ];
 
     public function uploader()

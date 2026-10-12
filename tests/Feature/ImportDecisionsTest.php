@@ -48,14 +48,30 @@ it('leaves the computed need alone for that type, which is why it is safe to imp
 it('keeps the survey classification apart from the zakat channel', function () {
     // فقير and مسكين are two of the eight channels; مرض and أرمل are not
     // channels at all, so one field cannot answer both questions.
-    $this->family->update(['case_classification' => 'illness', 'zakat_category' => 'poor']);
+    $this->family->update(['case_classifications' => ['illness'], 'zakat_category' => 'poor']);
 
     $case = $this->family->fresh();
 
-    expect($case->case_classification)->toBe('illness')
+    expect($case->case_classifications)->toBe(['illness'])
         ->and($case->zakat_category)->toBe('poor')
         ->and(Beneficiary::CASE_CLASSIFICATIONS)->toContain('illness', 'widowed', 'debtor')
         ->and(Beneficiary::ZAKAT_CATEGORIES)->not->toContain('illness');
+});
+
+it('holds more than one classification, because the dossier gives more than one', function () {
+    // T-69 — the filled dossier of 12 October answers «فقيرة، يتيمة». Built as
+    // one string, every imported file would have silently lost a value.
+    $this->family->update(['case_classifications' => ['poor', 'orphan']]);
+
+    expect($this->family->fresh()->case_classifications)->toBe(['poor', 'orphan']);
+
+    // And it is searchable by any one of them, which is what they added it for.
+    expect(
+        Beneficiary::withoutGlobalScopes()
+            ->whereJsonContains('case_classifications', 'orphan')
+            ->whereKey($this->family->getKey())
+            ->exists()
+    )->toBeTrue();
 });
 
 it('names every classification value in Arabic', function () {
@@ -88,7 +104,7 @@ it('lets no change request rewrite the old system archive', function () {
     // It is a record of what the old system said. Editing it would make it a
     // second, unaccountable opinion on the file.
     expect(ChangeRequest::CHANGEABLE_FIELDS)->not->toContain('legacy_review_json')
-        ->and(ChangeRequest::CHANGEABLE_FIELDS)->toContain('case_classification');
+        ->and(ChangeRequest::CHANGEABLE_FIELDS)->toContain('case_classifications');
 
     expect(fn () => app(CaseService::class)->requestChange(
         $this->family,

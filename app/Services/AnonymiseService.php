@@ -64,14 +64,16 @@ class AnonymiseService
     public const CLEARED = [
         Beneficiary::class => [
             'phone_encrypted', 'wallet_encrypted',
-            'town_ar', 'latitude', 'longitude', 'birth_date', 'workplace_ar', 'surveyed_by_ar',
+            'town_ar', 'quarter_ar', 'latitude', 'longitude', 'birth_date', 'workplace_ar',
+            'surveyed_by_ar',
             'previous_aid_ar', 'livelihood_proposal_ar', 'proposal_skills_ar', 'furnishing_ar',
             // The link back to the old system's archive, which still holds the
             // name. Leaving it would make this a redirection, not an erasure.
             'legacy_file_no', 'legacy_review_json',
         ],
         HouseholdMember::class => [
-            'national_id_encrypted', 'relation_other_ar', 'birth_date', 'spouse_name_ar',
+            'national_id_encrypted', 'spouse_national_id_encrypted',
+            'relation_other_ar', 'birth_date', 'spouse_name_ar',
             'workplace_ar', 'school_grade_ar', 'certificate_ar', 'skills_ar', 'notes_ar',
         ],
         Housing::class => ['landlord_name_ar', 'landlord_phone_encrypted', 'type_other_ar'],
@@ -79,11 +81,12 @@ class AnonymiseService
             'description_ar', 'treatment_place_ar', 'medicines_ar',
             'doctor_name_ar', 'doctor_phone_encrypted',
         ],
-        Debt::class => ['creditor_address_ar', 'creditor_phone_encrypted', 'reason_ar'],
+        Debt::class => ['creditor_address_ar', 'creditor_phone_encrypted', 'reason_ar', 'nature_ar'],
         // name_ar here is another association, not a person, so it stays.
         SupportSource::class => ['notes_ar'],
         Caregiver::class => [
             'national_id_encrypted', 'relation_other_ar', 'income_source_ar', 'notes_ar',
+            'neighbours_relation',
         ],
         Asset::class => ['kind_other_ar', 'necessity_reason_ar', 'details_ar'],
         Visit::class => ['note_ar', 'payload_json', 'conflict_reason'],

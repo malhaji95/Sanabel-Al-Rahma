@@ -45,7 +45,11 @@ class Beneficiary extends Model
     protected $fillable = [
         'file_number', 'legacy_file_no', 'user_id', 'national_id_encrypted', 'national_id_hash', 'first_name', 'father_name',
         'family_name', 'phone_encrypted', 'region_id', 'association_id', 'marital_status', 'wallet_encrypted',
-        'support_type', 'zakat_category', 'case_classification', 'legacy_review_json', 'is_shareable', 'previous_aid_ar',
+        'support_type', 'zakat_category', 'case_classifications', 'legacy_review_json', 'is_shareable', 'previous_aid_ar',
+        // T-69 — what the filled dossier of 12 October showed.
+        'quarter_ar', 'declared_monthly_income', 'donor_visit_consent', 'donor_visit_consent_on',
+        'privacy_policy_seen', 'privacy_consent', 'privacy_consent_on', 'privacy_policy_version',
+        'declaration_on',
         // The association's own social survey, carried into the file.
         'gender', 'birth_date', 'town_ar', 'latitude', 'longitude', 'works', 'workplace_ar',
         'has_quran_memorizers', 'quran_memorizer_count', 'livelihood_proposal_ar',
@@ -105,6 +109,16 @@ class Beneficiary extends Model
             'is_shareable' => 'boolean',
             // The old system's researcher review, kept as an archive (T-63).
             'legacy_review_json' => 'array',
+            // T-69 — «تصنيف الحالة» is a list: the filled dossier answers it
+            // «فقيرة، يتيمة».
+            'case_classifications' => 'array',
+            'declared_monthly_income' => 'integer',
+            'donor_visit_consent' => 'boolean',
+            'donor_visit_consent_on' => 'date',
+            'privacy_policy_seen' => 'boolean',
+            'privacy_consent' => 'boolean',
+            'privacy_consent_on' => 'date',
+            'declaration_on' => 'date',
             'birth_date' => 'date',
             'works' => 'boolean',
             'has_quran_memorizers' => 'boolean',
@@ -234,6 +248,35 @@ class Beneficiary extends Model
     public function scopePublished($query)
     {
         return $query->where('status', 'published');
+    }
+
+    /**
+     * T-69 — whether a donor may be sent to this family at all.
+     *
+     * The dossier asks the family directly, and the answer is theirs. No
+     * answer is not a yes: a visit goes ahead only on a recorded agreement.
+     */
+    public function acceptsDonorVisit(): bool
+    {
+        return $this->donor_visit_consent === true;
+    }
+
+    /**
+     * Whether the privacy consent on this file actually stands up.
+     *
+     * Their own sample answers «اطلاع على سياسة الخصوصية: لا» and «الموافقة
+     * على سياسة الخصوصية: نعم» — a consent to a text nobody read. That is
+     * recorded as it was given, because refusing the row would lose the
+     * family; it is reported here instead, so it can be gone back over.
+     */
+    public function privacyConsentIsSound(): bool
+    {
+        return $this->privacy_consent === true && $this->privacy_policy_seen === true;
+    }
+
+    public function privacyConsentContradicts(): bool
+    {
+        return $this->privacy_consent === true && $this->privacy_policy_seen === false;
     }
 
     /** T-65 — the personal data is gone; the record and its history are not. */

@@ -58,10 +58,16 @@ class ChangeRequest extends Model
     public const CHANGEABLE_FIELDS = [
         // The family's own description.
         'first_name', 'father_name', 'family_name', 'phone_encrypted', 'marital_status',
-        'association_id', 'zakat_category', 'case_classification', 'is_shareable', 'previous_aid_ar',
+        'association_id', 'zakat_category', 'case_classifications', 'is_shareable', 'previous_aid_ar',
         'legacy_file_no', 'urgency_deadline_at', 'documented_debt',
         // Its social survey.
-        'gender', 'birth_date', 'town_ar', 'latitude', 'longitude', 'works', 'workplace_ar',
+        'gender', 'birth_date', 'town_ar', 'quarter_ar', 'latitude', 'longitude', 'works', 'workplace_ar',
+        'declared_monthly_income',
+        // The four consents (T-69). A consent is a fact about what the
+        // family agreed to, so correcting one goes the same way as
+        // correcting anything else on a live file.
+        'donor_visit_consent', 'donor_visit_consent_on', 'privacy_policy_seen',
+        'privacy_consent', 'privacy_consent_on', 'privacy_policy_version', 'declaration_on',
         'has_quran_memorizers', 'quran_memorizer_count', 'livelihood_proposal_ar',
         'proposal_skills_ar', 'proposal_cost', 'surveyed_by_ar', 'furnishing_ar',
         // Housing.
@@ -74,13 +80,14 @@ class ChangeRequest extends Model
         'name_ar', 'relation', 'relation_other_ar', 'birth_year', 'spouse_name_ar',
         'occupation', 'school_grade_ar', 'is_quran_memorizer', 'certificate_ar', 'skills_ar',
         'is_student', 'has_documented_condition', 'notes_ar', 'national_id_encrypted',
+        'is_orphan', 'spouse_national_id_encrypted',
         'person_class', 'dependent', 'unable_to_earn',
         // A health record.
         'severity_band', 'economic_impact_band', 'care_burden_band', 'monthly_medical_cost',
         'description_ar', 'ongoing_treatment', 'treatment_place_ar', 'medicines_ar',
         'doctor_name_ar', 'doctor_phone_encrypted',
         // What the family owns, as the researcher answered it (T-64).
-        'necessity', 'necessity_reason_ar', 'is_exploited', 'has_control',
+        'necessity', 'necessity_reason_ar', 'is_exploited', 'has_control', 'belongs_to',
         'kind_other_ar', 'estimated_value',
         // Where the money is sent. Locked on a live file, and this is the path.
         'wallet_encrypted',
