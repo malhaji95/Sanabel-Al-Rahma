@@ -293,6 +293,7 @@ it('names only columns that exist, so a new personal column cannot be missed', f
         AnonymiseService::CLEARED,
         AnonymiseService::MARKED,
         AnonymiseService::SCRAMBLED,
+        AnonymiseService::EMPTIED,
     ) as $class => $columns) {
         $model = new $class;
         $table = $model->getTable();
@@ -300,6 +301,212 @@ it('names only columns that exist, so a new personal column cannot be missed', f
         foreach ($columns as $column) {
             expect(\Illuminate\Support\Facades\Schema::hasColumn($table, $column))
                 ->toBeTrue($class.' names a column that does not exist: '.$column);
+        }
+    }
+});
+
+/*
+ | The gap these cover: the first version of the sweep cleared the file and its
+ | immediate records, and left behind a published story naming the family with
+ | their signed consent form attached, a public campaign carrying a wallet, a
+ | public job profile, their medical report, the photograph of them receiving
+ | aid, their complaint text, and the before-and-after values of every field it
+ | had just erased. It read as an erasure and was not one.
+ */
+
+/**
+ * A published story about a family. Post refuses to publish one without the
+ * family's written consent on the record, so it is built the way the panel
+ * builds it: draft, then the consent, then published.
+ */
+function storyAbout($case, $uploader): \App\Models\Post
+{
+    $post = \App\Models\Post::create([
+        'slug' => 'story-'.$case->getKey(),
+        'title_ar' => 'قصة اسرة ابو محمد',
+        'excerpt_ar' => 'اسرة من حي المنشية',
+        'body_ar' => 'محمد احمد وعائلته',
+        'status' => 'draft',
+        'beneficiary_id' => $case->getKey(),
+    ]);
+
+    $consent = app(MediaService::class)
+        ->store(UploadedFile::fake()->image('consent.jpg'), $post, 'other', $uploader);
+
+    $post->forceFill([
+        'consent_signed_by_ar' => 'محمد احمد',
+        'consent_signed_on' => now()->toDateString(),
+        'consent_media_id' => $consent->getKey(),
+        'status' => 'published',
+    ])->save();
+
+    return $post->refresh();
+}
+
+it('takes down the public content about the family, not only empties it', function () {
+    $case = familyWithEverything($this->region);
+
+    $post = storyAbout($case, $this->officer);
+
+    $campaign = \App\Models\Campaign::create([
+        'beneficiary_id' => $case->getKey(),
+        'title_ar' => 'حملة لاسرة ابو محمد',
+        'body_ar' => 'ساعدوا محمد احمد',
+        'goal_amount' => 1_000_000,
+        'currency' => config('sanabel.currency'),
+        'wallet_encrypted' => '0922222222',
+        // Campaign refuses to publish without it.
+        'surplus_policy_text_ar' => 'الفائض يرحل للشهر التالي',
+        'status' => 'published',
+        'is_published' => true,
+    ]);
+
+    $profile = \App\Models\JobProfile::create([
+        'beneficiary_id' => $case->getKey(),
+        'trade_key' => 'smith',
+        'summary_ar' => 'محمد احمد حداد بحي المنشية',
+        'region_id' => $this->region->id,
+        'status' => 'published',
+    ]);
+
+    $this->service->request($case, $this->officer, 'سند قانوني');
+    $this->service->execute($case->fresh(), $this->admin);
+
+    $post->refresh();
+    $campaign->refresh();
+    $profile->refresh();
+
+    // Cleared.
+    expect($post->title_ar)->toBe('مطموس')
+        ->and($post->body_ar)->toBeNull()
+        ->and($post->excerpt_ar)->toBeNull()
+        ->and($post->consent_signed_by_ar)->toBeNull()
+        ->and($campaign->title_ar)->toBe('مطموس')
+        ->and($campaign->body_ar)->toBeNull()
+        ->and($campaign->wallet_encrypted)->toBeNull()
+        // summary_ar cannot be null on the table, so it takes the marker.
+        ->and($profile->summary_ar)->toBe('مطموس');
+
+    // And taken down: an emptied published story is still a published story,
+    // and a campaign collecting for an erased file has nobody to pay.
+    expect($post->is_published)->toBeFalse()
+        ->and($post->status)->toBe('hidden')
+        ->and($campaign->is_published)->toBeFalse()
+        ->and($profile->status)->toBe('hidden');
+});
+
+it('destroys every file belonging to the family, wherever it hangs', function () {
+    $case = familyWithEverything($this->region);
+    $service = app(MediaService::class);
+    $disk = Storage::disk('media_test');
+
+    // Hung off the family itself.
+    $identity = $service->store(UploadedFile::fake()->image('identity.jpg'), $case, 'identity', $this->officer);
+
+    // Hung off a health record: the medical report.
+    $health = $case->healthRecords()->first();
+    $report = $service->store(UploadedFile::fake()->image('report.jpg'), $health, 'medical', $this->officer);
+    $health->forceFill(['evidence_media_id' => $report->getKey()])->save();
+
+    // Hung off a post: the signed consent form.
+    $post = storyAbout($case, $this->officer);
+    $consent = Media::withTrashed()->find($post->consent_media_id);
+
+    // Hung off a delivery: the photograph of them receiving the aid.
+    // in_kind needs no transfer behind it (Delivery::WITHOUT_A_TRANSFER).
+    $delivery = $case->deliveries()->create([
+        'type' => 'in_kind',
+        'note_ar' => 'استلمت من ابو محمد',
+        'confirmed_at' => now(),
+    ]);
+    $proof = $service->store(UploadedFile::fake()->image('proof.jpg'), $delivery, 'other', $this->officer);
+    $delivery->forceFill(['proof_media_id' => $proof->getKey()])->save();
+
+    foreach ([$identity, $report, $consent, $proof] as $paper) {
+        expect($disk->exists($paper->storage_key))->toBeTrue();
+    }
+
+    $this->service->request($case, $this->officer, 'سند قانوني');
+    $this->service->execute($case->fresh(), $this->admin);
+
+    foreach ([$identity, $report, $consent, $proof] as $paper) {
+        expect($disk->exists($paper->storage_key))->toBeFalse(class_basename($paper).' survived')
+            ->and(Media::withTrashed()->find($paper->getKey())->isServable())->toBeFalse();
+    }
+
+    expect($delivery->fresh()->note_ar)->toBeNull();
+});
+
+it('takes the values out of the change requests that moved them', function () {
+    $case = familyWithEverything($this->region);
+
+    // A change request holds the before and after of the very field being
+    // erased, so leaving it is the same leak as leaving the audit payload.
+    app(\App\Services\CaseService::class)->requestChange(
+        $case,
+        $this->officer,
+        ['phone_encrypted' => '0988777666'],
+        'الاسرة بدلت رقمها',
+    );
+
+    $this->service->request($case->fresh(), $this->officer, 'سند قانوني');
+    $this->service->execute($case->fresh(), $this->admin);
+
+    $rows = DB::table('change_requests')->where('beneficiary_id', $case->getKey())->get();
+    $everything = $rows->map(fn ($r) => (string) $r->payload_json.(string) $r->old_json.(string) $r->reason_ar)->implode(' ');
+
+    expect($rows)->not->toBeEmpty()
+        ->and($everything)->not->toContain('0988777666')
+        ->and($everything)->not->toContain('0911111111');
+});
+
+it('clears the complaint the family filed from their own account', function () {
+    $case = familyWithEverything($this->region);
+    $account = userWithRole('beneficiary', ['name' => 'محمد أحمد', 'email' => 'm2@example.test']);
+    $case->forceFill(['user_id' => $account->getKey()])->save();
+
+    $complaint = \App\Models\Complaint::create([
+        'reference_no' => 'C-'.$case->getKey(),
+        'submitted_by' => $account->getKey(),
+        'subject_ar' => 'لم يصلني المبلغ',
+        'body_ar' => 'انا محمد احمد من حي المنشية وما وصلني شي',
+        'category' => 'payment',
+        'status' => 'open',
+    ]);
+
+    $this->service->request($case->fresh(), $this->officer, 'سند قانوني');
+    $this->service->execute($case->fresh(), $this->admin);
+
+    $complaint->refresh();
+
+    expect($complaint->body_ar)->toBeNull()
+        // subject_ar cannot be null on the table, so it takes the marker.
+        ->and($complaint->subject_ar)->toBe('مطموس')
+        // The complaint itself survives as a record that one was filed.
+        ->and($complaint->reference_no)->toBe('C-'.$case->getKey());
+});
+
+it('leaves no trace of the family in any free text or file, anywhere', function () {
+    // The catch-all. If a new table starts carrying words about a family and
+    // nobody adds it to the sweep, this is what fails.
+    $case = familyWithEverything($this->region);
+    $case->deliveries()->create(['type' => 'in_kind', 'note_ar' => 'استلم ابو خالد بحي المنشية', 'confirmed_at' => now()]);
+    storyAbout($case, $this->officer);
+
+    $this->service->request($case, $this->officer, 'سند قانوني');
+    $this->service->execute($case->fresh(), $this->admin);
+
+    $needles = ['حي المنشية', '0911111111', '0922222222', 'OLD-1042', 'أبو فؤاد', 'د. سامر', '0944555666', '0955111222'];
+
+    foreach ([
+        'beneficiaries', 'household_members', 'housing', 'health_records', 'debts',
+        'caregivers', 'assets', 'support_sources', 'visits', 'deliveries', 'disbursements',
+        'change_requests', 'audit_log', 'posts', 'campaigns', 'job_profiles', 'complaints',
+    ] as $table) {
+        $dump = collect(DB::table($table)->get())->map(fn ($r) => json_encode($r, JSON_UNESCAPED_UNICODE))->implode(' ');
+
+        foreach ($needles as $needle) {
+            expect($dump)->not->toContain($needle, $table.' still carries '.$needle);
         }
     }
 });

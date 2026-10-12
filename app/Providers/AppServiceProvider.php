@@ -9,6 +9,8 @@ use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Route;
+use Livewire\Livewire;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -62,6 +64,15 @@ class AppServiceProvider extends ServiceProvider
 
         $this->registerRateLimits();
 
+        /*
+         | T-66 — Livewire registers its own update route, so the limit is put
+         | on it here rather than in routes/web.php. 'web' is kept, because
+         | dropping it would take the session and the CSRF check with it.
+         */
+        Livewire::setUpdateRoute(fn ($handle) => Route::post('/livewire/update', $handle)
+            ->middleware(['web', 'throttle:livewire'])
+            ->name('livewire.update'));
+
         // Rule 3 — nothing is hard-deleted. Guarded here as well as in the policies.
         Model::preventLazyLoading(false);
     }
@@ -93,6 +104,15 @@ class AppServiceProvider extends ServiceProvider
 
         // The one route that takes a national ID (T-38).
         RateLimiter::for('national-id', fn (Request $request) => Limit::perMinute($limits['national_id'])->by($byActor($request)));
+
+        /*
+         | T-66 — the Livewire endpoint. T-57 put a limit on every api/ route
+         | and a test held it there, but the browser does not write through
+         | api/: the donor portal, the family portal and every panel screen
+         | write through /livewire/update, and the public case list reaches it
+         | without signing in. It was the one unthrottled write path left.
+         */
+        RateLimiter::for('livewire', fn (Request $request) => Limit::perMinute($limits['livewire'])->by($byActor($request)));
 
         /*
          | The public login form, which had no limit at all. Keyed on the email

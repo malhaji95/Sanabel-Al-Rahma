@@ -5,12 +5,22 @@ namespace App\Services;
 use App\Models\Asset;
 use App\Models\AuditLog;
 use App\Models\Beneficiary;
+use App\Models\Campaign;
 use App\Models\Caregiver;
+use App\Models\ChangeRequest;
+use App\Models\Complaint;
 use App\Models\Debt;
+use App\Models\Delivery;
+use App\Models\Disbursement;
+use App\Models\DistributionItem;
 use App\Models\HealthRecord;
 use App\Models\HouseholdMember;
+use App\Models\JobProfile;
 use App\Models\Housing;
+use App\Models\Income;
 use App\Models\Media;
+use App\Models\Post;
+use App\Models\Referral;
 use App\Models\SupportSource;
 use App\Models\User;
 use App\Models\Visit;
@@ -77,6 +87,23 @@ class AnonymiseService
         ],
         Asset::class => ['kind_other_ar', 'necessity_reason_ar', 'details_ar'],
         Visit::class => ['note_ar', 'payload_json', 'conflict_reason'],
+
+        /*
+         | Everything else that hangs off the file and carries words somebody
+         | wrote about this family. Missing these was the gap: a sweep that
+         | clears the file and leaves a published story naming them, their
+         | signed consent form and their medical report is a false assurance.
+         */
+        Delivery::class => ['note_ar'],
+        Disbursement::class => ['dispute_reason_ar', 'failure_reason_ar', 'reject_reason_ar'],
+        DistributionItem::class => ['failure_reason_ar'],
+        Referral::class => [],
+        Complaint::class => ['body_ar', 'resolution_ar'],
+        // Public content about this family. Cleared and taken down below.
+        Post::class => ['body_ar', 'excerpt_ar', 'consent_signed_by_ar', 'image'],
+        Campaign::class => ['body_ar', 'surplus_policy_text_ar', 'wallet_encrypted'],
+        // The before and after of every field being erased sit in here.
+        ChangeRequest::class => ['old_json', 'review_note_ar'],
     ];
 
     /**
@@ -90,6 +117,27 @@ class AnonymiseService
         HouseholdMember::class => ['name_ar'],
         Caregiver::class => ['name_ar'],
         Debt::class => ['creditor_name_ar'],
+        Post::class => ['title_ar'],
+        Campaign::class => ['title_ar'],
+        // These cannot be null either, so they take the marker too.
+        Income::class => ['source_type'],
+        JobProfile::class => ['summary_ar'],
+        Complaint::class => ['subject_ar'],
+        ChangeRequest::class => ['reason_ar'],
+    ];
+
+    /**
+     * JSON columns that cannot be null, emptied rather than marked so the
+     * column still holds valid JSON.
+     *
+     * change_requests.payload_json is the one that matters: it holds the very
+     * value a change moved a field to, so a request to change a telephone
+     * number carries that number in it.
+     *
+     * @var array<class-string<Model>,array<int,string>>
+     */
+    public const EMPTIED = [
+        ChangeRequest::class => ['payload_json'],
     ];
 
     /**
@@ -117,6 +165,49 @@ class AnonymiseService
         Caregiver::class => 'caregivers',
         Asset::class => 'assets',
         Visit::class => 'visits',
+        Income::class => 'incomes',
+        Delivery::class => 'deliveries',
+        Disbursement::class => 'disbursements',
+        JobProfile::class => 'jobProfile',
+    ];
+
+    /**
+     * The rest reach the family by a plain beneficiary_id with no relation on
+     * the model, so they are swept by that column.
+     *
+     * @var array<class-string<Model>,string>
+     */
+    private const BY_COLUMN = [
+        DistributionItem::class => 'beneficiary_id',
+        Referral::class => 'beneficiary_id',
+        Post::class => 'beneficiary_id',
+        Campaign::class => 'beneficiary_id',
+        ChangeRequest::class => 'beneficiary_id',
+    ];
+
+    /**
+     * Every column that points at a Media row. The family's papers are not all
+     * owned by the family: their medical report hangs off a health record,
+     * their signed consent off a post, and the photograph of them receiving aid
+     * off a delivery. Each of those files is as much the person as the identity
+     * card is.
+     *
+     * @var array<class-string<Model>,array<int,string>>
+     */
+    private const MEDIA_COLUMNS = [
+        HealthRecord::class => ['evidence_media_id'],
+        Delivery::class => ['proof_media_id'],
+        Disbursement::class => ['proof_media_id'],
+        DistributionItem::class => ['proof_media_id'],
+        Referral::class => ['proof_media_id'],
+        Post::class => ['consent_media_id'],
+    ];
+
+    /** Public content about this family comes down as well as being cleared. */
+    private const UNPUBLISHED = [
+        Post::class => ['status' => 'hidden', 'is_published' => false, 'published_at' => null],
+        Campaign::class => ['status' => 'hidden', 'is_published' => false],
+        JobProfile::class => ['status' => 'hidden'],
     ];
 
     /** One person asks, and says why the law requires it. */
@@ -163,16 +254,33 @@ class AnonymiseService
             $cleared['beneficiary'] = $this->sweep($case);
 
             foreach (self::RELATIONS as $class => $relation) {
-                $rows = $case->{$relation}()->get();
+                $rows = collect($case->{$relation}()->get());
 
                 foreach ($rows as $row) {
                     $this->sweep($row);
                 }
 
-                if ($rows->isNotEmpty() && (self::CLEARED[$class] ?? self::MARKED[$class] ?? null)) {
+                if ($rows->isNotEmpty()) {
                     $cleared[$relation] = $rows->count();
                 }
             }
+
+            // The ones with no relation on the model, reached by their column.
+            foreach (self::BY_COLUMN as $class => $column) {
+                $rows = $class::withoutGlobalScopes()->where($column, $case->getKey())->get();
+
+                foreach ($rows as $row) {
+                    $this->sweep($row);
+                }
+
+                if ($rows->isNotEmpty()) {
+                    $cleared[class_basename($class)] = $rows->count();
+                }
+            }
+
+            // A complaint carries no beneficiary_id: it reaches the family
+            // through the account they filed it from.
+            $cleared['complaints'] = $this->sweepComplaints($case);
 
             $cleared['media'] = $this->destroyPapers($case);
             $cleared['account'] = $this->closeAccount($case) ? 1 : 0;
@@ -229,9 +337,27 @@ class AnonymiseService
             }
         }
 
+        foreach (self::EMPTIED[$row::class] ?? [] as $column) {
+            if (array_key_exists($column, $row->getAttributes())) {
+                $changes[$column] = [];
+            }
+        }
+
         foreach (self::SCRAMBLED[$row::class] ?? [] as $column) {
             if (array_key_exists($column, $row->getAttributes())) {
                 $changes[$column] = 'anonymised:'.bin2hex(random_bytes(16));
+            }
+        }
+
+        /*
+         | Public content about this family comes down, not just emptied. A
+         | published story with its title and body cleared is still a published
+         | story, and a campaign still collecting money for a family whose file
+         | has been erased has nobody to pay.
+         */
+        foreach (self::UNPUBLISHED[$row::class] ?? [] as $column => $value) {
+            if (array_key_exists($column, $row->getAttributes())) {
+                $changes[$column] = $value;
             }
         }
 
@@ -246,20 +372,74 @@ class AnonymiseService
         return array_keys($changes);
     }
 
+    /** A complaint reaches the family through the account they filed it from. */
+    private function sweepComplaints(Beneficiary $case): int
+    {
+        if (! $case->user_id) {
+            return 0;
+        }
+
+        $rows = Complaint::withoutGlobalScopes()->where('submitted_by', $case->user_id)->get();
+
+        foreach ($rows as $row) {
+            $this->sweep($row);
+        }
+
+        return $rows->count();
+    }
+
     /**
-     * The family's papers. The rows are archived rather than erased (rule 3),
-     * but the objects themselves go: an identity card photograph is the
-     * identity, and leaving the file on disk would make this a half-erasure.
+     * Every file that belongs to this family, wherever it hangs.
+     *
+     * Not all of them are owned by the beneficiary: the medical report hangs
+     * off a health record, the signed consent off a post, the photograph of
+     * them receiving aid off a delivery. Each of those is as much the person
+     * as the identity card is, so the ids are collected from every column that
+     * points at a Media row and the objects are deleted off the disk.
+     *
+     * The rows are archived rather than erased (rule 3) and serve nothing
+     * afterwards.
      */
     private function destroyPapers(Beneficiary $case): int
     {
         $disk = Storage::disk(config('sanabel.media_disk'));
         $count = 0;
 
-        foreach (Media::withTrashed()
+        // Owned by the family directly.
+        $ids = Media::withTrashed()
             ->where('owner_type', Beneficiary::class)
             ->where('owner_id', $case->getKey())
-            ->get() as $paper) {
+            ->pluck('id');
+
+        // And referenced from anything hanging off the family.
+        foreach (self::MEDIA_COLUMNS as $class => $columns) {
+            $query = array_key_exists($class, self::RELATIONS)
+                ? $case->{self::RELATIONS[$class]}()->getQuery()
+                : $class::withoutGlobalScopes()->where(self::BY_COLUMN[$class], $case->getKey());
+
+            foreach ($columns as $column) {
+                $ids = $ids->merge(
+                    (clone $query)->whereNotNull($column)->pluck($column)
+                );
+            }
+        }
+
+        // Media the satellite records own in their own right.
+        foreach (array_keys(self::MEDIA_COLUMNS) as $class) {
+            $ownerIds = array_key_exists($class, self::RELATIONS)
+                ? $case->{self::RELATIONS[$class]}()->pluck('id')
+                : $class::withoutGlobalScopes()->where(self::BY_COLUMN[$class], $case->getKey())->pluck('id');
+
+            if ($ownerIds->isEmpty()) {
+                continue;
+            }
+
+            $ids = $ids->merge(
+                Media::withTrashed()->where('owner_type', $class)->whereIn('owner_id', $ownerIds)->pluck('id')
+            );
+        }
+
+        foreach (Media::withTrashed()->whereIn('id', $ids->unique()->filter()->all())->get() as $paper) {
             if ($paper->storage_key && $disk->exists($paper->storage_key)) {
                 $disk->delete($paper->storage_key);
             }
@@ -330,9 +510,17 @@ class AnonymiseService
             }
         }
 
+        foreach (self::BY_COLUMN as $class => $column) {
+            $ids = $class::withoutGlobalScopes()->where($column, $case->getKey())->pluck('id')->all();
+
+            if ($ids !== []) {
+                $entities[] = [$class, $ids];
+            }
+        }
+
         $sensitive = [];
 
-        foreach ([self::CLEARED, self::MARKED, self::SCRAMBLED] as $group) {
+        foreach ([self::CLEARED, self::MARKED, self::SCRAMBLED, self::EMPTIED] as $group) {
             foreach ($group as $class => $columns) {
                 $sensitive[$class] = array_merge($sensitive[$class] ?? [], $columns);
             }

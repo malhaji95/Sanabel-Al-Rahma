@@ -124,6 +124,18 @@ return [
             'sync' => env('SANABEL_RATE_SYNC', 60),
             // The one route that takes a national ID (T-38).
             'national_id' => env('SANABEL_RATE_NATIONAL_ID', 10),
+            /*
+             | T-66 — /livewire/update, which T-57 missed because its test only
+             | looked at the api/ prefix. It is the write path for the donor
+             | portal, the family portal and every panel screen, and the public
+             | case list reaches it without signing in at all.
+             |
+             | Generous on purpose: a live form sends a request per field, and a
+             | clerk working through a long family file legitimately makes
+             | hundreds in a few minutes. The point is to stop a script, not to
+             | slow the office down.
+             */
+            'livewire' => env('SANABEL_RATE_LIVEWIRE', 300),
         ],
 
         'hsts' => [

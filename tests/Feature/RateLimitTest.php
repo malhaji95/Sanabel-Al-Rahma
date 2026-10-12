@@ -78,6 +78,45 @@ it('keeps the national-ID lookup the tightest route of all', function () {
     expect($lookup->gatherMiddleware())->toContain('throttle:national-id');
 });
 
+it('limits the Livewire endpoint, which the api/ check missed', function () {
+    // T-66. The browser does not write through api/: the donor portal, the
+    // family portal and every panel screen write through /livewire/update,
+    // and the public case list reaches it without signing in at all. It was
+    // the one unthrottled write path left after T-57, and the test that was
+    // meant to catch that only looked at routes under api/.
+    $route = collect(Route::getRoutes()->getRoutes())
+        ->first(fn ($r) => $r->uri() === 'livewire/update');
+
+    expect($route)->not->toBeNull()
+        ->and($route->gatherMiddleware())->toContain('throttle:livewire')
+        // 'web' has to stay: dropping it takes the session and CSRF with it.
+        ->and($route->gatherMiddleware())->toContain('web');
+});
+
+it('leaves no POST route in the application unlimited', function () {
+    // The api/-only version of this check is what let the Livewire endpoint
+    // through. A logout is exempt: refusing to let somebody sign out is worse
+    // than the request it would have refused.
+    $open = collect(Route::getRoutes()->getRoutes())
+        ->filter(fn ($r) => in_array('POST', $r->methods(), true))
+        ->reject(fn ($r) => str_ends_with($r->uri(), 'logout'))
+        ->reject(fn ($r) => collect($r->gatherMiddleware())
+            ->contains(fn ($m) => is_string($m) && str_starts_with($m, 'throttle')))
+        ->map(fn ($r) => $r->uri())
+        ->values();
+
+    expect($open)->toBeEmpty();
+});
+
+it('keeps the Livewire limit generous enough for a clerk on a long file', function () {
+    // A live form sends a request per field, so a clerk working through a
+    // family file legitimately makes hundreds in a few minutes. The point is
+    // to stop a script, not to slow the office down.
+    $limits = config('sanabel.security.rate_limits');
+
+    expect($limits['livewire'])->toBeGreaterThan($limits['api']);
+});
+
 it('counts a signed-in account separately from an address', function () {
     // Otherwise one delegate on a shared office line spends the whole
     // allowance and the rest of the office is refused.
