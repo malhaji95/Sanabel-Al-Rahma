@@ -1,0 +1,15 @@
+Empty on purpose, and tracked on purpose.
+
+phpunit.xml declares a `Unit` suite over this directory. Git does not record
+an empty directory, so on a fresh clone it was simply absent and the whole
+suite stopped before its first test:
+
+    INFO  Test directory ".../tests/Unit" not found.
+
+with exit code 2. Every test in this project is a Feature test — the rules it
+protects are about what a request does end to end — so the directory stays
+empty until one of them is genuinely a unit, and this file keeps the clone
+runnable meanwhile.
+
+Found by the first pipeline that ran the project's own suite (T-85), which is
+what the pipeline was for.

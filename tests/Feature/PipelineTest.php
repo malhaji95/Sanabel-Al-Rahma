@@ -107,3 +107,29 @@ it('fails the push when a credential is committed, which is the point', function
         File::deleteDirectory($planted);
     }
 })->group('CICD-02', 'CICD-03');
+
+it('keeps every directory the test suites name inside the repository', function () {
+    /*
+     | The suite could not run on a fresh clone. phpunit.xml declares a `Unit`
+     | suite, tests/Unit was empty, and git does not record an empty directory
+     | — so a clone had no such path and `php artisan test` stopped at
+     | «Test directory not found» with exit code 2, before its first test.
+     |
+     | It had been that way for as long as there has been a repository. It
+     | surfaced the first time anything ran the suite from a clone.
+     */
+    $xml = simplexml_load_string(File::get(base_path('phpunit.xml')));
+
+    foreach ($xml->testsuites->testsuite as $suite) {
+        foreach ($suite->directory as $directory) {
+            $path = trim((string) $directory);
+
+            $tracked = Process::path(base_path())->run('git ls-files '.escapeshellarg($path));
+
+            expect(trim($tracked->output()))->not->toBe(
+                '',
+                $path.' is named by a test suite and nothing in it is tracked, so a clone has no such directory',
+            );
+        }
+    }
+})->group('CICD-02');
