@@ -1,0 +1,170 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\ContentCard;
+use App\Models\Page;
+use Illuminate\Database\Seeder;
+
+/**
+ * T-89 — the home page the association approved, as rows.
+ *
+ * Everything here is editable from the panel the moment it is seeded: the
+ * wording, the order, the pictures, the destinations. This only puts the first
+ * version on the page so the association edits rather than composes.
+ *
+ * Two honest gaps, left visible rather than papered over:
+ *
+ *   - «هدية» is a card with no destination. Gift giving — donating in someone
+ *     else's name — is not a thing this system does yet, and sending the
+ *     button somewhere approximate would be worse than leaving it off. The
+ *     card draws its button only once a link is set.
+ *   - the pictures are the ones the design pack supplied. Seven of its
+ *     thirteen never arrived (the archive was truncated), so those cards fall
+ *     back to their icon, which is what the icon is for.
+ */
+class HomePageSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $this->navLinks();
+        $this->features();
+        $this->tiles();
+        $this->advantages();
+        $this->footerLinks();
+    }
+
+    private function card(string $block, string $title, array $attributes, int $order): void
+    {
+        ContentCard::firstOrCreate(
+            ['block' => $block, 'title_ar' => $title],
+            $attributes + ['sort_order' => $order, 'is_published' => true],
+        );
+    }
+
+    /**
+     * The bar at the top.
+     *
+     * Only the destinations that exist. The design also names «هدية»,
+     * «كفالات» and «زكاة مستحقة»; each of those is a feature or a page that
+     * has still to be built or written, and a bar that promises one and
+     * answers 404 is worse than a bar that does not. They are added here, from
+     * the panel, the day they exist.
+     */
+    private function navLinks(): void
+    {
+        foreach ([
+            ['الرئيسية', '/'],
+            ['الحالات', '/cases'],
+            ['الحملات', '/campaigns'],
+            ['الأخبار', '/news'],
+        ] as $index => [$title, $link]) {
+            $this->card('nav_link', $title, ['link' => $link], $index + 1);
+        }
+    }
+
+    /** The two offers under the hero. */
+    private function features(): void
+    {
+        $this->card('feature', 'الدفع المباشر', [
+            'body_ar' => 'ساهم الآن مباشرة في دعم الحالات المحتاجة',
+            'image' => 'images/home/direct-donation.webp',
+            'icon' => 'hand-heart',
+            'link' => '/cases',
+        ], 1);
+
+        $this->card('feature', 'هدية', [
+            'body_ar' => 'أهدِ ما تحب .. يصنع سعادة لغيرك',
+            'image' => 'images/home/gift.webp',
+            'icon' => 'gift',
+            // No link: see the note at the top of this file.
+            'link' => null,
+        ], 2);
+    }
+
+    /** The ways to give. */
+    private function tiles(): void
+    {
+        // A one-off need and a standing one are two different lists, and the
+        // browse screen already separates them — so a tile lands on the right
+        // one rather than on an undifferentiated page.
+        $oneTime = '/cases?supportType=one_time';
+        $monthly = '/cases?supportType=monthly';
+
+        foreach ([
+            ['ترميم منزل', 'images/home/home-repair.webp', 'home', $oneTime],
+            ['علاج مريض', 'images/home/medical.webp', 'medical', $oneTime],
+            ['تفريج كربة', null, 'hand-heart', $oneTime],
+            ['كفالة يتيم', 'images/home/hero-child.webp', 'child', $monthly],
+            ['كفالة طالب علم', null, 'book', $monthly],
+            ['زكاة واجبة', null, 'sprout', $oneTime],
+            ['صدقة جارية', null, 'mosque', $oneTime],
+            ['رعاية أرملة', null, 'person', $monthly],
+        ] as $index => [$title, $image, $icon, $link]) {
+            $this->card('tile', $title, [
+                'image' => $image,
+                'icon' => $icon,
+                'link' => $link,
+            ], $index + 1);
+        }
+    }
+
+    /** «ما يميز سنابل الرحمة» — the association's own words. */
+    private function advantages(): void
+    {
+        foreach ([
+            ['لا نستلم نقداً من المتبرع للمستحق مباشرة', 'card'],
+            ['الأشد حاجة شعارنا والمناطقية ليست معيارنا', 'family'],
+            ['نحقق وندقق لننصف المحتاج ونبعد غير المحتاج', 'file-search'],
+            ['كرامة المحتاج أولويتنا', 'heart'],
+            ['نعمل بالعدل لا بالمساواة', 'shield-check'],
+            ['هيئة شرعية معتمدة', 'scales'],
+        ] as $index => [$title, $icon]) {
+            $this->card('advantage', $title, ['icon' => $icon], $index + 1);
+        }
+    }
+
+    /**
+     * The footer the design asks for. Four of the seven have no page behind
+     * them yet, so each is opened as a published page carrying one line that
+     * says it is waiting for the association's own text — a visitor meets a
+     * sentence rather than a 404, and the association sees exactly where to
+     * type.
+     */
+    private function footerLinks(): void
+    {
+        $waiting = 'هذه الصفحة بانتظار نصّها من الجمعية.';
+
+        // The two cards that close the page. «من نحن» already exists; the
+        // board's own line is the one the association wrote on the design.
+        Page::firstOrCreate(['slug' => 'sharia-board'], [
+            'title_ar' => 'الهيئة الشرعية',
+            'body_ar' => 'بإشراف هيئة شرعية معتمدة من علماء موثوقين، لضمان مطابقة أعمالنا لأحكام الشريعة الإسلامية.',
+            'is_published' => true,
+            'sort_order' => 1,
+        ]);
+
+        foreach ([
+            ['كيف نعمل', 'how-we-work', true],
+            ['من نحن', 'about', true],
+            // The policy's own page is PrivacyPolicySeeder's, text and version
+            // and all. A placeholder opened here would take its slug.
+            ['سياسة الخصوصية', 'privacy', false],
+            ['لجنة الرقابة والتفتيش الداخلي', 'internal-oversight', true],
+            ['شروط الاستخدام', 'terms', true],
+            ['الأسئلة الشائعة', 'faq', true],
+            ['الشفافية المالية', 'financial-transparency', true],
+        ] as $index => [$title, $slug, $mayOpen]) {
+            // firstOrCreate: a page the association has already written keeps
+            // every word of it.
+            if ($mayOpen) {
+                Page::firstOrCreate(
+                    ['slug' => $slug],
+                    ['title_ar' => $title, 'body_ar' => $waiting, 'is_published' => true, 'sort_order' => $index],
+                );
+            }
+
+            $this->card('footer_link', $title, ['link' => '/'.$slug], $index + 1);
+        }
+    }
+}

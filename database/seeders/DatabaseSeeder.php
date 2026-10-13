@@ -15,6 +15,9 @@ class DatabaseSeeder extends Seeder
             RegionSeeder::class,
             ReferenceValueSeeder::class,
             PrivacyPolicySeeder::class,
+            // T-89 — the home page and the bars around it, as rows the
+            // association edits. Idempotent, so it never overwrites an edit.
+            HomePageSeeder::class,
             AdminUserSeeder::class,
         ]);
     }

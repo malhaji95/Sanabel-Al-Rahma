@@ -599,8 +599,25 @@ class CoverageService
      */
     public function priorityBand(Beneficiary $beneficiary, ?int $confirmed = null, ?Carbon $month = null): string
     {
-        $percent = $this->coveragePercent($beneficiary, $confirmed, $month);
+        return $this->bandOfPercent($this->coveragePercent($beneficiary, $confirmed, $month));
+    }
 
+    /**
+     * The same band from the two figures themselves.
+     *
+     * T-89 — the home page counts how many families sit in each band, over
+     * tens of thousands of them, and holds no model while it does it.
+     */
+    public function bandOf(int $need, int $funded): string
+    {
+        return $this->bandOfPercent(
+            $need > 0 ? (int) round(100 * min(1.0, $funded / $need)) : 100
+        );
+    }
+
+    /** The thresholds are settings, so the association retunes them without a release. */
+    private function bandOfPercent(int $percent): string
+    {
         $critical = (int) Setting::value(
             'priority_critical_below',
             config('sanabel.setting_defaults.priority_critical_below')

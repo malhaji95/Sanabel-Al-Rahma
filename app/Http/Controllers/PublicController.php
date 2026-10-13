@@ -6,6 +6,7 @@ use App\Http\Resources\MaskedCaseResource;
 use App\Models\Banner;
 use App\Models\Beneficiary;
 use App\Models\Campaign;
+use App\Models\ContentCard;
 use App\Models\Page;
 use App\Models\Post;
 use App\Models\Setting;
@@ -37,13 +38,32 @@ class PublicController extends Controller
             ->with('beneficiary')
             ->orderByDesc('id')->take(3)->get();
 
+        /*
+         | T-89 — every band of the page is a row the association edits, and
+         | the page draws whatever it finds. One query for all of them: four
+         | bands of a handful of cards each.
+         */
+        $cards = ContentCard::published()
+            ->orderBy('sort_order')->orderBy('id')
+            ->get()
+            ->groupBy('block');
+
         return view('public.home', [
+            // The hero slides. Banners already carry a picture, a title, a
+            // line and a destination, so the carousel is what they were for.
             'banners' => Banner::where('is_published', true)->orderBy('sort_order')->get(),
-            'posts' => Post::where('is_published', true)->orderByDesc('published_at')->take(3)->get(),
+            'posts' => Post::where('is_published', true)->orderByDesc('published_at')->take(2)->get(),
             'campaigns' => $campaigns,
             'monthlyFunding' => $this->monthlyFunding($campaigns),
             'cases' => $urgent,
             'stats' => $this->stats(),
+            'features' => $cards->get('feature', collect()),
+            'tiles' => $cards->get('tile', collect()),
+            'advantages' => $cards->get('advantage', collect()),
+            // The two cards at the foot of the page: the association's own
+            // words, on pages it already edits.
+            'about' => Page::where('slug', 'about')->where('is_published', true)->first(),
+            'shariaBoard' => Page::where('slug', 'sharia-board')->where('is_published', true)->first(),
         ]);
     }
 
@@ -62,18 +82,27 @@ class PublicController extends Controller
         $needs = $this->ranking->publishedNeeds();
         $funded = $this->coverage->fundedForMonthByNeed($needs);
 
-        $short = count(array_filter(
-            $needs,
-            fn (int $need, int $id) => $need > 0 && ($funded[$id] ?? 0) < $need,
-            ARRAY_FILTER_USE_BOTH,
-        ));
-
         $families = Beneficiary::published()->count();
+
+        // T-89 — the five figures the design asks for, over the needs alone.
+        // A family with no approved assessment has no need and no band; it is
+        // counted in the total and read as covered, as it always was.
+        $bands = ['critical' => 0, 'middle' => 0, 'low' => 0, 'complete' => 0];
+
+        foreach ($needs as $id => $need) {
+            $bands[$this->coverage->bandOf($need, $funded[$id] ?? 0)]++;
+        }
+
+        $bands['complete'] += $families - count($needs);
 
         return [
             'families' => $families,
             'regions' => Region::where('is_active', true)->where('type', '!=', 'governorate')->count(),
-            'covered' => $families - $short,
+            'covered' => $bands['complete'],
+            'bands' => $bands,
+            // What the «الدفع المباشر» card counts: families a donor could give
+            // to right now.
+            'open' => $families - $bands['complete'],
         ];
     }
 

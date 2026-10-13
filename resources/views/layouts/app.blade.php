@@ -53,20 +53,19 @@
             <x-brand.logo-plate variant="wordmark" :height="32" :href="route('home')" class="shrink-0" />
 
             <nav class="ms-auto flex items-center gap-1 text-sm" aria-label="{{ __('sanabel.public.main_nav') }}">
-                @foreach ([
-                    ['cases.browse', __('sanabel.public.cases')],
-                    ['campaigns.public', __('sanabel.public.campaigns')],
-                    ['news', __('sanabel.public.news')],
-                ] as [$route, $label])
+                {{-- T-89 — the bar is rows the association edits, so adding a
+                     link is an insert and not a release. --}}
+                @foreach ($navLinks as $link)
+                    @php($here = request()->getPathInfo() === rtrim($link->link, '/') || ($link->link === '/' && request()->getPathInfo() === '/'))
                     <a
-                        href="{{ route($route) }}"
+                        href="{{ $link->link }}"
                         @class([
                             'hidden rounded-lg px-3 py-2 no-underline transition sm:block',
-                            'font-semibold' => request()->routeIs($route),
+                            'font-semibold' => $here,
                         ])
-                        style="color: {{ request()->routeIs($route) ? 'var(--accent)' : 'var(--text-muted)' }};"
-                        @if (request()->routeIs($route)) aria-current="page" @endif
-                    >{{ $label }}</a>
+                        style="color: {{ $here ? 'var(--accent)' : 'var(--text-muted)' }};"
+                        @if ($here) aria-current="page" @endif
+                    >{{ $link->title_ar }}</a>
                 @endforeach
 
                 <x-theme-toggle />
@@ -85,16 +84,13 @@
 
         {{-- Mobile navigation, kept out of the header row so the logo keeps its space. --}}
         <nav class="flex gap-1 overflow-x-auto px-4 pb-2 text-sm sm:hidden" aria-label="{{ __('sanabel.public.main_nav') }}">
-            @foreach ([
-                ['cases.browse', __('sanabel.public.cases')],
-                ['campaigns.public', __('sanabel.public.campaigns')],
-                ['news', __('sanabel.public.news')],
-            ] as [$route, $label])
+            @foreach ($navLinks as $link)
+                @php($here = request()->getPathInfo() === rtrim($link->link, '/'))
                 <a
-                    href="{{ route($route) }}"
+                    href="{{ $link->link }}"
                     class="whitespace-nowrap rounded-lg px-3 py-1.5 no-underline"
-                    style="color: {{ request()->routeIs($route) ? 'var(--accent)' : 'var(--text-muted)' }};"
-                >{{ $label }}</a>
+                    style="color: {{ $here ? 'var(--accent)' : 'var(--text-muted)' }};"
+                >{{ $link->title_ar }}</a>
             @endforeach
         </nav>
     </header>
@@ -118,11 +114,15 @@
                     </p>
                 </div>
 
-                <nav class="flex flex-wrap gap-x-5 gap-y-2 text-sm" aria-label="{{ __('sanabel.public.footer_nav') }}">
-                    <a href="{{ route('cases.browse') }}" style="color: var(--text-muted);">{{ __('sanabel.public.cases') }}</a>
-                    <a href="{{ route('campaigns.public') }}" style="color: var(--text-muted);">{{ __('sanabel.public.campaigns') }}</a>
-                    <a href="{{ route('news') }}" style="color: var(--text-muted);">{{ __('sanabel.public.news') }}</a>
-                    <a href="{{ route('page', 'about') }}" style="color: var(--text-muted);">{{ __('sanabel.public.about') }}</a>
+                {{-- The footer the design asks for, as rows: how we work,
+                     who we are, the privacy policy, the oversight committee,
+                     the terms, the questions, and the financial transparency
+                     page. Each is a link the association edits or removes. --}}
+                <nav class="grid max-w-xl grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-2"
+                     aria-label="{{ __('sanabel.public.footer_nav') }}">
+                    @foreach ($footerLinks as $link)
+                        <a href="{{ $link->link }}" style="color: var(--text-muted);">{{ $link->title_ar }}</a>
+                    @endforeach
                 </nav>
             </div>
 

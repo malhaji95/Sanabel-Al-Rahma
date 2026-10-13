@@ -37,9 +37,21 @@ class Banner extends Model
         return $this->link ?: null;
     }
 
-    /** The public URL of the artwork, or null when none was uploaded. */
+    /**
+     * The public URL of the artwork, or null when none was uploaded.
+     *
+     * A path under `images/` is a file shipped with the application — the
+     * design pack's own artwork — and is served as it is; anything else was
+     * uploaded from the panel and lives on the public disk.
+     */
     public function imageUrl(): ?string
     {
-        return $this->image ? Storage::disk('public')->url($this->image) : null;
+        if (! $this->image) {
+            return null;
+        }
+
+        return str_starts_with($this->image, 'images/')
+            ? asset($this->image)
+            : Storage::disk('public')->url($this->image);
     }
 }

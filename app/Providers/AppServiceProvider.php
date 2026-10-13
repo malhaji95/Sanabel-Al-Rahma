@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\ContentCard;
 use App\Payments\ManualDriver;
 use App\Payments\PaymentGateway;
 use App\Services\TransferRouting;
@@ -16,6 +17,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\View;
+use Illuminate\View\View as ViewView;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -73,6 +76,25 @@ class AppServiceProvider extends ServiceProvider
         Livewire::setUpdateRoute(fn ($handle) => Route::post('/livewire/update', $handle)
             ->middleware(['web', 'throttle:livewire'])
             ->name('livewire.update'));
+
+        /*
+         | T-89 — the public bar and the footer are rows the association edits,
+         | and every page draws them. One query per render, over eleven rows on
+         | an index; the alternative was repeating the links in the template
+         | and asking them to call us to change one.
+         */
+        View::composer('layouts.app', function (ViewView $view) {
+            $links = ContentCard::published()
+                ->whereIn('block', ['nav_link', 'footer_link'])
+                ->orderBy('sort_order')->orderBy('id')
+                ->get()
+                ->groupBy('block');
+
+            $view->with([
+                'navLinks' => $links->get('nav_link', collect()),
+                'footerLinks' => $links->get('footer_link', collect()),
+            ]);
+        });
 
         // Rule 3 — nothing is hard-deleted. Guarded here as well as in the policies.
         Model::preventLazyLoading(false);
