@@ -37,8 +37,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Every page is right-to-left Arabic.
-        Carbon::setLocale(config('app.locale'));
+        // Every page is right-to-left Arabic, with the months written the way
+        // they are written in Syria — see config('sanabel.date_locale').
+        Carbon::setLocale(config('sanabel.date_locale', config('app.locale')));
 
         // A native date input is rendered by the browser, in the browser's own
         // locale and direction: an Arabic page showed 'mm/dd/yyyy'. Filament's

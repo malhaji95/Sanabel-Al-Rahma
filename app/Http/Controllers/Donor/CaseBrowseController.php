@@ -21,15 +21,26 @@ class CaseBrowseController extends Controller
     {
         abort_unless(in_array($supportType, ['monthly', 'one_time'], true), 404);
 
-        $list = $this->ranking->fundingList($supportType, $request->integer('region_id') ?: null);
+        // The same list the browse screen draws, covered families included
+        // (T-83), and each card answers the month its row carries.
+        $list = $this->ranking->fundingList(
+            $supportType,
+            $request->integer('region_id') ?: null,
+            withCovered: true,
+        );
 
         $page = max(1, $request->integer('page', 1));
         $perPage = min(50, max(1, $request->integer('per_page', 20)));
 
         return response()->json([
-            'data' => MaskedCaseResource::collection(
-                $list->pluck('beneficiary')->forPage($page, $perPage)->values()
-            )->resolve(),
+            'data' => $list->forPage($page, $perPage)
+                ->map(fn (array $row) => (new MaskedCaseResource(
+                    $row['beneficiary'],
+                    $row['confirmed'],
+                    $row['month'],
+                ))->resolve())
+                ->values()
+                ->all(),
             'meta' => ['page' => $page, 'per_page' => $perPage, 'total' => $list->count()],
         ]);
     }

@@ -79,6 +79,77 @@ class CoverageService
         );
     }
 
+    /*
+     | T-83 — the month a family is being funded for, and when that month is
+     | answered.
+     |
+     | The association asked on 13 October that a family whose month is covered
+     | should not vanish from the donor list: it drops to the bottom carrying
+     | the word «مكتملة», and opens again for the new month with the month it
+     | covers written on it. Both halves need the same two questions answered —
+     | is this month covered, and if it is, which month is a donor funding now.
+     */
+
+    /**
+     * Whether one month's need is already answered.
+     *
+     * A family with no need recorded reads as covered, exactly as
+     * coverageRatio() does: there is nothing to fund, so nothing is missing.
+     * Holds are deliberately not counted — money another donor is holding has
+     * not arrived, and a hold that lapses must not leave a month looking shut.
+     */
+    public function monthIsCovered(Beneficiary $beneficiary, ?Carbon $month = null, ?int $funded = null): bool
+    {
+        $need = $this->needAmount($beneficiary);
+
+        return $need <= 0 || ($funded ?? $this->fundedForMonth($beneficiary, $month)) >= $need;
+    }
+
+    /**
+     * The month a donor would be funding this family for, that month's money,
+     * and whether there is anything left to fund at all.
+     *
+     * Which months are open is the association's own setting: this one, and
+     * the next once it opens — the lead time that keeps a family from falling
+     * into a gap at the turn of the month.
+     *
+     * Month and money come back together because a card needs both, and
+     * asking twice means walking the same months twice. A list that has
+     * already batched its sums passes them to the card instead and never
+     * reaches this.
+     *
+     * @return array{month:Carbon,funded:int,covered:bool}
+     */
+    public function fundingStage(Beneficiary $beneficiary): array
+    {
+        $month = $this->currentMonth();
+        $funded = 0;
+
+        foreach ($this->openMonths() as $month) {
+            $funded = $this->fundedForMonth($beneficiary, $month);
+
+            if (! $this->monthIsCovered($beneficiary, $month, $funded)) {
+                return ['month' => $month, 'funded' => $funded, 'covered' => false];
+            }
+        }
+
+        // Every open month is answered. The furthest of them is the one to
+        // name, so a card says «اكتملت تغطية» the last month a donor could
+        // have funded rather than one already behind them.
+        return ['month' => $month, 'funded' => $funded, 'covered' => true];
+    }
+
+    /**
+     * The first open month this family's need is not already answered for, or
+     * null when every open month is.
+     */
+    public function fundableMonth(Beneficiary $beneficiary): ?Carbon
+    {
+        $stage = $this->fundingStage($beneficiary);
+
+        return $stage['covered'] ? null : $stage['month'];
+    }
+
     /**
      * Verified money answering one month's need, net of reversals.
      *

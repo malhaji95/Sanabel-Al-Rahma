@@ -7,7 +7,7 @@
 @props(['case', 'showNote' => null])
 
 @php
-    $covered = $case['coverage_percent'];
+    $coveredPercent = $case['coverage_percent'];
     // The badge reads the priority band, which comes from how much of the need
     // is still uncovered. Running out of time is a separate thing, so it gets
     // its own small marker rather than overwriting the band.
@@ -24,6 +24,14 @@
     $isStaged = $targetPercent > 0 && $targetPercent < 100;
     // Null means «follow the list switch», which is what the resource carries.
     $showNote = ($showNote ?? ($case['show_sufficiency_note'] ?? false)) && $isStaged;
+
+    /*
+     | T-83 — the month these figures answer. A donation covers one month and
+     | no other, so the card says which; and a month already answered says so
+     | rather than showing «المتبقي 0» and leaving the donor to work it out.
+     */
+    $monthLabel = $case['coverage_month_label'] ?? null;
+    $covered = (bool) ($case['is_covered'] ?? false);
 @endphp
 
 <article class="card-interactive flex h-full flex-col">
@@ -127,31 +135,43 @@
     </dl>
 
     <div class="mt-5">
+        {{-- Only while there is something to fund: the completed line below
+             names the month itself, and saying it twice reads like a stutter. --}}
+        @if ($monthLabel && ! $covered)
+            <p class="mb-1.5 text-xs font-medium" style="color: var(--text-muted);">
+                {{ __('sanabel.funding.covers_month', ['month' => $monthLabel]) }}
+            </p>
+        @endif
+
         <div class="flex items-baseline justify-between text-sm">
             <span style="color: var(--text-muted);">{{ __('sanabel.beneficiary.coverage') }}</span>
-            <span class="tabular font-semibold">{{ $covered }}%</span>
+            <span class="tabular font-semibold">{{ $coveredPercent }}%</span>
         </div>
 
         <div
             class="meter mt-1.5"
             role="progressbar"
-            aria-valuenow="{{ $covered }}"
+            aria-valuenow="{{ $coveredPercent }}"
             aria-valuemin="0"
             aria-valuemax="100"
             aria-label="{{ __('sanabel.beneficiary.coverage') }}"
         >
-            @if ($covered > 0)
-                <div @class(['meter-fill', 'meter-fill-complete' => $covered >= 100]) style="width: {{ $covered }}%"></div>
+            @if ($coveredPercent > 0)
+                <div @class(['meter-fill', 'meter-fill-complete' => $coveredPercent >= 100]) style="width: {{ $coveredPercent }}%"></div>
             @endif
         </div>
 
         <p class="mt-2.5 text-sm">
-            <span style="color: var(--text-muted);">{{ __('sanabel.public.remaining') }}:</span>
-            <span class="tabular font-bold">{{ number_format($case['remaining_amount']) }}</span>
-            <span style="color: var(--text-muted);">{{ $case['currency'] }}</span>
+            @if ($covered && $monthLabel)
+                <span class="font-bold">{{ __('sanabel.funding.month_complete', ['month' => $monthLabel]) }}</span>
+            @else
+                <span style="color: var(--text-muted);">{{ __('sanabel.public.remaining') }}:</span>
+                <span class="tabular font-bold">{{ number_format($case['remaining_amount']) }}</span>
+                <span style="color: var(--text-muted);">{{ $case['currency'] }}</span>
+            @endif
         </p>
 
-        @if ($isStaged)
+        @if ($isStaged && ! $covered)
             <p class="mt-1.5 text-sm">
                 <span style="color: var(--text-muted);">{{ __('sanabel.funding.target_remaining') }}:</span>
                 <span class="tabular font-bold">{{ number_format($case['target_remaining']) }}</span>

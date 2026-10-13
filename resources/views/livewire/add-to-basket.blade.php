@@ -1,7 +1,15 @@
 <div>
     @if ($remaining <= 0)
-        <p class="text-sm" style="color: var(--text-muted);">{{ __('sanabel.public.fully_covered') }}</p>
+        {{-- Named, because coverage answers one month and not the family's
+             whole future: the next month opens on its own date. --}}
+        <p class="text-sm" style="color: var(--text-muted);">
+            {{ __('sanabel.public.fully_covered', ['month' => $this->monthLabel()]) }}
+        </p>
     @else
+        <p class="mb-2 text-xs" style="color: var(--text-muted);">
+            {{ __('sanabel.funding.covers_month', ['month' => $this->monthLabel()]) }}
+        </p>
+
         @if (count($openMonths) > 1)
             <label class="mb-2 block text-xs" for="month-{{ $fileNumber }}">
                 <span style="color: var(--text-muted);">{{ __('sanabel.basket.coverage_month') }}</span>

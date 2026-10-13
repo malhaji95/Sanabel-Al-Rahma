@@ -35,14 +35,21 @@ class BrowseCases extends Component
 
     public function render()
     {
-        $ranked = app(RankingService::class)->fundingList($this->supportType, $this->regionId);
+        // withCovered: the donor's list keeps a family whose month is answered,
+        // at the bottom and marked as such (T-83).
+        $ranked = app(RankingService::class)
+            ->fundingList($this->supportType, $this->regionId, withCovered: true);
 
         $perPage = 12;
         $page = $this->getPage();
 
         $cases = $ranked
             ->forPage($page, $perPage)
-            ->map(fn (array $row) => (new MaskedCaseResource($row['beneficiary'], $row['confirmed']))->resolve())
+            ->map(fn (array $row) => (new MaskedCaseResource(
+                $row['beneficiary'],
+                $row['confirmed'],
+                $row['month'],
+            ))->resolve())
             ->values();
 
         return view('livewire.browse-cases', [

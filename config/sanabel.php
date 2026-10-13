@@ -5,6 +5,16 @@ return [
     'currency' => env('SANABEL_CURRENCY', 'SYP'),
 
     /*
+     | How a date is written out.
+     |
+     | The interface language is Arabic (APP_LOCALE=ar), but Carbon's plain
+     | `ar` writes the months as «أكتوبر» and Syria writes «تشرين الأول».
+     | Only the month names differ between the two; the weekdays are identical.
+     | T-83 put a month on the donor's card, so this stopped being cosmetic.
+     */
+    'date_locale' => env('SANABEL_DATE_LOCALE', 'ar_SY'),
+
+    /*
      | Where media is stored. Never a public URL either way.
      |
      |   media_local — private local disk, signed expiring URLs (the default)
@@ -234,5 +244,13 @@ return [
          | — so the association can close it again without a deploy.
          */
         'show_wallet_last4' => true,
+        /*
+         | T-83 — whether a family's monthly funding appears on that family's
+         | own campaign, asked for on 13 October: «خيار اظهار او اخفاء التمويل
+         | الشهري مكان الحمله الخاصة بالمحتاج». A campaign answers a one-off
+         | cost and the monthly need goes on beside it, so the association can
+         | have both on the page or the campaign alone.
+         */
+        'show_monthly_funding_on_campaign' => true,
     ],
 ];

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Asset;
 use App\Models\Beneficiary;
 use App\Models\Region;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -91,9 +92,16 @@ class RankingService
      * The funding list for one support type. Monthly and one-time cases are
      * two separate lists in the donor UI.
      *
-     * @return Collection<int,array{beneficiary:Beneficiary,confirmed:int,ranking:array}>
+     * `$withCovered` is the donor list's own view of the same families, added
+     * for the association's decision of 13 October: a family whose month is
+     * answered stays on the screen, at the bottom, marked as complete, and
+     * opens again for the next month once that month opens. The plain list is
+     * untouched — §3 of docs/03-rules.md still takes a covered family out of
+     * it, which is what the distribution engine and the home page read.
+     *
+     * @return Collection<int,array{beneficiary:Beneficiary,confirmed:int,need:int,month:Carbon,covered:bool,ranking:array}>
      */
-    public function fundingList(string $supportType, ?int $regionId = null): Collection
+    public function fundingList(string $supportType, ?int $regionId = null, bool $withCovered = false): Collection
     {
         $query = Beneficiary::query()
             ->published()
@@ -106,18 +114,92 @@ class RankingService
         }
 
         $families = $query->get();
-        $confirmed = $this->coverage->fundedForMonthForMany($families);
+
+        // One batch of sums per open month rather than per family. The plain
+        // list asks about this month only, so it costs exactly what it did.
+        $months = $withCovered ? $this->coverage->openMonths() : [$this->coverage->currentMonth()];
+        $funded = [];
+
+        foreach ($months as $month) {
+            $funded[$month->format('Y-m')] = $this->coverage->fundedForMonthForMany($families, $month);
+        }
 
         return $families
-            ->map(fn (Beneficiary $b) => [
-                'beneficiary' => $b,
-                'confirmed' => $confirmed[$b->getKey()] ?? 0,
-                'ranking' => $this->rank($b, $confirmed[$b->getKey()] ?? 0),
-            ])
-            ->filter(fn (array $row) => $row['ranking']['eligible'])
-            // A case past its reassessment date stays in the list but is demoted.
-            ->sortByDesc(fn (array $row) => $row['ranking']['priority'] - ($this->isOverdue($row['beneficiary']) ? 100 : 0))
+            ->map(fn (Beneficiary $b) => $this->row($b, $months, $funded))
+            // A family with no need recorded is not a funding opportunity at
+            // all, in either list. A covered one is, in the donor's list only.
+            ->filter(fn (array $row) => $row['need'] > 0 && ($withCovered || ! $row['covered']))
+            ->sortByDesc(fn (array $row) => $this->listOrder($row))
             ->values();
+    }
+
+    /**
+     * One row: the month a donor would be funding this family for, and that
+     * month's figures.
+     *
+     * @param  array<int,Carbon>  $months
+     * @param  array<string,array<int,int>>  $funded
+     * @return array{beneficiary:Beneficiary,confirmed:int,need:int,month:Carbon,covered:bool,ranking:array}
+     */
+    private function row(Beneficiary $beneficiary, array $months, array $funded): array
+    {
+        $need = $this->coverage->needAmount($beneficiary);
+
+        foreach ($months as $month) {
+            $confirmed = $funded[$month->format('Y-m')][$beneficiary->getKey()] ?? 0;
+
+            if ($need > 0 && $confirmed < $need) {
+                return [
+                    'beneficiary' => $beneficiary,
+                    'confirmed' => $confirmed,
+                    'need' => $need,
+                    'month' => $month,
+                    'covered' => false,
+                    'ranking' => $this->rank($beneficiary, $confirmed),
+                ];
+            }
+        }
+
+        // Every open month is answered. The row carries the furthest of them,
+        // so the card says «اكتملت تغطية» the last month a donor could have
+        // funded rather than one already behind them.
+        $month = end($months);
+        $confirmed = $funded[$month->format('Y-m')][$beneficiary->getKey()] ?? 0;
+
+        return [
+            'beneficiary' => $beneficiary,
+            'confirmed' => $confirmed,
+            'need' => $need,
+            'month' => $month,
+            'covered' => true,
+            'ranking' => $this->rank($beneficiary, $confirmed),
+        ];
+    }
+
+    /**
+     * Where a row sits on the donor's list.
+     *
+     * Three tiers, a thousand apart because a priority never exceeds 100: the
+     * families still short this month, then the ones already answered for it
+     * and open for the next, then the covered. Inside a tier the priority
+     * decides, less the demotion a case past its reassessment date carries.
+     *
+     * Without that first separation a family covered for October and reopened
+     * for November would arrive with nothing yet raised, score at its fullest,
+     * and climb over every family still waiting for October — the opposite of
+     * what the association asked for.
+     */
+    private function listOrder(array $row): float
+    {
+        $tier = match (true) {
+            $row['covered'] => 2,
+            $row['month']->isSameMonth($this->coverage->currentMonth()) => 0,
+            default => 1,
+        };
+
+        return $row['ranking']['priority']
+            - ($tier * 1_000)
+            - ($this->isOverdue($row['beneficiary']) ? 100 : 0);
     }
 
     public function isOverdue(Beneficiary $beneficiary): bool

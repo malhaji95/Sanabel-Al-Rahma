@@ -175,6 +175,29 @@ it('leaks nothing identifying on the donor campaign routes', function () {
     expect(array_keys($show->json('data.case')))->toEqualCanonicalizing(MaskedCaseResource::ALLOWED_KEYS);
 })->group('AUTH-03');
 
+/*
+ | T-83 — the family's monthly funding now appears beside its own campaign on
+ | the public campaigns page, which is a surface that previously said nothing
+ | about the household at all. Rule 2 has no exception for it.
+ */
+it('leaks nothing identifying on the public campaign page', function () {
+    $case = fullCase($this->region);
+    Campaign::factory()->create([
+        'beneficiary_id' => $case->id,
+        'surplus_policy_text_ar' => 'يوجه الفائض لأسرة أخرى ضمن نفس المنطقة.',
+        'is_published' => true,
+        'status' => 'active',
+    ]);
+
+    $response = $this->get(route('campaigns.public'));
+
+    $response->assertOk()
+        // The block under test is on the page, so this is not a pass by absence.
+        ->assertSee(__('sanabel.funding.show_monthly_funding_on_campaign'));
+
+    assertNoLeak($response->getContent(), $case);
+})->group('AUTH-03');
+
 it('leaks nothing identifying on the donor job market route', function () {
     $case = fullCase($this->region);
     JobProfile::factory()->create([

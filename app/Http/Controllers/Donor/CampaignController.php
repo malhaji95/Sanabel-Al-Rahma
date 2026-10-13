@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Donor;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\MaskedCaseResource;
 use App\Models\Campaign;
+use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
 
 class CampaignController extends Controller
@@ -48,6 +49,13 @@ class CampaignController extends Controller
             'case' => $campaign->beneficiary
                 ? (new MaskedCaseResource($campaign->beneficiary))->resolve()
                 : null,
+            // T-83 — whether the family's monthly funding belongs on the same
+            // page as its own campaign. The association's switch, not a fact
+            // about the family, so it travels beside the card rather than in it.
+            'show_monthly_funding' => (bool) Setting::value(
+                'show_monthly_funding_on_campaign',
+                config('sanabel.setting_defaults.show_monthly_funding_on_campaign')
+            ),
         ];
     }
 }

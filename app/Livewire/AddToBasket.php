@@ -29,8 +29,12 @@ class AddToBasket extends Component
     // Named `notice`, not `message`: Blade's @error directive binds $message.
     public ?string $notice = null;
 
-    public function mount(string $fileNumber, int $remaining, int $targetRemaining = 0): void
-    {
+    public function mount(
+        string $fileNumber,
+        int $remaining,
+        int $targetRemaining = 0,
+        ?string $coverageMonth = null,
+    ): void {
         $this->fileNumber = $fileNumber;
         $this->remaining = $remaining;
         $this->targetRemaining = $targetRemaining;
@@ -45,13 +49,31 @@ class AddToBasket extends Component
 
         $this->amount = $offer > 0 ? $offer : null;
 
-        // The current month, plus the next one once it opens — which is what
-        // keeps a family from falling into a gap at the turn of the month.
-        $this->openMonths = collect(app(CoverageService::class)->openMonths())
-            ->mapWithKeys(fn ($month) => [$month->format('Y-m') => $month->translatedFormat('F Y')])
-            ->all();
+        /*
+         | The current month, plus the next one once it opens — which is what
+         | keeps a family from falling into a gap at the turn of the month.
+         |
+         | T-83 — the card says which month it is asking for, and the box
+         | starts there. Earlier months are left out rather than shown and
+         | refused: the figures beside the box answer the card's month, and a
+         | month already covered has nothing left for a reservation to claim.
+         */
+        $months = collect(app(CoverageService::class)->openMonths())
+            ->mapWithKeys(fn ($month) => [$month->format('Y-m') => $month->translatedFormat('F Y')]);
 
-        $this->coverageMonth = (string) array_key_first($this->openMonths);
+        $this->coverageMonth = $coverageMonth !== null && $months->has($coverageMonth)
+            ? $coverageMonth
+            : (string) $months->keys()->first();
+
+        $this->openMonths = $months
+            ->filter(fn ($label, $key) => $key >= $this->coverageMonth)
+            ->all();
+    }
+
+    /** The month the box is asking for, written out. */
+    public function monthLabel(): string
+    {
+        return $this->openMonths[$this->coverageMonth] ?? '';
     }
 
     public function add(): void

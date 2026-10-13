@@ -129,7 +129,13 @@ class DonorBasket extends Component
                 // here reveals nothing the donor cannot already read. The
                 // family behind it stays masked either way.
                 'campaign' => $item->campaign?->title_ar,
-                'case' => (new MaskedCaseResource($item->beneficiary))->resolve(),
+                // The month the donor actually pledged for, not whichever is
+                // open now: a basket held across the turn of the month would
+                // otherwise show a card answering a different month (T-83).
+                'case' => (new MaskedCaseResource(
+                    $item->beneficiary,
+                    month: $item->coverage_month,
+                ))->resolve(),
             ]),
             'total' => $basket?->total() ?? 0,
             // T-78 — the basket's own switch for the sufficiency sentence,

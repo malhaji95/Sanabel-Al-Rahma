@@ -52,7 +52,8 @@
                                 :file-number="$case['file_number']"
                                 :remaining="$case['remaining_amount']"
                                 :target-remaining="$case['target_remaining'] ?? 0"
-                                :key="'basket-' . $case['file_number']"
+                                :coverage-month="$case['coverage_month'] ?? null"
+                                :key="'basket-' . $case['file_number'] . '-' . ($case['coverage_month'] ?? '')"
                             />
                         @else
                             <a href="{{ route('login') }}" class="btn-primary w-full no-underline">
