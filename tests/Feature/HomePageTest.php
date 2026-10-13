@@ -1,8 +1,10 @@
 <?php
 
 use App\Models\Banner;
+use Filament\Facades\Filament;
 use App\Models\ContentCard;
 use App\Models\Page;
+use App\Filament\Resources\ContentCardResource;
 use Database\Seeders\HomePageSeeder;
 use Database\Seeders\PrivacyPolicySeeder;
 
@@ -143,3 +145,47 @@ it('leaves the gift card without a button until there is somewhere to send it', 
 
     $this->get('/')->assertOk()->assertSee('هدية');
 });
+
+it('lets the content manager edit the page, and keeps everyone else out', function () {
+    // The screen is new, and the guide for that role walks through it. A role
+    // that cannot open it would make the guide a fiction — which is the kind
+    // of thing the capture has caught three times now.
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+
+    foreach (['content_manager', 'admin'] as $role) {
+        $this->actingAs(userWithRole($role));
+
+        expect(ContentCardResource::canAccess())->toBeTrue($role.' cannot open the home page screen');
+    }
+
+    // The board of trustees reads and does not touch, here as everywhere.
+    $this->actingAs(userWithRole('council'));
+
+    expect(ContentCardResource::canCreate())->toBeFalse()
+        ->and(userWithRole('delegate')->can('update', ContentCard::block('tile')->first()))->toBeFalse();
+})->group('AUTH-02');
+
+it('keeps the campaigns screen with the role that holds the key to it', function () {
+    /*
+     | T-89 — the content manager's guide walked through the campaigns screen,
+     | and the capture was answered 403. It was right to be: a campaign carries
+     | a goal, a window and a surplus policy — money — and the content manager
+     | holds `manage_cms` alone. The guide had been saying otherwise since the
+     | guides were written.
+     |
+     | Pinned here rather than left to the next capture: if the association
+     | later decides the content manager should run campaigns, this test is
+     | what says the decision has been made rather than drifted into.
+     */
+    expect(userWithRole('content_manager')->can('viewAny', App\Models\Campaign::class))->toBeFalse()
+        ->and(userWithRole('executive_director')->can('create', App\Models\Campaign::class))->toBeTrue();
+
+    // And the guides must not promise a screen the account cannot open.
+    $guides = require resource_path('training/guides.php');
+
+    $paths = collect($guides['content_manager']['steps'])->pluck('path');
+
+    expect($paths)->not->toContain('/admin/campaigns')
+        ->and(collect($guides['executive_director']['steps'])->pluck('path'))
+        ->toContain('/admin/campaigns');
+})->group('AUTH-02');

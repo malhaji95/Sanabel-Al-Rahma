@@ -63,6 +63,24 @@ function totp(base32Secret) {
 }
 
 async function signIn(page, panel, email, twoFactor) {
+  /*
+   | A donor and a household have no panel: they sign in on the public form,
+   | which is a plain POST with its own field names. Signing them in at a
+   | panel's door left them signed out, and every portal screen in their
+   | guides was a photograph of the login page — for as long as the guides
+   | have existed, because a login page answers 200 like any other.
+   */
+  if (!panel) {
+    await page.goto(`${BASE}/login`, { waitUntil: 'networkidle' });
+    await page.locator('input[name="email"]').fill(email);
+    await page.locator('input[name="password"]').fill(PASSWORD);
+    await page.locator('button[type="submit"]').first().click();
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(600);
+
+    return true;
+  }
+
   await page.goto(`${BASE}/${panel}/login`, { waitUntil: 'networkidle' });
 
   // Filament binds these through Livewire, so the value has to be typed
@@ -93,6 +111,14 @@ async function signIn(page, panel, email, twoFactor) {
   return true;
 }
 
+/**
+ * Whether the page in front of us is a sign-in form rather than the screen
+ * that was asked for. Both panels and the public site answer 200 with one.
+ */
+async function onSignInForm(page) {
+  return (await page.locator('#data\\.password, input[type="password"][name="password"]').count()) > 0;
+}
+
 async function shots(manifestPath, outDir) {
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
   const browser = await chromium.launch(LAUNCH);
@@ -112,19 +138,40 @@ async function shots(manifestPath, outDir) {
     let signedIn = true;
 
     if (role.account) {
-      signedIn = await signIn(page, role.panel || 'admin', role.account, role.two_factor);
+      signedIn = await signIn(page, role.panel, role.account, role.two_factor);
     }
 
     if (signedIn) {
       for (const step of role.steps) {
         try {
-          const response = await page.goto(BASE + step.path, { waitUntil: 'networkidle', timeout: 30000 });
+          let response = await page.goto(BASE + step.path, { waitUntil: 'networkidle', timeout: 30000 });
           await page.waitForTimeout(900);
 
           if (response && response.status() >= 400) {
             missed.push(`${step.key} → HTTP ${response.status()} at ${step.path}`);
 
             continue;
+          }
+
+          /*
+           | A sign-in form answers 200, so the status alone once let a guide
+           | ship a screenshot of the login page captioned «الصفحة الرئيسية».
+           | If the session was dropped — which the single-process development
+           | server does under a burst — sign in again and ask once more; and
+           | if it is still the form, say so rather than photograph it.
+           */
+          if (await onSignInForm(page)) {
+            if (role.account) {
+              await signIn(page, role.panel, role.account, role.two_factor);
+              response = await page.goto(BASE + step.path, { waitUntil: 'networkidle', timeout: 30000 });
+              await page.waitForTimeout(900);
+            }
+
+            if (await onSignInForm(page)) {
+              missed.push(`${step.key} → signed out at ${step.path}`);
+
+              continue;
+            }
           }
 
           const file = path.join(outDir, `${step.key}.png`);
