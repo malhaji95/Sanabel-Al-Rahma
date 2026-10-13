@@ -55,8 +55,24 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
+      # CLAUDE.md §1 names Redis queues as the stack. The deployment falls back
+      # to the database because one free container has no Redis, and T-68 holds
+      # the configuration for the day it does: a keyspace each for the cache,
+      # the session and the queue, so clearing one does not empty another.
+      # Without the server here those tests skip themselves, which is how the
+      # separation would quietly stop being checked.
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: PHP 8.3
         uses: shivammathur/setup-php@v2
@@ -64,18 +80,12 @@ jobs:
           # The version the production image carries. Development runs 8.4, so
           # this is also what catches the two drifting apart.
           php-version: '8.3'
-          extensions: pdo_pgsql, intl, zip, bcmath, gd, exif, pcntl, mbstring
+          extensions: pdo_pgsql, intl, zip, bcmath, gd, exif, pcntl, mbstring, redis
           coverage: none
-
-      - name: Composer cache
-        uses: actions/cache@v4
-        with:
-          path: vendor
-          key: composer-${{ hashFiles('composer.lock') }}
 
       - run: composer install --prefer-dist --no-interaction --no-progress
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
@@ -106,7 +116,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -123,7 +133,7 @@ jobs:
       # decision, not something a pipeline should quietly pass over.
       - run: composer audit --no-interaction
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
@@ -142,5 +152,5 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: scripts/secret-scan.sh

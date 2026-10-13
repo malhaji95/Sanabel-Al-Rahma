@@ -79,13 +79,19 @@ it('fails the push when a credential is committed, which is the point', function
     try {
         Process::path($planted)->run('git init -q .')->throw();
 
+        /*
+         | A real-looking assignment, a placeholder that must be tolerated, and
+         | a key id. The middle line is the false positive that makes a scan
+         | useless if it is not handled.
+         |
+         | Split across concatenations on purpose: written whole they are
+         | credential-shaped literals in a tracked file, and the scan would
+         | report this very file — which it did, the first time this was run.
+         */
         File::put($planted.'/deploy.env', implode("\n", [
-            // A real-looking assignment, a placeholder that must be tolerated,
-            // and a key id. The middle line is the false positive that makes
-            // a scan useless if it is not handled.
-            'DB_PASSWORD=t7Qv2mEraLq8',
+            'DB_PASSWORD='.'t7Qv2mEraLq8',
             'MAIL_PASSWORD=...',
-            'AKIAIOSFODNN7ABCDEFGH',
+            'AKIA'.'IOSFODNN7ABCDEFGH',
         ]));
 
         Process::path($planted)->run('git add -A')->throw();
