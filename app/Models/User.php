@@ -38,9 +38,13 @@ class User extends Authenticatable implements FilamentUser
      | account, refused on save rather than noticed later.
      */
     public const ROLE_REGION_LEVEL = [
-        'delegate' => 'village',
-        'area_supervisor' => 'area',
-        'deputy_area_supervisor' => 'area',
+        // Their lists of 13 October name three kinds of locality under an area
+        // — مدينة, بلدة, قرية — and a delegate works in any of them. What the
+        // rule forbids is a delegate holding an area or a governorate, which
+        // would hand them every locality under it.
+        'delegate' => ['city', 'town', 'village'],
+        'area_supervisor' => ['area'],
+        'deputy_area_supervisor' => ['area'],
     ];
 
     protected function casts(): array
@@ -93,18 +97,20 @@ class User extends Authenticatable implements FilamentUser
                 ? $user->role?->key
                 : Role::whereKey($user->role_id)->value('key');
 
-            $level = self::ROLE_REGION_LEVEL[$roleKey ?? ''] ?? null;
+            $levels = self::ROLE_REGION_LEVEL[$roleKey ?? ''] ?? null;
 
-            if (! $level || ! $user->region_id) {
+            if (! $levels || ! $user->region_id) {
                 return;
             }
 
             $type = Region::whereKey($user->region_id)->value('type');
 
-            if ($type !== $level) {
+            if (! in_array($type, $levels, true)) {
                 throw new \RuntimeException(__('sanabel.user.wrong_region_level', [
                     'role' => $user->role?->name_ar ?? '',
-                    'level' => __('sanabel.region_type.'.$level),
+                    'level' => collect($levels)
+                        ->map(fn (string $level) => __('sanabel.region_type.'.$level))
+                        ->join('، ', ' أو '),
                     'given' => $type ? __('sanabel.region_type.'.$type) : '',
                 ]));
             }

@@ -24,10 +24,19 @@ beforeEach(function () {
     $this->village = Region::factory()->village()->create(['parent_id' => $this->area->id]);
 });
 
-it('attaches a delegate to a village and refuses anything wider', function () {
+it('attaches a delegate to any locality and refuses anything wider', function () {
     $delegate = userWithRole('delegate', ['region_id' => $this->village->id]);
 
     expect($delegate->fresh()->region_id)->toBe($this->village->id);
+
+    // A town and a city are localities too, and their lists hold more towns
+    // than villages.
+    foreach (['town', 'city'] as $type) {
+        $locality = Region::factory()->create(['parent_id' => $this->area->id, 'type' => $type]);
+        $in = User::factory()->role('delegate')->create(['region_id' => $locality->id]);
+
+        expect($in->fresh()->region_id)->toBe($locality->id);
+    }
 
     // Straight through the factory: userWithRole() corrects the level for the
     // rest of the suite, and what is being proved here is the refusal.
@@ -184,7 +193,12 @@ it('offers the user form only the regions the role may hold', function () {
         'the region list is not narrowed to the level the role needs'
     );
 
+    /*
+     | Their lists of 13 October name three kinds of locality under an area —
+     | مدينة, بلدة, قرية — and a delegate works in any of them. The rule is
+     | about the levels they may NOT hold: an area, or the governorate.
+     */
     expect(User::ROLE_REGION_LEVEL)->toHaveKey('delegate')
-        ->and(User::ROLE_REGION_LEVEL['delegate'])->toBe('village')
-        ->and(User::ROLE_REGION_LEVEL['area_supervisor'])->toBe('area');
+        ->and(User::ROLE_REGION_LEVEL['delegate'])->toBe(['city', 'town', 'village'])
+        ->and(User::ROLE_REGION_LEVEL['area_supervisor'])->toBe(['area']);
 });

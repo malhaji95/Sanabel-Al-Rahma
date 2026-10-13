@@ -3,11 +3,600 @@
     "name_ar": "درعا",
     "type": "governorate",
     "children": [
-      { "name_ar": "درعا المدينة", "type": "area" },
-      { "name_ar": "إزرع", "type": "area" },
-      { "name_ar": "الصنمين", "type": "area" },
-      { "name_ar": "بصرى الشام", "type": "area" },
-      { "name_ar": "الشيخ مسكين", "type": "area" }
+      {
+        "name_ar": "إزرع",
+        "type": "area",
+        "children": [
+          {
+            "name_ar": "إزرع",
+            "type": "city"
+          },
+          {
+            "name_ar": "الشيخ مسكين",
+            "type": "city"
+          },
+          {
+            "name_ar": "الحراك",
+            "type": "city"
+          },
+          {
+            "name_ar": "محجة",
+            "type": "town"
+          },
+          {
+            "name_ar": "بصر الحرير",
+            "type": "town"
+          },
+          {
+            "name_ar": "المليحة الغربية",
+            "type": "town"
+          },
+          {
+            "name_ar": "المليحة الشرقية",
+            "type": "town"
+          },
+          {
+            "name_ar": "مليحة العطش",
+            "type": "town"
+          },
+          {
+            "name_ar": "ناحتة",
+            "type": "town"
+          },
+          {
+            "name_ar": "رخم",
+            "type": "town"
+          },
+          {
+            "name_ar": "مسيكة",
+            "type": "town"
+          },
+          {
+            "name_ar": "الصورة",
+            "type": "town"
+          },
+          {
+            "name_ar": "نامر",
+            "type": "town"
+          },
+          {
+            "name_ar": "قرفا",
+            "type": "town"
+          },
+          {
+            "name_ar": "دير السلط",
+            "type": "village"
+          },
+          {
+            "name_ar": "الحريك",
+            "type": "village"
+          },
+          {
+            "name_ar": "شقرا",
+            "type": "village"
+          },
+          {
+            "name_ar": "الدلي",
+            "type": "village"
+          },
+          {
+            "name_ar": "الوراد",
+            "type": "village"
+          },
+          {
+            "name_ar": "النجيح",
+            "type": "village"
+          },
+          {
+            "name_ar": "الفقيع",
+            "type": "village"
+          },
+          {
+            "name_ar": "البوير",
+            "type": "village"
+          },
+          {
+            "name_ar": "حامر",
+            "type": "village"
+          },
+          {
+            "name_ar": "قيراطة",
+            "type": "village"
+          },
+          {
+            "name_ar": "عاسم",
+            "type": "village"
+          },
+          {
+            "name_ar": "الشومرة",
+            "type": "village"
+          },
+          {
+            "name_ar": "الجسري",
+            "type": "village"
+          },
+          {
+            "name_ar": "جدل",
+            "type": "village"
+          },
+          {
+            "name_ar": "المطلة",
+            "type": "village"
+          },
+          {
+            "name_ar": "الرويسات",
+            "type": "village"
+          },
+          {
+            "name_ar": "الهويا",
+            "type": "village"
+          },
+          {
+            "name_ar": "زبيرة",
+            "type": "village"
+          },
+          {
+            "name_ar": "الزباير",
+            "type": "village"
+          },
+          {
+            "name_ar": "الوردات",
+            "type": "village"
+          },
+          {
+            "name_ar": "المجيدل",
+            "type": "village"
+          },
+          {
+            "name_ar": "صور",
+            "type": "village"
+          },
+          {
+            "name_ar": "اللجاة",
+            "type": "village"
+          }
+        ]
+      },
+      {
+        "name_ar": "نوى",
+        "type": "area",
+        "children": [
+          {
+            "name_ar": "نوى",
+            "type": "city"
+          },
+          {
+            "name_ar": "جاسم",
+            "type": "city"
+          },
+          {
+            "name_ar": "تسيل",
+            "type": "town"
+          },
+          {
+            "name_ar": "نمر",
+            "type": "town"
+          },
+          {
+            "name_ar": "عدوان",
+            "type": "town"
+          },
+          {
+            "name_ar": "الشيخ سعد",
+            "type": "town"
+          },
+          {
+            "name_ar": "الناصرية",
+            "type": "town"
+          },
+          {
+            "name_ar": "البكار",
+            "type": "town"
+          },
+          {
+            "name_ar": "السحيلية",
+            "type": "village"
+          },
+          {
+            "name_ar": "السكرية",
+            "type": "village"
+          },
+          {
+            "name_ar": "الجبيلية",
+            "type": "village"
+          },
+          {
+            "name_ar": "المسيطرية",
+            "type": "village"
+          }
+        ]
+      },
+      {
+        "name_ar": "الصنمين",
+        "type": "area",
+        "children": [
+          {
+            "name_ar": "الصنمين",
+            "type": "city"
+          },
+          {
+            "name_ar": "إنخل",
+            "type": "city"
+          },
+          {
+            "name_ar": "الحارة",
+            "type": "city"
+          },
+          {
+            "name_ar": "قيطة",
+            "type": "town"
+          },
+          {
+            "name_ar": "كفرشمس",
+            "type": "town"
+          },
+          {
+            "name_ar": "بصير",
+            "type": "town"
+          },
+          {
+            "name_ar": "عقربا",
+            "type": "town"
+          },
+          {
+            "name_ar": "زمرين",
+            "type": "town"
+          },
+          {
+            "name_ar": "جديا",
+            "type": "town"
+          },
+          {
+            "name_ar": "غباغب",
+            "type": "town"
+          },
+          {
+            "name_ar": "جباب",
+            "type": "town"
+          },
+          {
+            "name_ar": "دير البخت",
+            "type": "town"
+          },
+          {
+            "name_ar": "دير العدس",
+            "type": "town"
+          },
+          {
+            "name_ar": "الشقرانية",
+            "type": "town"
+          },
+          {
+            "name_ar": "المسمية",
+            "type": "town"
+          },
+          {
+            "name_ar": "الشرايع",
+            "type": "town"
+          },
+          {
+            "name_ar": "خبب",
+            "type": "town"
+          },
+          {
+            "name_ar": "تبنة",
+            "type": "town"
+          },
+          {
+            "name_ar": "القنية",
+            "type": "town"
+          },
+          {
+            "name_ar": "سملين",
+            "type": "town"
+          },
+          {
+            "name_ar": "أيب",
+            "type": "town"
+          },
+          {
+            "name_ar": "شعارة",
+            "type": "town"
+          },
+          {
+            "name_ar": "عالقين",
+            "type": "town"
+          },
+          {
+            "name_ar": "منكت الحطب",
+            "type": "town"
+          },
+          {
+            "name_ar": "موثبين",
+            "type": "town"
+          },
+          {
+            "name_ar": "كفرناسج",
+            "type": "town"
+          },
+          {
+            "name_ar": "الطيحة",
+            "type": "town"
+          },
+          {
+            "name_ar": "كريم الشمالي",
+            "type": "village"
+          },
+          {
+            "name_ar": "كريم الجنوبي",
+            "type": "village"
+          },
+          {
+            "name_ar": "بلي",
+            "type": "village"
+          },
+          {
+            "name_ar": "براق",
+            "type": "village"
+          },
+          {
+            "name_ar": "البعيات",
+            "type": "village"
+          },
+          {
+            "name_ar": "كمونة",
+            "type": "village"
+          },
+          {
+            "name_ar": "ابو عباة",
+            "type": "village"
+          },
+          {
+            "name_ar": "منشية السبيل",
+            "type": "village"
+          },
+          {
+            "name_ar": "ساكرة",
+            "type": "village"
+          },
+          {
+            "name_ar": "الطف",
+            "type": "village"
+          },
+          {
+            "name_ar": "التبة",
+            "type": "village"
+          },
+          {
+            "name_ar": "برقة",
+            "type": "village"
+          },
+          {
+            "name_ar": "ام القصور",
+            "type": "village"
+          },
+          {
+            "name_ar": "صنع الحمام",
+            "type": "village"
+          },
+          {
+            "name_ar": "بويضان",
+            "type": "village"
+          },
+          {
+            "name_ar": "المال",
+            "type": "village"
+          }
+        ]
+      },
+      {
+        "name_ar": "بصرى الشام",
+        "type": "area",
+        "children": [
+          {
+            "name_ar": "بصرى الشام",
+            "type": "city"
+          },
+          {
+            "name_ar": "الجيزة",
+            "type": "town"
+          },
+          {
+            "name_ar": "المسيفرة",
+            "type": "town"
+          },
+          {
+            "name_ar": "الكرك الشرقي",
+            "type": "town"
+          },
+          {
+            "name_ar": "معربا",
+            "type": "town"
+          },
+          {
+            "name_ar": "ام ولد",
+            "type": "town"
+          },
+          {
+            "name_ar": "غصم",
+            "type": "town"
+          },
+          {
+            "name_ar": "السهوة",
+            "type": "town"
+          },
+          {
+            "name_ar": "المتاعية",
+            "type": "town"
+          },
+          {
+            "name_ar": "طيسيا",
+            "type": "town"
+          },
+          {
+            "name_ar": "صماد",
+            "type": "town"
+          },
+          {
+            "name_ar": "ابو كاتولة",
+            "type": "village"
+          },
+          {
+            "name_ar": "جمرين",
+            "type": "village"
+          },
+          {
+            "name_ar": "السماقيات",
+            "type": "village"
+          },
+          {
+            "name_ar": "الندى",
+            "type": "village"
+          },
+          {
+            "name_ar": "شجرة تايهة",
+            "type": "village"
+          },
+          {
+            "name_ar": "سمج",
+            "type": "village"
+          }
+        ]
+      },
+      {
+        "name_ar": "درعا",
+        "type": "area",
+        "children": [
+          {
+            "name_ar": "درعا",
+            "type": "city"
+          },
+          {
+            "name_ar": "طفس",
+            "type": "city"
+          },
+          {
+            "name_ar": "داعل",
+            "type": "city"
+          },
+          {
+            "name_ar": "خربة غزالة",
+            "type": "town"
+          },
+          {
+            "name_ar": "ابطع",
+            "type": "town"
+          },
+          {
+            "name_ar": "عتمان",
+            "type": "town"
+          },
+          {
+            "name_ar": "الغارية الشرقية",
+            "type": "town"
+          },
+          {
+            "name_ar": "الغارية الغربية",
+            "type": "town"
+          },
+          {
+            "name_ar": "علما",
+            "type": "town"
+          },
+          {
+            "name_ar": "الطيبة",
+            "type": "town"
+          },
+          {
+            "name_ar": "كحيل",
+            "type": "town"
+          },
+          {
+            "name_ar": "تل شهاب",
+            "type": "town"
+          },
+          {
+            "name_ar": "الشجرة",
+            "type": "town"
+          },
+          {
+            "name_ar": "سحم الجولان",
+            "type": "town"
+          },
+          {
+            "name_ar": "حيط",
+            "type": "town"
+          },
+          {
+            "name_ar": "نصيب",
+            "type": "town"
+          },
+          {
+            "name_ar": "النعيمة",
+            "type": "town"
+          },
+          {
+            "name_ar": "صيدا",
+            "type": "town"
+          },
+          {
+            "name_ar": "كويا",
+            "type": "town"
+          },
+          {
+            "name_ar": "ام المياذن",
+            "type": "town"
+          },
+          {
+            "name_ar": "اليادودة",
+            "type": "town"
+          },
+          {
+            "name_ar": "مزيريب",
+            "type": "town"
+          },
+          {
+            "name_ar": "عابدين",
+            "type": "town"
+          },
+          {
+            "name_ar": "نافعة",
+            "type": "town"
+          },
+          {
+            "name_ar": "عين ذكر",
+            "type": "town"
+          },
+          {
+            "name_ar": "الاشعري",
+            "type": "village"
+          },
+          {
+            "name_ar": "جلين",
+            "type": "village"
+          },
+          {
+            "name_ar": "زيزون",
+            "type": "village"
+          },
+          {
+            "name_ar": "بيت أرة",
+            "type": "village"
+          },
+          {
+            "name_ar": "معريا",
+            "type": "village"
+          },
+          {
+            "name_ar": "جملة",
+            "type": "village"
+          },
+          {
+            "name_ar": "مساكن جلين",
+            "type": "village"
+          }
+        ]
+      }
     ]
   }
 ]

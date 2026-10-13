@@ -62,10 +62,10 @@ class UserResource extends Resource
             Forms\Components\Select::make('region_id')
                 ->label(__('sanabel.beneficiary.region'))
                 ->options(function (Forms\Get $get) {
-                    $level = User::ROLE_REGION_LEVEL[Role::whereKey($get('role_id'))->value('key') ?? ''] ?? null;
+                    $levels = User::ROLE_REGION_LEVEL[Role::whereKey($get('role_id'))->value('key') ?? ''] ?? null;
 
                     return Region::query()
-                        ->when($level, fn ($query) => $query->where('type', $level))
+                        ->when($levels, fn ($query) => $query->whereIn('type', $levels))
                         ->orderBy('name_ar')
                         ->pluck('name_ar', 'id');
                 })

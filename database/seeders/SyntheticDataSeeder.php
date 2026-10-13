@@ -108,10 +108,17 @@ class SyntheticDataSeeder extends Seeder
      */
     private function demoVillage($areas): Region
     {
-        return Region::firstOrCreate(
-            ['parent_id' => $areas->first()->id, 'type' => 'village'],
-            ['name_ar' => 'قرية تجريبية', 'is_active' => true],
-        );
+        // One of the association's own localities since T-80, where before
+        // there were none to pick from. A generated one only if the region tree
+        // has not been seeded yet.
+        return Region::whereIn('type', ['city', 'town', 'village'])
+            ->whereIn('parent_id', $areas->pluck('id'))
+            ->orderBy('id')
+            ->first()
+            ?? Region::firstOrCreate(
+                ['parent_id' => $areas->first()->id, 'type' => 'village'],
+                ['name_ar' => 'قرية تجريبية', 'is_active' => true],
+            );
     }
 
     /** @return array<string,User> */

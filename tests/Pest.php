@@ -133,13 +133,15 @@ function placeIn(Region $region, string $level): Region
 
 function userWithRole(string $roleKey, array $attributes = []): User
 {
-    $level = User::ROLE_REGION_LEVEL[$roleKey] ?? null;
+    $levels = User::ROLE_REGION_LEVEL[$roleKey] ?? null;
 
-    if ($level && ! empty($attributes['region_id'])) {
+    if ($levels && ! empty($attributes['region_id'])) {
         $region = Region::find($attributes['region_id']);
 
-        if ($region && $region->type !== $level) {
-            $attributes['region_id'] = placeIn($region, $level)->id;
+        if ($region && ! in_array($region->type, $levels, true)) {
+            // The narrowest level the role may hold, so a delegate lands in a
+            // village rather than in the city above it.
+            $attributes['region_id'] = placeIn($region, end($levels))->id;
         }
     }
 
