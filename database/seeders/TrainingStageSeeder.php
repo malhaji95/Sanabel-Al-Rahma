@@ -44,7 +44,7 @@ class TrainingStageSeeder extends Seeder
             ]);
         }
 
-        $this->stageThePath($village);
+        $this->stageThePath($area);
         $this->giveAHouseholdItsOwnAccount();
         $this->enrolTheSecondFactor();
 

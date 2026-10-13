@@ -149,3 +149,48 @@ it('٦ — coverage is read for the month, and the next month opens before this 
         ->and($coverage->openMonths())->not->toBeEmpty()
         ->and($coverage->monthIsOpen($coverage->currentMonth()))->toBeTrue();
 });
+
+it('opens every account and stage the training guides walk through, on the demo itself', function () {
+    /*
+     | T-88 — the demo seeded forty families and ten accounts, and the guides
+     | were built against fourteen accounts and a file standing at each step of
+     | the path. So the executive director's guide — six screens, the approval
+     | and the settings among them — described a panel nobody could sign in to,
+     | and the delegate's and supervisor's guides pointed at queues the demo
+     | left empty.
+     |
+     | Checked against the guides themselves rather than a list written out
+     | here: a guide that names an account the container never creates is the
+     | failure this holds.
+     */
+    $entrypoint = file_get_contents(base_path('docker/entrypoint.sh'));
+
+    expect($entrypoint)->toContain('TrainingStageSeeder');
+
+    // And it must not arrive with a second factor already enrolled: the secret
+    // would be one the association does not hold, and the panels would be shut.
+    expect($entrypoint)->not->toContain('SEED_DEMO_TOTP=');
+    expect(file_get_contents(base_path('Dockerfile')))->not->toContain('SEED_DEMO_TOTP');
+
+    seedCore();
+    (new Database\Seeders\RegionSeeder)->run();
+    (new Database\Seeders\SyntheticDataSeeder)->run();
+    (new Database\Seeders\TrainingStageSeeder)->run();
+
+    $guides = require resource_path('training/guides.php');
+
+    foreach ($guides as $role => $guide) {
+        if (! $guide['account']) {
+            continue;
+        }
+
+        expect(App\Models\User::where('email', $guide['account'])->exists())
+            ->toBeTrue($guide['account'].' is in the '.$role.' guide and not on the demo');
+    }
+
+    // The three queues the guides photograph, each with a file in it.
+    foreach (['pending_visit', 'verified', 'pending_approval'] as $stage) {
+        expect(App\Models\Beneficiary::where('status', $stage)->exists())
+            ->toBeTrue('no file is standing at '.$stage.', so that screen is empty in the guide');
+    }
+})->group('OPS-01');

@@ -104,6 +104,21 @@ if [ "${DEMO_SEED:-false}" = "true" ]; then
     else
         say "demo families already present, skipping"
     fi
+
+    # T-88 — the accounts and the stages the training guides walk through.
+    #
+    # The guides photograph a file standing at each step of the path, and open
+    # under the executive director, the chairman, the treasurer and the data
+    # officer. None of those four existed on the demo and no file stood
+    # anywhere, so four of the ten guides described screens nobody could reach
+    # and two more pointed at an empty queue.
+    #
+    # Idempotent, and it enrols no second factor unless SEED_DEMO_TOTP is set —
+    # which it must not be here, or the accounts arrive already enrolled to a
+    # secret the association does not hold and the panels lock them out.
+    say "seeding the training stages"
+    php /app/artisan db:seed --class=TrainingStageSeeder --force \
+        || echo "the training stages could not be seeded; some guided screens will be empty" >&2
 fi
 
 # ---- caches ------------------------------------------------------------------
