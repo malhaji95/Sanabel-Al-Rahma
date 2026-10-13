@@ -37,6 +37,31 @@ it('does not ship a stale package manifest in the image', function () {
         ->toContain('package:discover');
 })->group('CICD-05');
 
+it('bounds the migration lock wait, so a deploy cannot hang on the old release', function () {
+    /*
+     | The deploy of 13 Oct 2026. The image built, the container booted, the
+     | entrypoint printed «migrating» and printed nothing ever again; fifteen
+     | minutes later Render gave up because no port had been opened, and there
+     | was no error anywhere to read.
+     |
+     | Adding a column needs ACCESS EXCLUSIVE on the table, and Render keeps the
+     | previous release serving while the new one boots — a release that takes a
+     | row lock on `beneficiaries` on every basket reservation (rule 6) and runs
+     | its scheduler every minute. The ALTER waited behind one of those, with no
+     | timeout, for ever.
+     */
+    $entrypoint = file_get_contents(base_path('docker/entrypoint.sh'));
+
+    expect($entrypoint)->toContain('lock_timeout')
+        // Retried, because the lock it waits on is held for milliseconds.
+        ->toContain('migration attempt')
+        // And it fails loudly rather than carrying on without the schema.
+        ->toContain('could not acquire a table lock');
+
+    // The migrate step is never run bare: a bare run is the hang.
+    expect($entrypoint)->not->toContain("\nphp /app/artisan migrate --force");
+})->group('CICD-05');
+
 it('runs the queue worker and the scheduler alongside the web server', function () {
     // One free container has to carry all of it. Without the scheduler,
     // expired basket holds are never released and families stay locked.

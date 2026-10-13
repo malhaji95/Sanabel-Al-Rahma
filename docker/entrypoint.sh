@@ -56,8 +56,40 @@ until php /app/artisan db:show --quiet >/dev/null 2>&1; do
     sleep 2
 done
 
+# A migration that adds a column needs ACCESS EXCLUSIVE on the table, and
+# Render keeps the previous release serving while this one boots. That release
+# holds short row locks on `beneficiaries` every time a donor reserves a basket
+# (rule 6, lockForUpdate inside a transaction), and its scheduler runs every
+# minute. An ALTER that meets one of those waits — and once it is queued, every
+# later query on the table queues behind it too.
+#
+# This is not hypothetical: the deploy of 13 Oct 2026 printed "migrating" and
+# never printed anything again. Fifteen minutes later Render gave up because no
+# port had been opened, with no error to read anywhere.
+#
+# So the lock wait is bounded and retried. A basket reservation lasts
+# milliseconds, so a second attempt almost always wins; and when it does not,
+# the deploy fails in a minute with a sentence saying why, instead of timing out
+# blind a quarter of an hour later.
 say "migrating"
-php /app/artisan migrate --force
+migrated=false
+
+for attempt in 1 2 3 4 5; do
+    if PGOPTIONS='-c lock_timeout=15s' php /app/artisan migrate --force; then
+        migrated=true
+        break
+    fi
+
+    echo "migration attempt ${attempt} did not get the lock; retrying in 10s" >&2
+    sleep 10
+done
+
+if [ "$migrated" != "true" ]; then
+    echo "Migrations could not acquire a table lock after five attempts." >&2
+    echo "The previous release is probably still serving and holding a row lock." >&2
+    echo "Retry the deploy, or suspend the service briefly and deploy again." >&2
+    exit 1
+fi
 
 # Reference data, roles, permissions, funds and settings. Idempotent.
 say "seeding reference data"
