@@ -107,6 +107,23 @@
                 </span>
             @endif
         </div>
+
+        {{-- T-82 — four digits of the household's own account, never more, and
+             only while the association's switch is open. The sentence beside it
+             is their own condition for showing them at all: the money goes to
+             the association's fund, so a donor who reads the digits as somewhere
+             to transfer to is being told, in the same breath, that it is not. --}}
+        @if (filled($case['wallet_last4'] ?? null))
+            <div class="col-span-2">
+                <dt style="color: var(--text-muted);">{{ __('sanabel.masked.wallet_last4') }}</dt>
+                <dd>
+                    <span class="tabular font-medium" dir="ltr">&bull;&bull;&bull;&bull; {{ $case['wallet_last4'] }}</span>
+                    <span class="mt-1 block text-xs" style="color: var(--text-muted);">
+                        {{ __('sanabel.masked.wallet_last4_note') }}
+                    </span>
+                </dd>
+            </div>
+        @endif
     </dl>
 
     <div class="mt-5">

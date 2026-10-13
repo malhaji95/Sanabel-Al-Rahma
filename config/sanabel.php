@@ -221,5 +221,18 @@ return [
         // switches, because the association asked for each place separately.
         'show_sufficiency_note' => true,
         'show_sufficiency_note_in_basket' => true,
+        /*
+         | T-82 — the last four digits of the household's own account, shown to
+         | a donor. Asked for on 13 October so a donor can satisfy themselves
+         | that the family they are funding or visiting is the family they
+         | meant, and granted on their instruction: «والتحويل يتم لصندوق سنابل
+         | وليس للفقير مباشرة», so it identifies and never pays.
+         |
+         | On by default because that is what they asked for, and a switch
+         | because their own privacy policy (clause 4, adopted the same day)
+         | forbids disclosing a beneficiary's data «بما يؤدي إلى التعرف عليهم»
+         | — so the association can close it again without a deploy.
+         */
+        'show_wallet_last4' => true,
     ],
 ];

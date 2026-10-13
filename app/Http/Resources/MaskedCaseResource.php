@@ -19,8 +19,12 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *              media, diagnosis, exact age, exact rent, raw score.
  *
  * The wallet a donor pays into is Sanabel Al-Rahma's own and the same for
- * every family, so it is a setting shown where payment happens — not a
- * property of a household, and never a household's own account.
+ * every family, so it is a setting shown where payment happens. Of a
+ * household's own account only the last four digits appear, by the
+ * association's decision of 13 October, and only so a donor can tell that the
+ * family they are funding is the family they meant: the transfer goes to the
+ * association's fund, never to the family. `show_wallet_last4` closes it
+ * again.
  *
  * Age becomes a band, illness becomes "chronic illness", rent becomes a band.
  * Nothing identifying a child is ever published.
@@ -42,6 +46,8 @@ class MaskedCaseResource extends JsonResource
         // household: a share of a need the donor is already shown.
         'target_percent', 'target_amount', 'target_remaining', 'target_complete',
         'show_sufficiency_note',
+        // T-82 — four digits of the household's account, and nothing more.
+        'wallet_last4',
     ];
 
     /**
@@ -115,7 +121,32 @@ class MaskedCaseResource extends JsonResource
                 'show_sufficiency_note',
                 config('sanabel.setting_defaults.show_sufficiency_note')
             ),
+
+            'wallet_last4' => $this->walletLast4($case),
         ];
+    }
+
+    /**
+     * The last four digits of the household's account, or nothing.
+     *
+     * Digits only, and only when there are at least four of them: an
+     * anonymised file carries a marker rather than a number, and a short value
+     * would otherwise be handed over whole.
+     */
+    private function walletLast4(Beneficiary $case): ?string
+    {
+        $on = (bool) Setting::value(
+            'show_wallet_last4',
+            config('sanabel.setting_defaults.show_wallet_last4')
+        );
+
+        if (! $on || $case->isAnonymised()) {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', (string) $case->wallet_encrypted);
+
+        return strlen((string) $digits) >= 4 ? substr((string) $digits, -4) : null;
     }
 
     /** Counts per band only — never an exact age, and never a child's details. */

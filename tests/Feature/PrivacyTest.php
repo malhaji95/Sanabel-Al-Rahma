@@ -8,6 +8,7 @@ use App\Models\HealthRecord;
 use App\Models\HouseholdMember;
 use App\Models\JobProfile;
 use App\Models\Region;
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\DonationService;
 
@@ -225,3 +226,66 @@ it('refuses a donor on every internal full-case route', function () {
         'national_id' => '12345678901',
     ])->assertForbidden();
 })->group('AUTH-02');
+
+/*
+ | T-82 — the one thing about a household's own account a donor may see.
+ |
+ | The leak test above asserts the whole wallet never appears, and four digits
+ | do not make it appear, so it would pass whatever this showed. That is why
+ | the partial disclosure is pinned here on its own: exactly four digits,
+ | nothing when the association closes the switch, and nothing on a file that
+ | has been anonymised or never had an account.
+ */
+it('shows a donor the last four digits of the household account and never more', function () {
+    $case = fullCase($this->region);
+
+    $response = $this->actingAs(donorUser(), 'sanctum')->getJson(route('donor.cases.show', $case));
+
+    $response->assertOk();
+    assertNoLeak($response->getContent(), $case);
+
+    $last4 = $response->json('data.wallet_last4');
+
+    expect($last4)->toBe('5678')
+        ->and($last4)->toHaveLength(4)
+        ->and($response->getContent())->not->toContain('0912345678');
+})->group('AUTH-03');
+
+it('hides the four digits when the association closes the switch', function () {
+    $case = fullCase($this->region);
+    Setting::put('show_wallet_last4', false);
+
+    $data = $this->actingAs(donorUser(), 'sanctum')
+        ->getJson(route('donor.cases.show', $case))
+        ->json('data');
+
+    // The key stays — the allowlist is the contract — and carries nothing.
+    expect(array_keys($data))->toEqualCanonicalizing(MaskedCaseResource::ALLOWED_KEYS)
+        ->and($data['wallet_last4'])->toBeNull();
+})->group('AUTH-03');
+
+it('shows no digits for an anonymised file', function () {
+    $case = fullCase($this->region);
+
+    // The wallet is wiped when a file is anonymised, so it is deliberately
+    // left in place here: what is being tested is the mark, on its own.
+    $case->forceFill(['anonymised_at' => now()])->save();
+
+    $data = $this->actingAs(donorUser(), 'sanctum')
+        ->getJson(route('donor.cases.show', $case))
+        ->json('data');
+
+    expect($data['wallet_last4'])->toBeNull();
+})->group('AUTH-03');
+
+it('shows no digits for a family with no account on file', function () {
+    $case = publishedCase($this->region);
+
+    expect($case->wallet_encrypted)->toBeNull();
+
+    $data = $this->actingAs(donorUser(), 'sanctum')
+        ->getJson(route('donor.cases.show', $case))
+        ->json('data');
+
+    expect($data['wallet_last4'])->toBeNull();
+})->group('AUTH-03');
