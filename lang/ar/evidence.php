@@ -77,6 +77,8 @@ return [
         'running' => 'تشغيل الاختبارات وجمع النتائج…',
         'skipping' => 'تخطّي التشغيل، والتقرير يُبنى على الوسوم وحدها.',
         'written' => 'كُتب التقرير في :path',
+        'printed' => 'وطُبع في :path',
+        'print_failed' => 'تعذّرت الطباعة. تأكّد أن Playwright متاح على NODE_PATH ومتصفّح Chromium على CHROMIUM_PATH.',
         'unknown_group' => 'وسم لا يقابل بندًا في الملف: :id (في :file)',
         'claimed_without_proof' => 'البند :id معلَن «تم» ولا اختبار ناجح يثبته.',
         'failed_tests' => 'سقط :count اختبار في هذه الجولة، فالتقرير لا يُعَدّ دليل تسليم.',

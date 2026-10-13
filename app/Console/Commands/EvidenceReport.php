@@ -20,7 +20,8 @@ class EvidenceReport extends Command
 {
     protected $signature = 'evidence:report
         {--out= : Write the report here instead of storage/app/evidence}
-        {--skip-tests : Build from the tags alone, without running the suite}';
+        {--skip-tests : Build from the tags alone, without running the suite}
+        {--pdf : Also print the report, for handing to the association}';
 
     protected $description = 'Map every security-file item to the tests that prove it';
 
@@ -41,6 +42,10 @@ class EvidenceReport extends Command
 
         $this->info(__('evidence.cli.written', ['path' => $path]));
 
+        if ($this->option('pdf')) {
+            $this->print($path);
+        }
+
         foreach ($problems as $problem) {
             $this->error($problem);
         }
@@ -50,6 +55,37 @@ class EvidenceReport extends Command
         }
 
         return $problems === [] ? self::SUCCESS : self::FAILURE;
+    }
+
+    /*
+     | T-77 — the same report as a page, and printed.
+     |
+     | Markdown belongs beside the code; a board is handed a PDF. So the
+     | Markdown is rendered, wrapped in the identity with the typeface embedded,
+     | and printed by the same Chromium the training tour uses. The Markdown
+     | stays the source: there is one report, in two shapes.
+     */
+    private function print(string $path): void
+    {
+        $html = str_replace('.md', '.html', $path);
+        $pdf = str_replace('.md', '.pdf', $path);
+
+        File::put($html, view('evidence.report', [
+            'body' => Str::markdown(File::get($path), ['html_input' => 'allow']),
+        ])->render());
+
+        $result = Process::timeout(600)->run([
+            'node', base_path('training/capture.mjs'), 'pdf', $html, $pdf,
+        ]);
+
+        if (! $result->successful()) {
+            $this->error(__('evidence.cli.print_failed'));
+            $this->line($result->errorOutput());
+
+            return;
+        }
+
+        $this->info(__('evidence.cli.printed', ['path' => $pdf]));
     }
 
     /*
