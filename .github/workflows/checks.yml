@@ -109,7 +109,27 @@ jobs:
           # from .env, which is why they are set here and the name is not.
           php artisan key:generate
 
-      - run: php artisan test
+      # The failures are repeated as an annotation, so a red run says what broke
+      # on the run's own page and through the API. Reading them otherwise means
+      # downloading the log, which is a different host and a different
+      # credential, and that is enough friction to make a red build get
+      # glanced at instead of read.
+      - name: Tests
+        run: |
+          if php artisan test > test-output.log 2>&1; then
+            cat test-output.log
+            exit 0
+          fi
+
+          cat test-output.log
+
+          summary=$(grep -E '⨯|FAILED|Tests:|Error|Exception' test-output.log \
+            | head -40 \
+            | sed 's/%/%25/g' \
+            | awk '{ printf "%s%%0A", $0 }')
+
+          echo "::error title=php artisan test::${summary}"
+          exit 1
 
   dependencies:
     name: Dependencies
