@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             SettingSeeder::class,
             RegionSeeder::class,
             ReferenceValueSeeder::class,
+            PrivacyPolicySeeder::class,
             AdminUserSeeder::class,
         ]);
     }

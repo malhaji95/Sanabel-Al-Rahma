@@ -17,6 +17,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\HtmlString;
 
 /**
  * T-10 — the beneficiary file, as a multi-step form.
@@ -825,6 +826,15 @@ class BeneficiaryResource extends Resource
                         ->maxDate(now())
                         ->visible(fn (Forms\Get $get) => (bool) $get('donor_visit_consent')),
 
+                    Forms\Components\Placeholder::make('privacy_policy_link')
+                        ->label(__('sanabel.privacy.read_it'))
+                        ->content(fn () => new HtmlString(
+                            '<a href="'.e(url('/privacy')).'" target="_blank" rel="noopener" class="underline">'
+                            .e(__('sanabel.privacy.page_title')).'</a> — '
+                            .e(__('sanabel.privacy.show_to_family'))
+                        ))
+                        ->columnSpanFull(),
+
                     Forms\Components\Toggle::make('privacy_policy_seen')
                         ->label(__('sanabel.beneficiary.privacy_policy_seen'))
                         ->live(),
@@ -858,8 +868,19 @@ class BeneficiaryResource extends Resource
                         ->maxDate(now())
                         ->visible(fn (Forms\Get $get) => (bool) $get('privacy_consent')),
 
+                    /*
+                     | T-81 — stamped from the version in force, not typed. A
+                     | clerk typing «1» where the policy says «1.0» would leave
+                     | the question «which text did this family agree to»
+                     | unanswerable, which is the one thing the column is for.
+                     */
                     Forms\Components\TextInput::make('privacy_policy_version')
-                        ->label(__('sanabel.beneficiary.privacy_policy_version'))
+                        ->label(__('sanabel.privacy.version_in_force'))
+                        ->helperText(__('sanabel.privacy.version_help'))
+                        ->default(fn () => config('sanabel.privacy_policy.version'))
+                        ->dehydrateStateUsing(fn () => config('sanabel.privacy_policy.version'))
+                        ->disabled()
+                        ->dehydrated()
                         ->visible(fn (Forms\Get $get) => (bool) $get('privacy_consent')),
 
                     Forms\Components\DatePicker::make('declaration_on')

@@ -152,6 +152,20 @@ return [
      | Defaults used only when the matching row is missing from the `settings` table.
      | Everything operational lives in `settings` so it changes without a deploy.
      */
+    /*
+     | T-81 — the privacy policy in force. The text lives in
+     | database/data/policies/privacy-<version>.md, and this names which version
+     | a family is agreeing to. They move together: a new version is a new file
+     | and a changed number, so «which text did this family agree to» always has
+     | an answer, and a typo fixed in the CMS does not become a new version.
+     */
+    'privacy_policy' => [
+        'version' => '1.0',
+        'adopted_on' => '2026-10-13',
+        // Their legal adviser may revise it; until then this is what is in force.
+        'pending_legal_review' => true,
+    ],
+
     'setting_defaults' => [
         'basket_hold_hours' => 24,
         // How long before a hold runs out the donor hears about it.
