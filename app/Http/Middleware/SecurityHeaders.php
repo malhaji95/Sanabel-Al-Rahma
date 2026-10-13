@@ -48,7 +48,52 @@ class SecurityHeaders
             $response->headers->set('Strict-Transport-Security', $this->hsts($config['hsts']), false);
         }
 
+        if ($this->mustNotStore($request, $config['no_store'])) {
+            $this->forbidStoring($response);
+        }
+
         return $response;
+    }
+
+    /**
+     * T-84 — APP-07. Whether this response may be kept anywhere at all.
+     *
+     * Any response to a signed-in request, whatever route served it: that is
+     * every family file, every panel screen, every donation and every page of
+     * the donor's own basket, without a list of them to keep up to date. The
+     * configured paths are for what is reachable without signing in and must
+     * still never be stored — the signed media route first among them.
+     *
+     * @param  array<string,mixed>  $config
+     */
+    private function mustNotStore(Request $request, array $config): bool
+    {
+        // Read after the response is built, so whichever guard the route uses
+        // has already run and this sees the account it authenticated — the
+        // session on a panel page, the Sanctum token on an API call.
+        if ($config['authenticated'] && $request->user() !== null) {
+            return true;
+        }
+
+        return $request->is(...$config['paths']);
+    }
+
+    /**
+     * `no-store` is the one that matters: it tells the browser not to write
+     * the response to disk, which is what `no-cache` alone permits. The rest
+     * are for the intermediaries that do not read it — Pragma and Expires for
+     * an old proxy, and Vary: Cookie so that anything which caches regardless
+     * at least cannot serve one person's page to another.
+     */
+    private function forbidStoring(Response $response): void
+    {
+        $response->headers->set(
+            'Cache-Control',
+            'no-store, no-cache, must-revalidate, max-age=0, private',
+        );
+        $response->headers->set('Pragma', 'no-cache');
+        $response->headers->set('Expires', '0');
+        $response->headers->set('Vary', 'Cookie', false);
     }
 
     /** @param  array<string,mixed>  $csp */

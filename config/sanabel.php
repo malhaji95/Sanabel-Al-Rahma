@@ -148,6 +148,52 @@ return [
             'livewire' => env('SANABEL_RATE_LIVEWIRE', 300),
         ],
 
+        /*
+         | T-84 — APP-07. What a browser, a proxy or a CDN may keep a copy of.
+         |
+         | Laravel's own default on a page that has a session is
+         | «no-cache, private». That stops a shared cache holding it and makes
+         | the browser revalidate — but it still lets the browser *store* it.
+         | On a shared office machine, or a delegate's phone handed to someone
+         | else, the back button after signing out then redraws a family file
+         | from disk. `no-store` is the difference, and it is what the
+         | association's own file asks for.
+         |
+         | The rule is not a list of personal pages, because a list is how a
+         | page gets missed: every response to a signed-in request is
+         | no-store, whatever route it came from. `paths` is only for what can
+         | be reached *without* signing in and must still never be kept — the
+         | signed media route above all, whose URL is short-lived precisely
+         | because the file behind it is a family's paper.
+         |
+         | Deliberately not here: the public pages. A guest reading the news or
+         | the masked case list is reading what everyone reads, and making a
+         | CDN forget it between visitors buys nothing.
+         */
+        'no_store' => [
+            // Every signed-in response, on any route.
+            'authenticated' => env('SANABEL_NO_STORE_AUTHENTICATED', true),
+            'paths' => [
+                // The signed media route: a family's documents (FILE-03).
+                'storage/*',
+                // Livewire's own write and upload endpoints. The asset routes
+                // under livewire/ are deliberately left out — livewire.js is a
+                // static file, and no-store on it means a fresh download on
+                // every page.
+                'livewire/update',
+                'livewire/upload-file',
+                'livewire/preview-file/*',
+                // Every API response. Behind auth:sanctum today, so this is
+                // the belt to that braces.
+                'api/*',
+                // A login form carries a CSRF token tied to one session.
+                'login',
+                'admin/login',
+                'association/login',
+                'provider/login',
+            ],
+        ],
+
         'hsts' => [
             'enabled' => env('SANABEL_HSTS_ENABLED', true),
             'max_age' => env('SANABEL_HSTS_MAX_AGE', 31536000),

@@ -134,3 +134,119 @@ it('reads a proxied TLS request as secure, so the cookie and HSTS are set', func
 
     expect($app)->toContain('trustProxies');
 })->group('IAM-02');
+
+/*
+ | T-84 — APP-07, and AT-05 of the acceptance list: «وصول رد مستخدم إلى جلسة
+ | مستخدم آخر عبر الـ cache».
+ |
+ | Laravel's own default on a page with a session is «no-cache, private». That
+ | keeps it out of a shared cache and makes the browser revalidate, but it
+ | still lets the browser write it to disk — so the back button after signing
+ | out, on a shared office machine or a borrowed phone, redraws a family file
+ | from the disk cache. `no-store` is the difference.
+ */
+
+/** Everything the headers must say for a response that may never be kept. */
+function assertNotStored($response, string $where): void
+{
+    $cacheControl = (string) $response->headers->get('Cache-Control');
+
+    expect(str_contains($cacheControl, 'no-store'))->toBeTrue($where.' may be stored: '.$cacheControl);
+    expect(str_contains($cacheControl, 'private'))->toBeTrue($where.' is not marked private: '.$cacheControl);
+}
+
+it('never lets a browser store a page served to a signed-in account', function () {
+    $donor = userWithRole('donor', ['region_id' => $this->region->id]);
+    $account = userWithRole('beneficiary', ['region_id' => $this->region->id]);
+    $case = publishedCase($this->region);
+    $case->forceFill(['user_id' => $account->getKey()])->save();
+    $delegate = userWithRole('delegate', ['region_id' => $this->region->id]);
+
+    foreach ([
+        ['/portal', $donor],
+        ['/portal/basket', $donor],
+        ['/portal/family', $account],
+        ['/field', $delegate],
+        // A public page becomes personal the moment it is served to an
+        // account: the header carries their name and their basket.
+        ['/cases', $donor],
+        ['/', $donor],
+    ] as [$path, $user]) {
+        assertNotStored($this->actingAs($user)->get($path), $path);
+    }
+})->group('APP-07');
+
+it('never lets a browser store an internal panel screen', function () {
+    passTwoFactor();
+
+    assertNotStored(
+        $this->actingAs(userWithRole('admin'))->get('/admin'),
+        '/admin',
+    );
+})->group('APP-07');
+
+it('never lets a browser store an API response', function () {
+    $donor = userWithRole('donor', ['region_id' => $this->region->id]);
+    App\Models\Donor::factory()->create(['user_id' => $donor->id]);
+
+    assertNotStored(
+        $this->actingAs($donor, 'sanctum')->getJson(route('donor.cases.index', 'monthly')),
+        'donor.cases.index',
+    );
+
+    // Including a refusal: an unauthenticated 401 still carries the headers,
+    // and the path rule is what covers it rather than the account rule.
+    assertNotStored($this->getJson('/api/cases'), 'api/cases (401)');
+})->group('APP-07');
+
+it('never lets anything store the signed media route or a login form', function () {
+    // The route that serves a family's documents. A 403 on an unsigned URL is
+    // the right answer and still must not be kept: the rule is the path, not
+    // the status.
+    assertNotStored($this->get('/storage/whatever'), 'storage');
+
+    foreach (['/login', '/admin/login'] as $path) {
+        assertNotStored($this->get($path), $path);
+    }
+})->group('APP-07');
+
+it('says Vary: Cookie, so a cache that ignores no-store still cannot cross sessions', function () {
+    $response = $this->get('/login');
+
+    expect($response->headers->get('Vary'))->toContain('Cookie');
+})->group('APP-07');
+
+it('leaves the public site and the front-end assets cacheable', function () {
+    // The other half of the rule. A guest reading the news reads what everyone
+    // reads, and no-store on livewire.js means a fresh download per page.
+    $guest = (string) $this->get('/')->headers->get('Cache-Control');
+
+    expect(str_contains($guest, 'no-store'))->toBeFalse('the public home page is no-store: '.$guest);
+
+    $asset = (string) $this->get('/livewire/livewire.js')->headers->get('Cache-Control');
+
+    expect(str_contains($asset, 'no-store'))->toBeFalse('livewire.js is no-store: '.$asset);
+})->group('APP-07');
+
+it('serves each household its own page and never the other household from a cache', function () {
+    // AT-05 itself, at the layer this application controls: two accounts, one
+    // URL, one process, back to back. Each must see its own file and nothing
+    // of the other's — a rendered page held anywhere between them would show
+    // up here as the first file number appearing in the second response.
+    $first = userWithRole('beneficiary', ['region_id' => $this->region->id]);
+    $second = userWithRole('beneficiary', ['region_id' => $this->region->id]);
+
+    $firstCase = publishedCase($this->region);
+    $firstCase->forceFill(['user_id' => $first->getKey()])->save();
+
+    $secondCase = publishedCase($this->region);
+    $secondCase->forceFill(['user_id' => $second->getKey()])->save();
+
+    $firstBody = $this->actingAs($first)->get('/portal/family')->getContent();
+    $secondBody = $this->actingAs($second)->get('/portal/family')->getContent();
+
+    expect($firstBody)->toContain($firstCase->file_number)
+        ->and($firstBody)->not->toContain($secondCase->file_number)
+        ->and($secondBody)->toContain($secondCase->file_number)
+        ->and($secondBody)->not->toContain($firstCase->file_number);
+})->group('APP-07', 'AUTH-02');
