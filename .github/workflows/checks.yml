@@ -116,20 +116,29 @@ jobs:
       # glanced at instead of read.
       - name: Tests
         run: |
-          if php artisan test > test-output.log 2>&1; then
-            cat test-output.log
-            exit 0
-          fi
+          set +e
+          php artisan test > test-output.log 2>&1
+          status=$?
+          set -e
 
           cat test-output.log
 
-          summary=$(grep -E '⨯|FAILED|Tests:|Error|Exception' test-output.log \
-            | head -40 \
-            | sed 's/%/%25/g' \
-            | awk '{ printf "%s%%0A", $0 }')
+          if [ "$status" -ne 0 ]; then
+            summary=$(grep -E 'FAILED|Tests:|Error|Exception|Fatal|No tests' test-output.log | head -30 || true)
 
-          echo "::error title=php artisan test::${summary}"
-          exit 1
+            # A grep that matches nothing must not swallow the report: the last
+            # of the log says more than silence, and so does its size.
+            if [ -z "$summary" ]; then
+              summary="exit ${status}, log is $(wc -c < test-output.log) bytes; tail follows
+          $(tail -n 30 test-output.log)"
+            fi
+
+            printf '::error title=php artisan test (exit %s)::%s\n' \
+              "$status" \
+              "$(printf '%s' "$summary" | sed 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')"
+          fi
+
+          exit $status
 
   dependencies:
     name: Dependencies
