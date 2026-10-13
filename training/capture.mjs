@@ -159,8 +159,11 @@ async function shots(manifestPath, outDir) {
            | If the session was dropped — which the single-process development
            | server does under a burst — sign in again and ask once more; and
            | if it is still the form, say so rather than photograph it.
+           |
+           | Unless the sign-in form IS the screen asked for: the overview
+           | document shows it on purpose, and says so with `login`.
            */
-          if (await onSignInForm(page)) {
+          if (!step.login && (await onSignInForm(page))) {
             if (role.account) {
               await signIn(page, role.panel, role.account, role.two_factor);
               response = await page.goto(BASE + step.path, { waitUntil: 'networkidle', timeout: 30000 });

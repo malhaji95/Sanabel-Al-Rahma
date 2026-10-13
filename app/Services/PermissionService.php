@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Permission;
 use App\Models\Region;
+use App\Models\Role;
 use App\Models\Scopes\RegionScope;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -90,6 +91,87 @@ class PermissionService
 
         return $user->region_id
             && in_array($regionId, Region::descendantIds($user->region_id), true);
+    }
+
+    /**
+     * Every role beside every permission, read from the rows themselves.
+     *
+     * The matrix screen and the training guides both answer «who may do what»,
+     * and a second copy of the answer is a copy that drifts. So the question is
+     * asked here, of the same table the policies read.
+     *
+     * @return array{roles: Collection<int,Role>, groups: array<string,array<int,Permission>>}
+     */
+    public function matrix(): array
+    {
+        $permissions = Permission::query()->get()->keyBy('key');
+
+        $group = fn (array $keys) => collect($keys)
+            ->map(fn (string $key) => $permissions[$key] ?? null)
+            ->filter()
+            ->values()
+            ->all();
+
+        return [
+            'roles' => Role::with('permissions')->orderBy('id')->get(),
+            'groups' => [
+                'write' => $group(self::WRITE_PERMISSIONS),
+                'read' => $group(self::READ_PERMISSIONS),
+            ],
+        ];
+    }
+
+    /**
+     * The scope a role really holds for a permission, or null.
+     *
+     * The pivot, after hard rule 1: a read-only role holds no write key
+     * whatever the row says, so the matrix shows what `has()` would answer and
+     * not what the table stores.
+     */
+    public function grantedScope(Role $role, Permission $permission): ?string
+    {
+        if ($role->is_read_only && in_array($permission->key, self::WRITE_PERMISSIONS, true)) {
+            return null;
+        }
+
+        return $role->permissions->firstWhere('key', $permission->key)?->pivot?->scope;
+    }
+
+    /**
+     * T-92 — one role's own page of the matrix: what the account may do, with
+     * its scope, and what it is refused.
+     *
+     * The refusals are listed in full rather than summarised. A training guide
+     * that lists only the powers reads like a menu; the half that teaches is
+     * the half that says «this is not yours», and a trainee who knows it will
+     * not ask for a screen that would answer them 403.
+     *
+     * @return array{read_only: bool, held: array<string,array<int,array{name_ar: string, scope: string}>>, refused: array<string,array<int,string>>}
+     */
+    public function roleSheet(string $roleKey): array
+    {
+        $role = Role::with('permissions')->where('key', $roleKey)->first();
+
+        if (! $role) {
+            return ['read_only' => false, 'held' => ['write' => [], 'read' => []], 'refused' => ['write' => [], 'read' => []]];
+        }
+
+        $matrix = $this->matrix();
+        $held = $refused = ['write' => [], 'read' => []];
+
+        foreach ($matrix['groups'] as $group => $permissions) {
+            foreach ($permissions as $permission) {
+                $scope = $this->grantedScope($role, $permission);
+
+                if ($scope) {
+                    $held[$group][] = ['name_ar' => $permission->name_ar, 'scope' => $scope];
+                } else {
+                    $refused[$group][] = $permission->name_ar;
+                }
+            }
+        }
+
+        return ['read_only' => (bool) $role->is_read_only, 'held' => $held, 'refused' => $refused];
     }
 
     public static function permissionKeys(): array

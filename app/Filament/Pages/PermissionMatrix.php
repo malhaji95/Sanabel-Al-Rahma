@@ -10,10 +10,11 @@ use Filament\Pages\Page;
 /**
  * Every role beside every permission, read from the rows themselves.
  *
- * The association asked to see the matrix rather than the role names, so this
- * page builds it from the same table the policies read. Nothing is written
- * here: it is the matrix as it actually is, not a second copy of it that
- * could drift.
+ * The association asked to see the matrix rather than the role names. Nothing
+ * is written here: it is the matrix as it actually is, not a second copy of it
+ * that could drift — and since T-92 the training guides print the same thing,
+ * both of them asking PermissionService rather than keeping an answer of
+ * their own.
  *
  * A read-only role (the board of trustees, the oversight committee) is shown
  * with every write struck out, because PermissionService denies those
@@ -54,27 +55,12 @@ class PermissionMatrix extends Page
     /** @return array{roles: \Illuminate\Support\Collection, groups: array<string,array<int,Permission>>} */
     public function getMatrix(): array
     {
-        $roles = Role::with('permissions')->orderBy('id')->get();
-
-        $permissions = Permission::query()->get()->keyBy('key');
-
-        $groups = [
-            'write' => collect(PermissionService::WRITE_PERMISSIONS)
-                ->map(fn (string $key) => $permissions[$key] ?? null)->filter()->values()->all(),
-            'read' => collect(PermissionService::READ_PERMISSIONS)
-                ->map(fn (string $key) => $permissions[$key] ?? null)->filter()->values()->all(),
-        ];
-
-        return ['roles' => $roles, 'groups' => $groups];
+        return app(PermissionService::class)->matrix();
     }
 
     /** What the role really holds: the pivot, after the read-only rule. */
     public function grant(Role $role, Permission $permission): ?string
     {
-        if ($role->is_read_only && in_array($permission->key, PermissionService::WRITE_PERMISSIONS, true)) {
-            return null;
-        }
-
-        return $role->permissions->firstWhere('key', $permission->key)?->pivot?->scope;
+        return app(PermissionService::class)->grantedScope($role, $permission);
     }
 }

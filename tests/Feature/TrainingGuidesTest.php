@@ -1,8 +1,12 @@
 <?php
 
+use App\Models\Beneficiary;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\PermissionService;
+use Filament\Facades\Filament;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 
 /*
  | T-72 — the guards on the training tour.
@@ -24,10 +28,15 @@ function trainingGuides(): array
     return require resource_path('training/guides.php');
 }
 
-it('covers the ten roles that work in the system, each with its own guide', function () {
+function trainingOverview(): array
+{
+    return require resource_path('training/overview.php');
+}
+
+it('covers the twelve roles that work in the system, each with its own guide', function () {
     $guides = trainingGuides();
 
-    expect($guides)->toHaveCount(10);
+    expect($guides)->toHaveCount(12);
 
     foreach ($guides as $key => $guide) {
         expect(trim($guide['name_ar'] ?? ''))->not->toBeEmpty("{$key} has no Arabic name")
@@ -146,6 +155,8 @@ it('renders a guide with its steps, its refusals and the commit it came from', f
         'role' => 'delegate',
         'guide' => $guide,
         'steps' => collect($guide['steps'])->map(fn ($step) => $step + ['image' => null])->all(),
+        'sheet' => app(PermissionService::class)->roleSheet('delegate'),
+        'matrix' => null,
         'generatedAt' => now(),
         'commit' => 'abc1234',
     ])->render();
@@ -161,4 +172,209 @@ it('renders a guide with its steps, its refusals and the commit it came from', f
     foreach ($guide['steps'] as $step) {
         expect($html)->toContain($step['title_ar']);
     }
+});
+
+/*
+ | T-92 — the three guards the new sheets need.
+ |
+ | The first is the one that was missing all along: a step is a promise that
+ | the account the guide belongs to can open that screen. The content
+ | manager's campaigns step was a 403 for as long as it existed, and nothing
+ | said so until a human signed in and looked.
+ */
+
+it('opens every step of every guide for the account that guide belongs to', function () {
+    $region = regionWithRates();
+    passTwoFactor();
+
+    // One file standing at each stage a step names, so a record page is a
+    // record page and not a redirect away from a missing row.
+    $cases = [];
+
+    foreach (['draft', 'pending_visit', 'verified', 'pending_approval'] as $status) {
+        $cases[$status] = familyOf($region, attributes: ['status' => $status]);
+    }
+
+    $cases['published'] = publishedCase($region);
+
+    $resolve = function (string $path) use ($cases): string {
+        if (! preg_match('/\{(case|file):([a-z_]+)\}/', $path, $m)) {
+            return $path;
+        }
+
+        /** @var Beneficiary $case */
+        $case = $cases[$m[2]];
+
+        return str_replace($m[0], $m[1] === 'case' ? (string) $case->getKey() : $case->file_number, $path);
+    };
+
+    foreach (trainingGuides() as $key => $guide) {
+        $user = userWithRole($key, ['region_id' => $region->id]);
+
+        if ($panel = $guide['panel'] ?? null) {
+            Filament::setCurrentPanel(Filament::getPanel($panel));
+        }
+
+        /*
+         | A panel keeps the session tied to the account that opened it, so a
+         | second account reusing the same session is signed out on sight —
+         | correctly. Each guide therefore starts on a clean session, with the
+         | second-factor gate cleared again (SecurityTest owns the gate; here
+         | it is a precondition).
+         */
+        $this->flushSession();
+        passTwoFactor();
+
+        foreach ($guide['steps'] as $step) {
+            $path = $resolve($step['path']);
+            $status = $this->actingAs($user)->get($path)->getStatusCode();
+
+            // A denied Filament screen redirects rather than answering 403,
+            // so anything but 200 means the trainee would not see what the
+            // guide photographs.
+            expect($status)->toBe(200, "{$step['key']} answered {$status} at {$path} for {$key}");
+        }
+    }
+})->group('AUTH-01');
+
+it('shows the overview document only screens every visitor has', function () {
+    $overview = trainingOverview();
+
+    // Signed in as nobody: these are the two screens that come before an
+    // account exists, and /login is only served to a guest.
+    foreach ($overview['steps'] as $step) {
+        $this->get($step['path'])->assertSuccessful();
+    }
+
+    expect($overview['steps'])->toHaveCount(2)
+        ->and(collect($overview['steps'])->firstWhere('path', '/login')['login'])->toBeTrue();
+});
+
+it('writes the overview document with its services, its words and its doors', function () {
+    $overview = trainingOverview();
+
+    foreach (['journey_ar', 'services', 'doors', 'glossary', 'first_login', 'help'] as $section) {
+        expect($overview[$section] ?? [])->not->toBeEmpty("the overview has no {$section}");
+    }
+
+    foreach ($overview['services'] as $service) {
+        expect(trim($service['title_ar']))->not->toBeEmpty()
+            ->and(trim($service['body_ar']))->not->toBeEmpty();
+    }
+
+    foreach ($overview['glossary'] as $term) {
+        expect(trim($term['term_ar']))->not->toBeEmpty()
+            ->and(trim($term['body_ar']))->not->toBeEmpty();
+    }
+
+    // Every door is a route, so no trainee is sent to an address that moved.
+    $routes = collect(app('router')->getRoutes())->map(fn ($route) => '/'.ltrim($route->uri(), '/'))->all();
+
+    foreach ($overview['doors'] as $door) {
+        expect(in_array(rtrim($door['path'], '/') ?: '/', $routes, true))->toBeTrue(
+            "the overview sends {$door['who_ar']} to {$door['path']}, which is not a route"
+        );
+    }
+});
+
+it('builds the permissions annex from the rows the policies read, not from prose', function () {
+    $permissions = app(PermissionService::class);
+
+    // The delegate: holds the field step scoped to their area, and is refused
+    // the approval and the money — which is the whole point of the annex.
+    $delegate = $permissions->roleSheet('delegate');
+
+    expect(collect($delegate['held']['write'])->firstWhere('name_ar', __('sanabel.permissions.keys.record_visit'))['scope'])
+        ->toBe('area')
+        ->and($delegate['refused']['write'])->toContain(__('sanabel.permissions.keys.approve_case'))
+        ->and($delegate['refused']['write'])->toContain(__('sanabel.permissions.keys.verify_payment'))
+        ->and($delegate['read_only'])->toBeFalse();
+
+    // Hard rule 1 on the page: a read-only role holds no write at all, and
+    // the annex says so rather than printing what the pivot stores.
+    $council = $permissions->roleSheet('council');
+
+    expect($council['read_only'])->toBeTrue()
+        ->and($council['held']['write'])->toBeEmpty()
+        ->and($council['held']['read'])->not->toBeEmpty()
+        ->and($council['refused']['write'])->toHaveCount(count(PermissionService::WRITE_PERMISSIONS));
+})->group('AUTH-01');
+
+it('ends a guide with what the account may do, and the whole matrix where it is owed', function () {
+    $guides = trainingGuides();
+    $guide = $guides['executive_director'];
+    $permissions = app(PermissionService::class);
+
+    $matrix = [
+        'roles' => [['name_ar' => 'المدير التنفيذي', 'read_only' => false]],
+        'groups' => ['write' => [['name_ar' => 'اعتماد', 'cells' => ['all']]], 'read' => []],
+    ];
+
+    $html = view('training.guide', [
+        'role' => 'executive_director',
+        'guide' => $guide,
+        'steps' => collect($guide['steps'])->map(fn ($step) => $step + ['image' => null])->all(),
+        'sheet' => $permissions->roleSheet('executive_director'),
+        'matrix' => $matrix,
+        'generatedAt' => now(),
+        'commit' => 'abc1234',
+    ])->render();
+
+    expect($html)->toContain(__('training.permissions.title'))
+        ->and($html)->toContain(__('training.permissions.refused'))
+        // The approval it holds, with its scope, and a refusal it does not.
+        ->and($html)->toContain(__('sanabel.permissions.keys.approve_case'))
+        ->and($html)->toContain(__('sanabel.permissions.keys.manage_users'))
+        ->and($html)->toContain(__('sanabel.matrix.title'))
+        ->and($html)->toContain(__('training.read_overview_first'));
+
+    // And a guide without the flag does not carry the matrix sheet.
+    $delegate = $guides['delegate'];
+
+    $plain = view('training.guide', [
+        'role' => 'delegate',
+        'guide' => $delegate,
+        'steps' => collect($delegate['steps'])->map(fn ($step) => $step + ['image' => null])->all(),
+        'sheet' => $permissions->roleSheet('delegate'),
+        'matrix' => null,
+        'generatedAt' => now(),
+        'commit' => 'abc1234',
+    ])->render();
+
+    expect($plain)->toContain(__('training.permissions.title'))
+        ->and($plain)->not->toContain(__('sanabel.matrix.intro'));
+});
+
+it('renders the overview document with every section and the matrix', function () {
+    $overview = trainingOverview();
+    $guides = trainingGuides();
+
+    $html = view('training.overview', [
+        'overview' => $overview,
+        'steps' => collect($overview['steps'])->map(fn ($step) => $step + ['image' => null])->all(),
+        'roles' => collect($guides)->map(fn ($guide) => [
+            'name_ar' => $guide['name_ar'],
+            'steps' => count($guide['steps']),
+            'summary_ar' => Str::before($guide['summary_ar'], '.').'.',
+        ])->values()->all(),
+        'matrix' => [
+            'roles' => [['name_ar' => 'مدير النظام', 'read_only' => false]],
+            'groups' => ['write' => [['name_ar' => 'إدارة المستخدمين والأدوار', 'cells' => ['all']]], 'read' => []],
+        ],
+        'generatedAt' => now(),
+        'commit' => 'abc1234',
+    ])->render();
+
+    expect($html)->toContain('dir="rtl"')
+        ->and($html)->toContain(__('training.overview.journey'))
+        ->and($html)->toContain(__('training.overview.services'))
+        ->and($html)->toContain(__('training.overview.glossary'))
+        ->and($html)->toContain(__('training.overview.first_login'))
+        ->and($html)->toContain(__('training.overview.help'))
+        ->and($html)->toContain(__('sanabel.matrix.title'))
+        // Every guide appears in the table of guides, so the list cannot fall
+        // behind the guides themselves.
+        ->and($html)->toContain($guides['admin']['name_ar'])
+        ->and($html)->toContain($guides['association']['name_ar'])
+        ->and($html)->toContain('abc1234');
 });
