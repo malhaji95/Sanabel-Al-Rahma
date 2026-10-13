@@ -45,7 +45,7 @@ class Beneficiary extends Model
     protected $fillable = [
         'file_number', 'legacy_file_no', 'user_id', 'national_id_encrypted', 'national_id_hash', 'first_name', 'father_name',
         'family_name', 'phone_encrypted', 'region_id', 'association_id', 'marital_status', 'wallet_encrypted',
-        'support_type', 'zakat_category', 'case_classifications', 'legacy_review_json', 'is_shareable', 'previous_aid_ar',
+        'support_type', 'zakat_category', 'zakat_recommended', 'case_classifications', 'legacy_review_json', 'is_shareable', 'previous_aid_ar',
         // T-69 — what the filled dossier of 12 October showed.
         'quarter_ar', 'declared_monthly_income', 'donor_visit_consent', 'donor_visit_consent_on',
         'privacy_policy_seen', 'privacy_consent', 'privacy_consent_on', 'privacy_policy_version',
@@ -115,6 +115,7 @@ class Beneficiary extends Model
             'declared_monthly_income' => 'integer',
             'donor_visit_consent' => 'boolean',
             'donor_visit_consent_on' => 'date',
+            'zakat_recommended' => 'boolean',
             'privacy_policy_seen' => 'boolean',
             'privacy_consent' => 'boolean',
             'privacy_consent_on' => 'date',
@@ -331,6 +332,30 @@ class Beneficiary extends Model
 
             throw new \RuntimeException(__('sanabel.cases.payment_change_needs_approval'));
         });
+
+        /*
+         | T-73 — the zakat channel is the management's decision, by their
+         | answer of 13 October. The researcher records a recommendation in
+         | `zakat_recommended`; the channel itself is signed by an account that
+         | may approve a file, and by nobody else.
+         |
+         | On the model rather than on the screen, so the rule holds through
+         | the panel, the API and the console alike. With no signed-in user
+         | there is nobody to check — a seeder, an import or a console command —
+         | and the rule does not apply.
+         */
+        $decision = function (self $case) {
+            if (! $case->isDirty('zakat_category') || ! auth()->hasUser()) {
+                return;
+            }
+
+            if (! auth()->user()->can_('approve_case')) {
+                throw new \RuntimeException(__('sanabel.zakat.decision_is_managements'));
+            }
+        };
+
+        static::creating($decision);
+        static::updating($decision);
     }
 
     /** sha256 of the normalised national id — rule 11, exact match blocks a second file. */

@@ -58,7 +58,7 @@ class ChangeRequest extends Model
     public const CHANGEABLE_FIELDS = [
         // The family's own description.
         'first_name', 'father_name', 'family_name', 'phone_encrypted', 'marital_status',
-        'association_id', 'zakat_category', 'case_classifications', 'is_shareable', 'previous_aid_ar',
+        'association_id', 'zakat_recommended', 'case_classifications', 'is_shareable', 'previous_aid_ar',
         'legacy_file_no', 'urgency_deadline_at', 'documented_debt',
         // Its social survey.
         'gender', 'birth_date', 'town_ar', 'quarter_ar', 'latitude', 'longitude', 'works', 'workplace_ar',

@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\BeneficiaryResource\Pages;
 use App\Models\Beneficiary;
+use App\Models\ChangeRequest;
 use App\Models\Region;
 use App\Models\User;
 use App\Services\CoverageService;
@@ -15,6 +16,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 
 /**
  * T-10 — the beneficiary file, as a multi-step form.
@@ -158,11 +160,33 @@ class BeneficiaryResource extends Resource
                         ->options(__('sanabel.masked.need_type'))
                         ->required(),
 
+                    /*
+                     | T-73 — the researcher's view and the management's
+                     | decision, side by side and not the same field. Their
+                     | survey asks the researcher whether the family is
+                     | entitled to zakat; their answer of 13 October is that
+                     | the channel is the management's own call.
+                     */
+                    Forms\Components\Toggle::make('zakat_recommended')
+                        ->label(__('sanabel.zakat.recommended'))
+                        ->helperText(__('sanabel.zakat.recommended_help')),
+
                     // One of the eight, or nothing. The donor is told only that
                     // zakat may be paid on the file, never which category.
                     Forms\Components\Select::make('zakat_category')
                         ->label(__('sanabel.zakat.category'))
-                        ->helperText(__('sanabel.zakat.category_help'))
+                        ->helperText(fn () => auth()->user()?->can_('approve_case')
+                            ? __('sanabel.zakat.category_help')
+                            : __('sanabel.zakat.category_help_management'))
+                        // The model refuses the write in any case; the screen
+                        // says so before the clerk types rather than after.
+                        ->disabled(fn () => ! auth()->user()?->can_('approve_case'))
+                        ->dehydrated(fn () => (bool) auth()->user()?->can_('approve_case'))
+                        ->hint(fn (?Beneficiary $record) => match ($record?->zakat_recommended) {
+                            true => __('sanabel.zakat.recommended_yes'),
+                            false => __('sanabel.zakat.recommended_no'),
+                            default => __('sanabel.zakat.recommended_none'),
+                        })
                         ->options(collect(Beneficiary::ZAKAT_CATEGORIES)
                             ->mapWithKeys(fn (string $k) => [$k => __('sanabel.zakat.categories.'.$k)])
                             ->all()),
@@ -245,7 +269,7 @@ class BeneficiaryResource extends Resource
                                         return;
                                     }
 
-                                    $year = (int) \Illuminate\Support\Carbon::parse($state)->year;
+                                    $year = (int) Carbon::parse($state)->year;
                                     $set('birth_year', $year);
                                     $set('person_class', DependencyRules::personClass(
                                         (int) date('Y') - $year,
@@ -965,7 +989,7 @@ class BeneficiaryResource extends Resource
     public static function paymentDetailsLocked(?Beneficiary $record): bool
     {
         return $record !== null
-            && in_array($record->status, \App\Models\ChangeRequest::LIVE_STATUSES, true);
+            && in_array($record->status, ChangeRequest::LIVE_STATUSES, true);
     }
 
     /**
