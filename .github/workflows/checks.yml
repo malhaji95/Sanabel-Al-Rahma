@@ -1,0 +1,146 @@
+# T-85 — CICD-02. The checks that run on every push.
+#
+# What was here before: the workflow the Laravel skeleton ships with. It ran
+# phpunit against sqlite on branches named master and *.x, which this project
+# has neither of, and alongside three more workflows belonging to laravel's own
+# repository — issue triage, PR locking, a changelog on release. So nothing
+# tested anything on any push, which is how a deploy that hung on a migration
+# lock reached the client before it reached a test.
+#
+# Three jobs, deliberately separate so a red one names itself:
+#
+#   tests         the project's own suite, on PostgreSQL, with the front end
+#                 built, on the PHP version the production image carries
+#   dependencies  advisories in what we ship, PHP and npm both
+#   secrets       nothing credential-shaped in any tracked file
+#
+# Still open under CICD-02, and not pretended otherwise: static analysis, and a
+# real secret scanner over the whole history. scripts/secret-scan.sh says in
+# its own header what it is and what it is not.
+
+name: Checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+
+    services:
+      # The engine the application actually runs on. The suite was never
+      # exercised against sqlite's semantics and should not be: rule 6 holds
+      # reservations with lockForUpdate, and the isolation level a race depends
+      # on is PostgreSQL's.
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: sanabel_test
+          POSTGRES_USER: sanabel
+          POSTGRES_PASSWORD: sanabel
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          # The version the production image carries. Development runs 8.4, so
+          # this is also what catches the two drifting apart.
+          php-version: '8.3'
+          extensions: pdo_pgsql, intl, zip, bcmath, gd, exif, pcntl, mbstring
+          coverage: none
+
+      - name: Composer cache
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+
+      - run: composer install --prefer-dist --no-interaction --no-progress
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # The layout links the built assets, so a page cannot render without
+      # them and every test that opens one would fail. It also means a front
+      # end that does not build fails here rather than on a deploy.
+      - run: npm ci
+      - run: npm run build
+
+      - name: Environment
+        run: |
+          # Built from the file a new developer is told to copy, so a broken
+          # .env.example breaks the pipeline rather than only the newcomer.
+          cp .env.example .env
+          sed -i 's|^DB_HOST=.*|DB_HOST=127.0.0.1|' .env
+          sed -i 's|^DB_USERNAME=.*|DB_USERNAME=sanabel|' .env
+          sed -i 's|^DB_PASSWORD=.*|DB_PASSWORD=sanabel|' .env
+          # phpunit.xml pins only the database name — sanabel_test, so a run
+          # can never reach a working database. The engine, host and port come
+          # from .env, which is why they are set here and the name is not.
+          php artisan key:generate
+
+      - run: php artisan test
+
+  dependencies:
+    name: Dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - run: composer install --prefer-dist --no-interaction --no-progress
+
+      # Advisories against the installed versions. Four are ignored, each with
+      # its reason written into composer.json where a reviewer reads it rather
+      # than hidden behind a flag here: they are Laravel 11 findings with no
+      # 11.x release carrying the fix, because that branch's security support
+      # ended on 12 March 2026. One of them touches FILE-03. It is an upgrade
+      # decision, not something a pipeline should quietly pass over.
+      - run: composer audit --no-interaction
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # Production dependencies only. Everything in package.json is a build
+      # tool — the browser is served the compiled bundle and nothing from
+      # node_modules — so --omit=dev is the honest scope. The build tree does
+      # carry advisories whose only fix is Tailwind 4, a rewrite of the
+      # stylesheet layer, and that is a decision rather than a patch.
+      - run: npm audit --omit=dev --audit-level=high
+
+  secrets:
+    name: Secrets
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - run: scripts/secret-scan.sh

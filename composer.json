@@ -67,6 +67,14 @@
         }
     },
     "config": {
+        "audit": {
+            "ignore": {
+                "GHSA-5vg9-5847-vvmq": "CRLF injection in the default email rule. Fixed in 12.60.0; Laravel 11 security support ended 12 Mar 2026, so there is no 11.x release carrying it. Recorded here, and raised as an upgrade decision rather than silenced: see T-85.",
+                "GHSA-crmm-hgp2-wgrp": "Temporary signed URL path confusion in the local filesystem driver. Touches FILE-03 — a signed media URL may be read ambiguously and an expired one may still open. Fixed in 12.61.1, nothing for 11.x. Mitigated today only by media moving to an S3 bucket, which has its own presigned URLs and does not use this route.",
+                "GHSA-jh5r-qr3c-85q8": "XSS on the debug page. Fixed in 12.69.0, nothing for 11.x. Not reachable in production: APP_DEBUG=false is baked into the image.",
+                "PKSA-mdq4-51ck-6kdq": "The second record of GHSA-5vg9-5847-vvmq (CVE-2026-48019), same finding, listed under its own id."
+            }
+        },
         "platform": {
             "php": "8.3.0"
         },
