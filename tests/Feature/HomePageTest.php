@@ -189,3 +189,23 @@ it('keeps the campaigns screen with the role that holds the key to it', function
         ->and(collect($guides['executive_director']['steps'])->pluck('path'))
         ->toContain('/admin/campaigns');
 })->group('AUTH-02');
+
+it('answers a wrong address in Arabic, with a way back', function () {
+    // Found on the live demo: a mistyped address met the server's own
+    // «404 Not Found», in English, on a white page, with nothing to click.
+    $response = $this->get('/no-such-page-at-all');
+
+    $response->assertNotFound()
+        ->assertSee(__('sanabel.errors.404_title'))
+        ->assertSee(__('sanabel.errors.home'))
+        // The page itself, not a bare string: right-to-left and Arabic.
+        ->assertSee('dir="rtl"', false);
+});
+
+it('puts a slide in the hero out of the box', function () {
+    // Also found on the live demo: nothing seeds a banner, so the first and
+    // largest band of the page was simply absent there.
+    expect(Banner::where('is_published', true)->exists())->toBeTrue();
+
+    $this->get('/')->assertOk()->assertSee('بيدك.. تصنع الأمل');
+});

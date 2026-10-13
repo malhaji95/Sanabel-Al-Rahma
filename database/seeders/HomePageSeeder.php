@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Banner;
 use App\Models\ContentCard;
 use App\Models\Page;
 use Illuminate\Database\Seeder;
@@ -27,11 +28,31 @@ class HomePageSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->heroSlide();
         $this->navLinks();
         $this->features();
         $this->tiles();
         $this->advantages();
         $this->footerLinks();
+    }
+
+    /**
+     * One slide, so the first band of the page is not an empty space on a
+     * fresh install. Banners already carry a picture, a title, a line and a
+     * destination; the association edits this one or adds its own beside it.
+     */
+    private function heroSlide(): void
+    {
+        Banner::firstOrCreate(
+            ['title_ar' => 'بيدك.. تصنع الأمل'],
+            [
+                'body_ar' => 'معاً نحيي حياة.. ونرسم مستقبلاً أفضل',
+                'image' => 'images/home/hero-child.webp',
+                'link' => '/cases',
+                'is_published' => true,
+                'sort_order' => 1,
+            ],
+        );
     }
 
     private function card(string $block, string $title, array $attributes, int $order): void

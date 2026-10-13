@@ -250,3 +250,34 @@ it('serves each household its own page and never the other household from a cach
         ->and($secondBody)->toContain($secondCase->file_number)
         ->and($secondBody)->not->toContain($firstCase->file_number);
 })->group('APP-07', 'AUTH-02');
+
+/*
+ | T-91 — found by walking the live demo. It was open to search engines: the
+ | robots file allowed everything and no response said otherwise, so generated
+ | families under the association's name were a crawl away from a search
+ | result.
+ */
+it('tells search engines to stay away from a deployment seeded with generated families', function () {
+    config(['sanabel.allow_indexing' => false]);
+
+    $header = (string) $this->get('/')->headers->get('X-Robots-Tag');
+
+    expect($header)->toContain('noindex')
+        ->and($header)->toContain('nofollow');
+})->group('APP-06');
+
+it('says nothing of the sort on the association own deployment', function () {
+    config(['sanabel.allow_indexing' => true]);
+
+    expect($this->get('/')->headers->get('X-Robots-Tag'))->toBeNull();
+})->group('APP-06');
+
+it('follows the demo seed unless it is told otherwise', function () {
+    // The association's real deployment sets DEMO_SEED=false and is found like
+    // any other site; the demo container is the one that hides.
+    $dockerfile = file_get_contents(base_path('Dockerfile'));
+
+    expect($dockerfile)->toContain('DEMO_SEED=true')
+        ->and(file_get_contents(base_path('config/sanabel.php')))
+        ->toContain("env('SANABEL_ALLOW_INDEXING', ! env('DEMO_SEED', false))");
+})->group('APP-06');

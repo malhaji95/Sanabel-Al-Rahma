@@ -52,6 +52,16 @@ class SecurityHeaders
             $this->forbidStoring($response);
         }
 
+        /*
+         | T-91 — a demo deployment tells search engines to stay away. The
+         | header rather than robots.txt: robots.txt decides whether a crawler
+         | fetches a page, this decides whether it keeps it, and the second is
+         | the one that matters once the page has been fetched anyway.
+         */
+        if (! config('sanabel.allow_indexing')) {
+            $response->headers->set('X-Robots-Tag', 'noindex, nofollow, noarchive', false);
+        }
+
         return $response;
     }
 

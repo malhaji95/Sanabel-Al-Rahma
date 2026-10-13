@@ -110,8 +110,15 @@ RUN mkdir -p storage/framework/cache/data storage/framework/sessions \
 #                        Laravel's CSRF token is what the roadmap asks for
 #   SANABEL_MEDIA_DISK   the container's own disk; point this at a bucket for
 #                        anything that has to survive a redeploy
+#   APP_NAME             names the session cookie, which otherwise announces
+#                        the framework. Nothing else reads it: every visible
+#                        string comes from lang/ar.
 #   DEMO_SEED            40 generated families so a demo has something to show.
 #                        Rule 11: synthetic only. Set false for anything else.
+#                        It also decides indexing: a container seeded with
+#                        generated families tells search engines to stay away,
+#                        because a result showing one is the association's name
+#                        beside test data (SANABEL_ALLOW_INDEXING overrides).
 #   HOME                 supervisor runs as root and does not reset HOME when it
 #                        drops a program to www-data, so the queue worker and
 #                        scheduler inherited /root. libpq looks for a client
@@ -121,6 +128,7 @@ RUN mkdir -p storage/framework/cache/data storage/framework/sessions \
 #                        connection died. php-fpm was unaffected only because
 #                        clear_env wipes HOME for its workers.
 ENV HOME=/app \
+    APP_NAME="سنابل الرحمة" \
     APP_ENV=production \
     APP_DEBUG=false \
     APP_LOCALE=ar \

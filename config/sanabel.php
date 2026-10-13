@@ -5,6 +5,17 @@ return [
     'currency' => env('SANABEL_CURRENCY', 'SYP'),
 
     /*
+     | T-91 — whether a search engine may index this deployment.
+     |
+     | A demo carries generated families under the association's name, and a
+     | search result showing one is the association's name beside test data.
+     | So it follows the demo seed: a container seeded with synthetic families
+     | says noindex, and the association's real deployment — DEMO_SEED=false —
+     | is found like any other site. Set it explicitly to override either way.
+     */
+    'allow_indexing' => env('SANABEL_ALLOW_INDEXING', ! env('DEMO_SEED', false)),
+
+    /*
      | T-87 — how long a page of the donor's list of families is held before it
      | is computed again.
      |
