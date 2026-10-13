@@ -27,6 +27,14 @@
             can never touch the working database.
         -->
         <env name="DB_DATABASE" value="sanabel_test"/>
+        <!--
+            T-87 — the donor list is held for a minute in production. In a test
+            two requests are a few milliseconds apart, so a cached page would
+            answer with what the test had just changed away from. Zero computes
+            every time; PublicListCacheTest turns it on to test the cache
+            itself.
+        -->
+        <env name="SANABEL_PUBLIC_LIST_CACHE" value="0"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

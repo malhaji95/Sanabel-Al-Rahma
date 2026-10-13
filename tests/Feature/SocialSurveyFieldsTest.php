@@ -98,6 +98,12 @@ it('encrypts every identity and telephone number, whosever it is', function () {
 });
 
 it('reads none of the new money rows until somebody answers the question on them', function () {
+    // The computed snapshot stamps itself with the second it was computed in,
+    // and this test compares two computations. It failed once on a full run
+    // for no better reason than that they fell either side of a tick — so the
+    // clock is held still, and the only difference left is the one under test.
+    $this->freezeSecond();
+
     $before = app(NeedEngine::class)->compute($this->family->fresh());
 
     Asset::create([

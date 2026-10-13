@@ -33,9 +33,11 @@ class DistributionService
             ->fundingList($supportType, $distribution->region_id)
             ->take($limit);
 
+        // The ranked rows carry the identifier and the file number, which is
+        // all a distribution line is (T-87): no family is loaded for this.
         $list = $candidates->map(fn (array $row) => [
-            'beneficiary_id' => $row['beneficiary']->id,
-            'file_number' => $row['beneficiary']->file_number,
+            'beneficiary_id' => $row['beneficiary_id'],
+            'file_number' => $row['file_number'],
             'priority' => $row['ranking']['priority'],
             'amount' => $distribution->per_family_amount,
         ])->values()->all();

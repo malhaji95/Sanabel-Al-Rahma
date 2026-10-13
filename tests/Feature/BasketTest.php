@@ -124,7 +124,7 @@ it('releases an expired reservation and returns the family to the list', functio
     expect(app(BasketService::class)->releaseExpired())->toBe(1)
         ->and($basket->fresh()->status)->toBe('expired')
         ->and(app(CoverageService::class)->remainingNeed($family))->toBe($need)
-        ->and(app(RankingService::class)->fundingList('monthly')->pluck('beneficiary.id'))
+        ->and(app(RankingService::class)->fundingList('monthly')->pluck('beneficiary_id'))
         ->toContain($family->id);
 });
 

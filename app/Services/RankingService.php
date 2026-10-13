@@ -26,18 +26,31 @@ class RankingService
     /** @return array{remaining:float,current_score:float,waiting_bonus:int,priority:float,eligible:bool} */
     public function rank(Beneficiary $beneficiary, ?int $confirmed = null): array
     {
-        $assessment = $beneficiary->currentAssessment();
-        $score = $assessment?->effectiveScore() ?? 0.0;
+        return $this->priority(
+            $beneficiary->currentAssessment()?->effectiveScore() ?? 0.0,
+            $this->coverage->needAmount($beneficiary),
+            // fundingList() fetches the whole list's confirmed support in one
+            // query and passes it in; on its own the call falls back to its
+            // own lookup.
+            $confirmed ?? $this->coverage->confirmedForMonth($beneficiary),
+            $this->waitingBonus($beneficiary),
+        );
+    }
 
-        $need = $this->coverage->needAmount($beneficiary);
-
-        // fundingList() fetches the whole list's confirmed support in one query
-        // and passes it in; on its own the call falls back to its own lookup.
-        $confirmed ??= $this->coverage->confirmedForMonth($beneficiary);
-
+    /**
+     * docs/03-rules.md §3, written once.
+     *
+     * T-87 — the list stopped loading a model per family, and reads the four
+     * figures below off a flat row instead. The formula did not move with it:
+     * a second copy of the rule that decides who is helped first is the one
+     * duplication this system cannot afford, so both paths land here.
+     *
+     * @return array{remaining:float,current_score:float,waiting_bonus:int,priority:float,eligible:bool}
+     */
+    private function priority(float $score, int $need, int $confirmed, int $waitingBonus): array
+    {
         $remaining = $need > 0 ? max(0, ($need - $confirmed) / $need) : 0.0;
         $currentScore = $score * $remaining;
-        $waitingBonus = $this->waitingBonus($beneficiary);
 
         // A fully covered case is out of the list; the bonus cannot bring it back.
         $eligible = $remaining > 0;
@@ -79,8 +92,14 @@ class RankingService
 
     public function waitingBonus(Beneficiary $beneficiary): int
     {
-        $since = $beneficiary->published_at ?? $beneficiary->approved_at ?? $beneficiary->created_at;
+        return $this->waitingBonusSince(
+            $beneficiary->published_at ?? $beneficiary->approved_at ?? $beneficiary->created_at
+        );
+    }
 
+    /** The same, from the date itself, for the list's flat rows. */
+    private function waitingBonusSince(?Carbon $since): int
+    {
         if (! $since) {
             return 0;
         }
@@ -99,21 +118,25 @@ class RankingService
      * untouched — §3 of docs/03-rules.md still takes a covered family out of
      * it, which is what the distribution engine and the home page read.
      *
-     * @return Collection<int,array{beneficiary:Beneficiary,confirmed:int,need:int,month:Carbon,covered:bool,ranking:array}>
+     * T-87 — it answers with identifiers and figures, not models. Ranking
+     * needs a family's score, its need, its waiting time and its reassessment
+     * date; a Beneficiary carries sixty-eight columns and this list used to
+     * load every published one of them, with seven relations each, on every
+     * request. `hydrate()` fetches the families a page actually shows.
+     *
+     * @return Collection<int,array{beneficiary_id:int,file_number:string,confirmed:int,need:int,month:Carbon,covered:bool,ranking:array}>
      */
     public function fundingList(string $supportType, ?int $regionId = null, bool $withCovered = false): Collection
     {
-        $query = Beneficiary::query()
-            ->published()
-            ->where('support_type', $supportType)
-            // Everything MaskedCaseResource reads, loaded once for the whole list.
-            ->with(['assessments.overrides', 'region', 'members', 'housing', 'healthRecords', 'basketItems.basket', 'association']);
+        $families = $this->rankingRows($supportType, $regionId);
 
-        if ($regionId) {
-            $query->whereIn('region_id', Region::descendantIds($regionId));
+        if ($families->isEmpty()) {
+            return collect();
         }
 
-        $families = $query->get();
+        // The carry from last month is measured against the need, so the
+        // batched sums are asked for by need rather than by model.
+        $needs = $families->mapWithKeys(fn (object $f) => [(int) $f->id => $this->needOf($f)])->all();
 
         // One batch of sums per open month rather than per family. The plain
         // list asks about this month only, so it costs exactly what it did.
@@ -121,11 +144,11 @@ class RankingService
         $funded = [];
 
         foreach ($months as $month) {
-            $funded[$month->format('Y-m')] = $this->coverage->fundedForMonthForMany($families, $month);
+            $funded[$month->format('Y-m')] = $this->coverage->fundedForMonthByNeed($needs, $month);
         }
 
         return $families
-            ->map(fn (Beneficiary $b) => $this->row($b, $months, $funded))
+            ->map(fn (object $family) => $this->row($family, $months, $funded))
             // A family with no need recorded is not a funding opportunity at
             // all, in either list. A covered one is, in the donor's list only.
             ->filter(fn (array $row) => $row['need'] > 0 && ($withCovered || ! $row['covered']))
@@ -134,28 +157,150 @@ class RankingService
     }
 
     /**
+     * The families behind a page of ranked rows, loaded in full and in order.
+     *
+     * Everything MaskedCaseResource reads comes back here, for the dozen or so
+     * rows a page shows — never for the whole list.
+     *
+     * @param  iterable<int,array>  $rows
+     * @return Collection<int,array>
+     */
+    public function hydrate(iterable $rows): Collection
+    {
+        $rows = collect($rows);
+        $ids = $rows->pluck('beneficiary_id')->all();
+
+        if ($ids === []) {
+            return collect();
+        }
+
+        $families = Beneficiary::query()
+            ->whereIn('id', $ids)
+            ->with(['assessments.overrides', 'region', 'members', 'housing', 'healthRecords', 'basketItems.basket', 'association'])
+            ->get()
+            ->keyBy('id');
+
+        return $rows
+            // A family that has slipped out from under the ranking — deleted
+            // or unpublished between the two queries — is dropped rather than
+            // drawn half empty.
+            ->filter(fn (array $row) => $families->has($row['beneficiary_id']))
+            ->map(fn (array $row) => $row + ['beneficiary' => $families[$row['beneficiary_id']]])
+            ->values();
+    }
+
+    /**
+     * One row per published family, carrying only what the ranking reads.
+     *
+     * The joins pick the family's current assessment and the live override on
+     * it, which is what Beneficiary::currentAssessment() and
+     * Assessment::effectiveScore() pick when the relations are loaded —
+     * highest id wins in both. A family with no approved assessment has no
+     * need and never appeared in this list, so the inner join leaves it out
+     * where the filter used to.
+     *
+     * @return Collection<int,object>
+     */
+    private function rankingRows(?string $supportType, ?int $regionId): Collection
+    {
+        $query = Beneficiary::query()->published();
+
+        if ($supportType) {
+            // Qualified throughout: this is the one query in the system that
+            // joins another table carrying columns of the same names.
+            $query->where('beneficiaries.support_type', $supportType);
+        }
+
+        if ($regionId) {
+            $query->whereIn('beneficiaries.region_id', Region::descendantIds($regionId));
+        }
+
+        return collect(
+            // applyScopes() first: the region scope and the soft-delete scope
+            // are global, and dropping to the base builder would shed them.
+            $query->applyScopes()->toBase()
+                ->select([
+                    'beneficiaries.id',
+                    'beneficiaries.file_number',
+                    'beneficiaries.published_at',
+                    'beneficiaries.approved_at',
+                    'beneficiaries.created_at',
+                    'beneficiaries.next_assessment_due_at',
+                    'current_assessment.monthly_need',
+                    'current_assessment.stable_income',
+                    'current_assessment.base_score',
+                    'live_override.new_score',
+                ])
+                ->join('assessments as current_assessment', fn ($join) => $join->whereRaw(
+                    'current_assessment.id = (select max(a.id) from assessments a'
+                    ." where a.beneficiary_id = beneficiaries.id and a.status = 'approved'"
+                    .' and a.deleted_at is null)'
+                ))
+                ->leftJoin('overrides as live_override', fn ($join) => $join->whereRaw(
+                    'live_override.id = (select max(o.id) from overrides o'
+                    .' where o.assessment_id = current_assessment.id and o.approved_by is not null'
+                    .' and o.deleted_at is null'
+                    .' and (o.expires_at is null or o.expires_at > ?))',
+                    [now()]
+                ))
+                ->get()
+        );
+    }
+
+    /**
+     * Every published family's monthly need, keyed by id, loading nothing else.
+     *
+     * The home page counts how many families are covered this month, and used
+     * to load every published family with its assessments to do it. Families
+     * with no approved assessment are absent here, exactly as they have no
+     * need: the caller counts what is still short and subtracts.
+     *
+     * @return array<int,int>
+     */
+    public function publishedNeeds(): array
+    {
+        return $this->rankingRows(null, null)
+            ->mapWithKeys(fn (object $family) => [(int) $family->id => $this->needOf($family)])
+            ->all();
+    }
+
+    /** needAmount(), off a flat row. */
+    private function needOf(object $family): int
+    {
+        return max(0, (int) $family->monthly_need - (int) $family->stable_income);
+    }
+
+    /**
      * One row: the month a donor would be funding this family for, and that
      * month's figures.
      *
      * @param  array<int,Carbon>  $months
      * @param  array<string,array<int,int>>  $funded
-     * @return array{beneficiary:Beneficiary,confirmed:int,need:int,month:Carbon,covered:bool,ranking:array}
+     * @return array{beneficiary_id:int,file_number:string,confirmed:int,need:int,month:Carbon,covered:bool,ranking:array}
      */
-    private function row(Beneficiary $beneficiary, array $months, array $funded): array
+    private function row(object $family, array $months, array $funded): array
     {
-        $need = $this->coverage->needAmount($beneficiary);
+        $id = (int) $family->id;
+        $need = $this->needOf($family);
+
+        // effectiveScore(): the live override if there is one, else the score
+        // the assessment computed.
+        $score = (float) ($family->new_score ?? $family->base_score);
+        $waiting = $this->waitingBonusSince($this->waitingFrom($family));
 
         foreach ($months as $month) {
-            $confirmed = $funded[$month->format('Y-m')][$beneficiary->getKey()] ?? 0;
+            $confirmed = $funded[$month->format('Y-m')][$id] ?? 0;
 
             if ($need > 0 && $confirmed < $need) {
                 return [
-                    'beneficiary' => $beneficiary,
+                    'beneficiary_id' => $id,
+                    'file_number' => (string) $family->file_number,
                     'confirmed' => $confirmed,
                     'need' => $need,
                     'month' => $month,
                     'covered' => false,
-                    'ranking' => $this->rank($beneficiary, $confirmed),
+                    'overdue' => $this->overdue($family),
+                    'ranking' => $this->priority($score, $need, $confirmed, $waiting),
                 ];
             }
         }
@@ -164,16 +309,32 @@ class RankingService
         // so the card says «اكتملت تغطية» the last month a donor could have
         // funded rather than one already behind them.
         $month = end($months);
-        $confirmed = $funded[$month->format('Y-m')][$beneficiary->getKey()] ?? 0;
+        $confirmed = $funded[$month->format('Y-m')][$id] ?? 0;
 
         return [
-            'beneficiary' => $beneficiary,
+            'beneficiary_id' => $id,
+            'file_number' => (string) $family->file_number,
             'confirmed' => $confirmed,
             'need' => $need,
             'month' => $month,
             'covered' => true,
-            'ranking' => $this->rank($beneficiary, $confirmed),
+            'overdue' => $this->overdue($family),
+            'ranking' => $this->priority($score, $need, $confirmed, $waiting),
         ];
+    }
+
+    /** published_at ?? approved_at ?? created_at, off a flat row. */
+    private function waitingFrom(object $family): ?Carbon
+    {
+        $since = $family->published_at ?? $family->approved_at ?? $family->created_at;
+
+        return $since ? Carbon::parse($since) : null;
+    }
+
+    private function overdue(object $family): bool
+    {
+        return $family->next_assessment_due_at !== null
+            && Carbon::parse($family->next_assessment_due_at)->isPast();
     }
 
     /**
@@ -199,7 +360,7 @@ class RankingService
 
         return $row['ranking']['priority']
             - ($tier * 1_000)
-            - ($this->isOverdue($row['beneficiary']) ? 100 : 0);
+            - ($row['overdue'] ? 100 : 0);
     }
 
     public function isOverdue(Beneficiary $beneficiary): bool

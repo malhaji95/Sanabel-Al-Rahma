@@ -185,8 +185,25 @@ class CoverageService
     /** The same figure for many families in one query, keyed by beneficiary id. */
     public function confirmedForMonthForMany(iterable $beneficiaries, ?Carbon $month = null): array
     {
+        return $this->confirmedForMonthForIds(
+            collect($beneficiaries)->map(fn (Beneficiary $b) => $b->getKey())->all(),
+            $month,
+        );
+    }
+
+    /**
+     * The same, for families the caller holds as ids rather than as models.
+     *
+     * T-87 — the donor list ranks every published family on every request, and
+     * a model carries sixty-eight columns and seven relations. It needs the
+     * identifier and the figures, so this is the door it comes in by.
+     *
+     * @param  array<int,int>  $ids
+     * @return array<int,int>
+     */
+    public function confirmedForMonthForIds(array $ids, ?Carbon $month = null): array
+    {
         $month = ($month ?? $this->currentMonth())->copy()->startOfMonth();
-        $ids = collect($beneficiaries)->map(fn (Beneficiary $b) => $b->getKey())->all();
 
         if ($ids === []) {
             return [];
@@ -246,8 +263,19 @@ class CoverageService
     /** The same figure for many families in one query, keyed by beneficiary id. */
     public function externalForMonthForMany(iterable $beneficiaries, ?Carbon $month = null): array
     {
+        return $this->externalForMonthForIds(
+            collect($beneficiaries)->map(fn (Beneficiary $b) => $b->getKey())->all(),
+            $month,
+        );
+    }
+
+    /**
+     * @param  array<int,int>  $ids
+     * @return array<int,int>
+     */
+    public function externalForMonthForIds(array $ids, ?Carbon $month = null): array
+    {
         $month = ($month ?? $this->currentMonth())->copy()->startOfMonth();
-        $ids = collect($beneficiaries)->map(fn (Beneficiary $b) => $b->getKey())->all();
 
         if ($ids === []) {
             return [];
@@ -299,19 +327,44 @@ class CoverageService
      */
     public function fundedForMonthForMany(iterable $beneficiaries, ?Carbon $month = null): array
     {
-        $families = collect($beneficiaries);
+        return $this->fundedForMonthByNeed(
+            collect($beneficiaries)
+                ->mapWithKeys(fn (Beneficiary $b) => [$b->getKey() => $this->needAmount($b)])
+                ->all(),
+            $month,
+        );
+    }
+
+    /**
+     * The same figure again, for a caller that already knows each family's
+     * need — which the carry from last month is measured against — and holds
+     * nothing else about them.
+     *
+     * @param  array<int,int>  $needs  beneficiary id => that family's monthly need
+     * @return array<int,int>
+     */
+    public function fundedForMonthByNeed(array $needs, ?Carbon $month = null): array
+    {
+        if ($needs === []) {
+            return [];
+        }
+
+        $ids = array_keys($needs);
         $month = ($month ?? $this->currentMonth())->copy()->startOfMonth();
 
-        $thisMonth = $this->confirmedForMonthForMany($families, $month);
-        $lastMonth = $this->confirmedForMonthForMany($families, $month->copy()->subMonth());
-        $external = $this->externalForMonthForMany($families, $month);
+        $thisMonth = $this->confirmedForMonthForIds($ids, $month);
+        $lastMonth = $this->confirmedForMonthForIds($ids, $month->copy()->subMonth());
+        $external = $this->externalForMonthForIds($ids, $month);
 
-        return $families->mapWithKeys(function (Beneficiary $family) use ($thisMonth, $lastMonth, $external) {
-            $id = $family->getKey();
-            $carried = max(0, ($lastMonth[$id] ?? 0) - $this->needAmount($family));
+        $funded = [];
 
-            return [$id => ($thisMonth[$id] ?? 0) + $carried + ($external[$id] ?? 0)];
-        })->all();
+        foreach ($needs as $id => $need) {
+            $carried = max(0, ($lastMonth[$id] ?? 0) - $need);
+
+            $funded[$id] = ($thisMonth[$id] ?? 0) + $carried + ($external[$id] ?? 0);
+        }
+
+        return $funded;
     }
 
     /** The funding target: what the family still needs each month before any money arrives. */

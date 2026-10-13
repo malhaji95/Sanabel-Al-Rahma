@@ -75,9 +75,11 @@ it('costs the same number of queries however many families are published', funct
 
         // Exactly how the browse screen draws it, month included (T-83): the
         // list batches its sums per open month and hands each card the month
-        // its row carries, so a card never goes looking for one.
-        app(RankingService::class)->fundingList('monthly', withCovered: true)
-            ->take(12)
+        // its row carries, so a card never goes looking for one. And since
+        // T-87 the list itself holds no families — only the page is loaded.
+        $ranking = app(RankingService::class);
+
+        $ranking->hydrate($ranking->fundingList('monthly', withCovered: true)->take(12))
             ->each(fn (array $row) => (new MaskedCaseResource(
                 $row['beneficiary'],
                 $row['confirmed'],

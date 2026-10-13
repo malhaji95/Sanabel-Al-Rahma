@@ -59,7 +59,7 @@ it('does not let an unpaid installment change coverage or hide the case', functi
 
     expect(app(CoverageService::class)->confirmedSupport($family->fresh()))->toBe(0)
         ->and(app(RankingService::class)->rank($family->fresh())['eligible'])->toBeTrue()
-        ->and(app(RankingService::class)->fundingList('monthly')->pluck('beneficiary.id'))
+        ->and(app(RankingService::class)->fundingList('monthly')->pluck('beneficiary_id'))
         ->toContain($family->id);
 });
 
@@ -84,7 +84,7 @@ it('lapses a sponsorship after two consecutive unpaid installments and returns t
     expect($result['overdue'])->toBeGreaterThanOrEqual(2)
         ->and($sponsorship->fresh()->status)->toBe('lapsed')
         ->and(app(SponsorshipService::class)->consecutiveUnpaid($sponsorship->fresh()))->toBeGreaterThanOrEqual(2)
-        ->and(app(RankingService::class)->fundingList('monthly')->pluck('beneficiary.id'))
+        ->and(app(RankingService::class)->fundingList('monthly')->pluck('beneficiary_id'))
         ->toContain($family->id);
 });
 

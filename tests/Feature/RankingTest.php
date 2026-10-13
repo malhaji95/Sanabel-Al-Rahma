@@ -95,7 +95,7 @@ it('drops a fully covered case from the funding list and the waiting bonus does 
 
     $list = app(RankingService::class)->fundingList('monthly');
 
-    expect($list->pluck('beneficiary.id'))->not->toContain($covered->id);
+    expect($list->pluck('beneficiary_id'))->not->toContain($covered->id);
 });
 
 it('ignores pledges and unverified proofs when ranking', function () {

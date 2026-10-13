@@ -141,7 +141,10 @@ class TrainingGuides extends Command
      */
     private function openOpportunity(): ?Beneficiary
     {
-        $open = app(RankingService::class)->fundingList('monthly')->pluck('beneficiary');
+        $ranking = app(RankingService::class);
+        // The head of the list is enough to find one, and the guide is built
+        // against a demo set of a few dozen.
+        $open = $ranking->hydrate($ranking->fundingList('monthly')->take(50))->pluck('beneficiary');
 
         // Preferring one with an account on file is not decoration: the guide
         // tells the trainee that the donor sees the last four digits of it,

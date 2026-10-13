@@ -83,7 +83,7 @@ it('keeps a covered family on the donor list, at the bottom, marked complete', f
 
     $list = app(RankingService::class)->fundingList('monthly', withCovered: true);
 
-    expect($list->pluck('beneficiary.id')->all())->toBe([$short->id, $covered->id])
+    expect($list->pluck('beneficiary_id')->all())->toBe([$short->id, $covered->id])
         ->and($list->last()['covered'])->toBeTrue()
         ->and($list->first()['covered'])->toBeFalse();
 
@@ -103,7 +103,7 @@ it('still leaves a covered family out of the list the distribution engine reads'
     fundMonth($covered, $this->coverage->needAmount($covered), $this->admin);
 
     // docs/03-rules.md §3, untouched: remaining = 0 removes the case.
-    expect(app(RankingService::class)->fundingList('monthly')->pluck('beneficiary.id')->all())
+    expect(app(RankingService::class)->fundingList('monthly')->pluck('beneficiary_id')->all())
         ->toBe([$short->id]);
 });
 
@@ -132,7 +132,7 @@ it('opens a covered family for the new month once that month opens', function ()
 
     $row = app(RankingService::class)
         ->fundingList('monthly', withCovered: true)
-        ->firstWhere('beneficiary.id', $case->id);
+        ->firstWhere('beneficiary_id', $case->id);
 
     expect($row['covered'])->toBeFalse()
         ->and($row['month']->format('Y-m'))->toBe($next->format('Y-m'));
@@ -161,7 +161,7 @@ it('never lets a family reopened for next month climb over one still short this 
 
     $list = app(RankingService::class)->fundingList('monthly', withCovered: true);
 
-    expect($list->pluck('beneficiary.id')->all())->toBe([$short->id, $reopened->id, $done->id]);
+    expect($list->pluck('beneficiary_id')->all())->toBe([$short->id, $reopened->id, $done->id]);
 });
 
 it('never shows a published family that has no need recorded, covered or otherwise', function () {
@@ -177,9 +177,9 @@ it('never shows a published family that has no need recorded, covered or otherwi
 
     expect($this->coverage->needAmount($noNeed))->toBe(0)
         ->and(app(RankingService::class)->fundingList('monthly', withCovered: true)
-            ->pluck('beneficiary.id')->all())->not->toContain($noNeed->id)
+            ->pluck('beneficiary_id')->all())->not->toContain($noNeed->id)
         ->and(app(RankingService::class)->fundingList('monthly')
-            ->pluck('beneficiary.id')->all())->not->toContain($noNeed->id);
+            ->pluck('beneficiary_id')->all())->not->toContain($noNeed->id);
 });
 
 it('leaves a shared link alive for the new month instead of closing it', function () {

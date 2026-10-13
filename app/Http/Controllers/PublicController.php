@@ -12,6 +12,7 @@ use App\Models\Setting;
 use Illuminate\Http\Request;
 use App\Models\Region;
 use App\Services\CoverageService;
+use App\Services\DonorCaseList;
 use App\Services\RankingService;
 use Illuminate\View\View;
 
@@ -25,14 +26,11 @@ class PublicController extends Controller
 
     public function home(): View
     {
-        // The three most urgent published cases, masked like every donor view.
-        $urgent = $this->ranking->fundingList('monthly')
-            ->take(3)
-            ->map(fn (array $row) => (new MaskedCaseResource(
-                $row['beneficiary'],
-                $row['confirmed'],
-                $row['month'],
-            ))->resolve());
+        // The three most urgent published cases, masked like every donor view
+        // and held for a minute like the rest of the list (T-87).
+        $urgent = collect(
+            app(DonorCaseList::class)->page('monthly', null, 1, 3, withCovered: false)['cards']
+        );
 
         $campaigns = Campaign::where('is_published', true)
             ->where('status', 'active')
@@ -49,25 +47,33 @@ class PublicController extends Controller
         ]);
     }
 
-    /** Counts only. Nothing here identifies a family. */
+    /**
+     * Counts only. Nothing here identifies a family.
+     *
+     * T-87 — it used to load every published family with its assessments to
+     * count how many were covered, which is the homepage carrying the whole
+     * table on every visit. It now asks for the needs alone and counts what is
+     * still short: a family with no approved assessment has no need and is
+     * covered, exactly as before, which is why the covered figure is the total
+     * less the short rather than a filter over models.
+     */
     private function stats(): array
     {
-        // Assessments eager-loaded and the confirmed sums fetched in one query:
-        // asking per family made the homepage cost a query per published case.
-        $published = Beneficiary::published()->with('assessments')->get();
-        $confirmed = $this->coverage->fundedForMonthForMany($published);
+        $needs = $this->ranking->publishedNeeds();
+        $funded = $this->coverage->fundedForMonthByNeed($needs);
 
-        $isCovered = function (Beneficiary $case) use ($confirmed): bool {
-            $need = $this->coverage->needAmount($case);
+        $short = count(array_filter(
+            $needs,
+            fn (int $need, int $id) => $need > 0 && ($funded[$id] ?? 0) < $need,
+            ARRAY_FILTER_USE_BOTH,
+        ));
 
-            // No need recorded is full coverage, as in CoverageService::coverageRatio().
-            return $need <= 0 || ($confirmed[$case->getKey()] ?? 0) >= $need;
-        };
+        $families = Beneficiary::published()->count();
 
         return [
-            'families' => $published->count(),
+            'families' => $families,
             'regions' => Region::where('is_active', true)->where('type', '!=', 'governorate')->count(),
-            'covered' => $published->filter($isCovered)->count(),
+            'covered' => $families - $short,
         ];
     }
 
@@ -137,14 +143,9 @@ class PublicController extends Controller
             'card' => $case ? (new MaskedCaseResource($case, month: $month))->resolve() : null,
             'closed' => $closed,
             // Something else to give to, so a finished link is not a dead end.
+            // The same three the home page shows, from the same held list.
             'alternatives' => $closed
-                ? app(RankingService::class)->fundingList('monthly')->take(3)
-                    ->map(fn (array $row) => (new MaskedCaseResource(
-                        $row['beneficiary'],
-                        $row['confirmed'],
-                        $row['month'],
-                    ))->resolve())
-                    ->values()
+                ? collect(app(DonorCaseList::class)->page('monthly', null, 1, 3, withCovered: false)['cards'])
                 : collect(),
         ]);
     }

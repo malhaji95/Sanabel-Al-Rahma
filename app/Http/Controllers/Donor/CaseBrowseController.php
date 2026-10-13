@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Donor;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\MaskedCaseResource;
 use App\Models\Beneficiary;
-use App\Services\RankingService;
+use App\Services\DonorCaseList;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,33 +15,29 @@ use Illuminate\Http\Request;
  */
 class CaseBrowseController extends Controller
 {
-    public function __construct(private readonly RankingService $ranking) {}
+    public function __construct(private readonly DonorCaseList $cases) {}
 
     public function index(Request $request, string $supportType = 'monthly'): JsonResponse
     {
         abort_unless(in_array($supportType, ['monthly', 'one_time'], true), 404);
 
-        // The same list the browse screen draws, covered families included
-        // (T-83), and each card answers the month its row carries.
-        $list = $this->ranking->fundingList(
-            $supportType,
-            $request->integer('region_id') ?: null,
-            withCovered: true,
-        );
-
         $page = max(1, $request->integer('page', 1));
         $perPage = min(50, max(1, $request->integer('per_page', 20)));
 
+        // The same list the browse screen draws, covered families included
+        // (T-83), each card answering the month its row carries, and behind
+        // the same cache (T-87).
+        $list = $this->cases->page(
+            $supportType,
+            $request->integer('region_id') ?: null,
+            $page,
+            $perPage,
+            withCovered: true,
+        );
+
         return response()->json([
-            'data' => $list->forPage($page, $perPage)
-                ->map(fn (array $row) => (new MaskedCaseResource(
-                    $row['beneficiary'],
-                    $row['confirmed'],
-                    $row['month'],
-                ))->resolve())
-                ->values()
-                ->all(),
-            'meta' => ['page' => $page, 'per_page' => $perPage, 'total' => $list->count()],
+            'data' => $list['cards'],
+            'meta' => ['page' => $page, 'per_page' => $perPage, 'total' => $list['total']],
         ]);
     }
 

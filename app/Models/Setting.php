@@ -54,11 +54,41 @@ class Setting extends Model
     /** Grace days, hold hours, thresholds, reassessment days, feature flags — all live here. */
     public static function value(string $key, mixed $default = null): mixed
     {
+        self::loadOnce();
+
+        return array_key_exists($key, self::$loaded) ? self::$loaded[$key] : $default;
+    }
+
+    /**
+     * A token that changes whenever any setting does.
+     *
+     * T-87 — the public lists are cached for a minute, and several of these
+     * rows decide what a donor is shown: the funding share, the sufficiency
+     * sentence, the four digits of a household's account. A switch the
+     * association closes has to take effect when they close it, not a minute
+     * later, so the token goes into the cache key and closing one orphans
+     * every page that was drawn under the old answer.
+     *
+     * It is a hash of the values themselves rather than of when they last
+     * changed: the timestamp columns keep whole seconds, and two writes inside
+     * one second would have left the token standing still.
+     */
+    public static function fingerprint(): string
+    {
+        self::loadOnce();
+
+        $values = self::$loaded;
+        ksort($values);
+
+        return md5(serialize($values));
+    }
+
+    /** Named for the clash: Model::load() is an instance method. */
+    private static function loadOnce(): void
+    {
         // One query for the whole table: it holds a couple of dozen rows, and a
         // request that wants one setting usually wants several.
         self::$loaded ??= static::query()->pluck('value_json', 'key')->all();
-
-        return array_key_exists($key, self::$loaded) ? self::$loaded[$key] : $default;
     }
 
     public static function put(string $key, mixed $value): void

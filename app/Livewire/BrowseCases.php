@@ -2,9 +2,8 @@
 
 namespace App\Livewire;
 
-use App\Http\Resources\MaskedCaseResource;
 use App\Models\Region;
-use App\Services\RankingService;
+use App\Services\DonorCaseList;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -35,27 +34,19 @@ class BrowseCases extends Component
 
     public function render()
     {
-        // withCovered: the donor's list keeps a family whose month is answered,
-        // at the bottom and marked as such (T-83).
-        $ranked = app(RankingService::class)
-            ->fundingList($this->supportType, $this->regionId, withCovered: true);
-
         $perPage = 12;
         $page = $this->getPage();
 
-        $cases = $ranked
-            ->forPage($page, $perPage)
-            ->map(fn (array $row) => (new MaskedCaseResource(
-                $row['beneficiary'],
-                $row['confirmed'],
-                $row['month'],
-            ))->resolve())
-            ->values();
+        // withCovered: the donor's list keeps a family whose month is answered,
+        // at the bottom and marked as such (T-83). The page is ranked, loaded
+        // and masked behind one cache (T-87).
+        $list = app(DonorCaseList::class)
+            ->page($this->supportType, $this->regionId, $page, $perPage, withCovered: true);
 
         return view('livewire.browse-cases', [
-            'cases' => $cases,
-            'total' => $ranked->count(),
-            'hasMore' => $ranked->count() > $page * $perPage,
+            'cases' => collect($list['cards']),
+            'total' => $list['total'],
+            'hasMore' => $list['total'] > $page * $perPage,
             'regions' => Region::where('is_active', true)->orderBy('name_ar')->pluck('name_ar', 'id'),
         ])->layout('layouts.app');
     }

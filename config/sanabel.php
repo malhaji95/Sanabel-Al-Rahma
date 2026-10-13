@@ -5,6 +5,19 @@ return [
     'currency' => env('SANABEL_CURRENCY', 'SYP'),
 
     /*
+     | T-87 — how long a page of the donor's list of families is held before it
+     | is computed again.
+     |
+     | The figures on it move when money is verified, which is done by hand
+     | here, so a minute is nothing anybody reads against a clock. A setting the
+     | association changes does not wait for it: the cache key carries a token
+     | that changes with the settings table.
+     |
+     | Set it to 0 to compute every request, which is what the test suite does.
+     */
+    'public_list_cache_seconds' => env('SANABEL_PUBLIC_LIST_CACHE', 60),
+
+    /*
      | How a date is written out.
      |
      | The interface language is Arabic (APP_LOCALE=ar), but Carbon's plain

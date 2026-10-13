@@ -248,7 +248,9 @@ class Beneficiary extends Model
 
     public function scopePublished($query)
     {
-        return $query->where('status', 'published');
+        // Qualified: the donor list joins the assessments table, which carries
+        // a `status` of its own, and an unqualified column there is ambiguous.
+        return $query->where($this->getTable().'.status', 'published');
     }
 
     /**
