@@ -39,6 +39,17 @@ class RegionResource extends Resource
             Forms\Components\Select::make('type')->label(__('sanabel.region.type'))->options(__('sanabel.region_type'))->required(),
             Forms\Components\Select::make('parent_id')->label(__('sanabel.region.parent'))->relationship('parent', 'name_ar')->searchable(),
             Forms\Components\Toggle::make('is_active')->label(__('sanabel.region.is_active')),
+
+            /*
+             | T-78 — this region's own share of the need, or empty to follow
+             | the region above it and finally the system setting.
+             */
+            Forms\Components\TextInput::make('funding_target_percent')
+                ->label(__('sanabel.region.funding_target_percent'))
+                ->helperText(__('sanabel.region.funding_target_help'))
+                ->numeric()
+                ->minValue(0)
+                ->maxValue(100),
         ])->columns(2);
     }
 

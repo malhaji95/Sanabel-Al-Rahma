@@ -7,6 +7,7 @@ use App\Exceptions\ReservationUnavailable;
 use App\Http\Resources\MaskedCaseResource;
 use App\Models\Basket;
 use App\Models\BasketItem;
+use App\Models\Setting;
 use App\Payments\PaymentGateway;
 use App\Services\BasketService;
 use App\Services\TransferRouting;
@@ -131,6 +132,12 @@ class DonorBasket extends Component
                 'case' => (new MaskedCaseResource($item->beneficiary))->resolve(),
             ]),
             'total' => $basket?->total() ?? 0,
+            // T-78 — the basket's own switch for the sufficiency sentence,
+            // separate from the one on the public list.
+            'showSufficiencyNote' => (bool) Setting::value(
+                'show_sufficiency_note_in_basket',
+                config('sanabel.setting_defaults.show_sufficiency_note_in_basket')
+            ),
             // One destination for everything in the basket.
             'transferWallet' => app(TransferRouting::class)->wallet(),
         ])->layout('layouts.app');

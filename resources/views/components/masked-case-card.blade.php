@@ -4,7 +4,7 @@
     Every value comes from MaskedCaseResource: a file number, an area, bands and
     labels. No name, no address, no exact age, no exact rent, no raw score.
 --}}
-@props(['case'])
+@props(['case', 'showNote' => null])
 
 @php
     $covered = $case['coverage_percent'];
@@ -13,6 +13,17 @@
     // its own small marker rather than overwriting the band.
     $band = $case['priority_band'];
     $urgent = $case['is_urgent'];
+
+    /*
+     | T-78 — the stage being funded now. The badge and the meter stay on the
+     | real need: a family at 100% of a 30% target is still short seven tenths
+     | of what it needs, and a meter that said otherwise would mislead both the
+     | donor and the family.
+     */
+    $targetPercent = $case['target_percent'] ?? 100;
+    $isStaged = $targetPercent > 0 && $targetPercent < 100;
+    // Null means «follow the list switch», which is what the resource carries.
+    $showNote = ($showNote ?? ($case['show_sufficiency_note'] ?? false)) && $isStaged;
 @endphp
 
 <article class="card-interactive flex h-full flex-col">
@@ -122,6 +133,31 @@
             <span class="tabular font-bold">{{ number_format($case['remaining_amount']) }}</span>
             <span style="color: var(--text-muted);">{{ $case['currency'] }}</span>
         </p>
+
+        @if ($isStaged)
+            <p class="mt-1.5 text-sm">
+                <span style="color: var(--text-muted);">{{ __('sanabel.funding.target_remaining') }}:</span>
+                <span class="tabular font-bold">{{ number_format($case['target_remaining']) }}</span>
+                <span style="color: var(--text-muted);">{{ $case['currency'] }}</span>
+
+                @if ($case['target_complete'] ?? false)
+                    <span class="badge bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                        {{ __('sanabel.funding.target_complete') }}
+                    </span>
+                @endif
+            </p>
+        @endif
+
+        {{-- The association's own sentence, behind its own switch. --}}
+        @if ($showNote)
+            <p class="mt-2 text-xs" style="color: var(--text-muted);">
+                {{ __('sanabel.funding.sufficiency_note', [
+                    'need' => number_format($case['need_amount']),
+                    'currency' => $case['currency'],
+                    'percent' => $targetPercent,
+                ]) }}
+            </p>
+        @endif
     </div>
 
     <div class="mt-auto pt-4">

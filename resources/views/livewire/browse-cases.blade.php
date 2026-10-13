@@ -51,6 +51,7 @@
                             <livewire:add-to-basket
                                 :file-number="$case['file_number']"
                                 :remaining="$case['remaining_amount']"
+                                :target-remaining="$case['target_remaining'] ?? 0"
                                 :key="'basket-' . $case['file_number']"
                             />
                         @else

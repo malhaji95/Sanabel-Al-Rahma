@@ -353,6 +353,74 @@ class CoverageService
             ->sum('amount');
     }
 
+    /*
+     | T-78 — the funding target, decided by the association on 13 October.
+     |
+     | A target is a share of the real monthly need, shown to the donor so a
+     | family can be helped in stages. It is a display layer and nothing more:
+     | the engine, the score, the priority badge, the disbursement ceiling and
+     | the association's own coverage reports all go on reading the real need,
+     | because a family that has reached 100% of a 30% target is still short
+     | 70% of what it needs, and every one of those would lie if it read the
+     | target instead.
+     */
+    public function targetPercent(Beneficiary $beneficiary): int
+    {
+        $region = $beneficiary->region;
+
+        // The region's own share, else its parent's, else the system setting.
+        while ($region) {
+            if ($region->funding_target_percent !== null) {
+                return $this->clampPercent((int) $region->funding_target_percent);
+            }
+
+            $region = $region->parent;
+        }
+
+        return $this->clampPercent((int) Setting::value(
+            'funding_target_percent',
+            config('sanabel.setting_defaults.funding_target_percent')
+        ));
+    }
+
+    /** The amount the donor is asked for: a share of the need, in whole units. */
+    public function targetAmount(Beneficiary $beneficiary): int
+    {
+        return intdiv($this->needAmount($beneficiary) * $this->targetPercent($beneficiary), 100);
+    }
+
+    /**
+     * What is still missing from the target. Never more than what the month
+     * can still take: a target cannot ask for money the need no longer wants.
+     */
+    public function targetRemaining(Beneficiary $beneficiary, ?int $confirmed = null, ?Carbon $month = null): int
+    {
+        $month = ($month ?? $this->currentMonth())->copy()->startOfMonth();
+        $funded = $confirmed ?? $this->fundedForMonth($beneficiary, $month);
+
+        return min(
+            max(0, $this->targetAmount($beneficiary) - $funded),
+            $this->remainingNeed($beneficiary, $funded, $month),
+        );
+    }
+
+    public function targetIsComplete(Beneficiary $beneficiary, ?int $confirmed = null, ?Carbon $month = null): bool
+    {
+        $target = $this->targetAmount($beneficiary);
+
+        if ($target <= 0) {
+            return true;
+        }
+
+        return ($confirmed ?? $this->fundedForMonth($beneficiary, $month)) >= $target;
+    }
+
+    /** 0 – 100, so a mistyped setting cannot ask for more than the need. */
+    private function clampPercent(int $percent): int
+    {
+        return max(0, min(100, $percent));
+    }
+
     /**
      * What a new reservation may still claim for one month: need − what that
      * month has already received − what is held against it.

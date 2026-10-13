@@ -30,6 +30,21 @@
             </button>
         </form>
 
+        {{-- T-78 — the stage is what the box offers; the whole month is one
+             click away, and the ceiling is the real remaining need either way. --}}
+        @if ($targetRemaining > 0 && $targetRemaining < $remaining)
+            <div class="mt-1.5 flex flex-wrap gap-2 text-xs">
+                <button type="button" wire:click="$set('amount', {{ $targetRemaining }})"
+                        class="underline" style="color: var(--text-muted);">
+                    {{ __('sanabel.funding.target_only') }} ({{ number_format($targetRemaining) }})
+                </button>
+                <button type="button" wire:click="$set('amount', {{ $remaining }})"
+                        class="underline" style="color: var(--text-muted);">
+                    {{ __('sanabel.funding.full_month') }} ({{ number_format($remaining) }})
+                </button>
+            </div>
+        @endif
+
         @error('amount')
             <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
         @enderror

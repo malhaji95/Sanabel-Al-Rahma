@@ -195,5 +195,17 @@ return [
         // the association needs it (13 Oct 2026). Opening it is a change to a
         // setting, so it carries a name and a time.
         'anonymise_admin_allowed' => false,
+        /*
+         | T-78 — the share of a family's monthly need the donor is asked for.
+         | 100 means the whole need, which is what the system did before this
+         | existed, so nothing changes until the association lowers it. A region
+         | may hold its own share, and overrides this one.
+         */
+        'funding_target_percent' => 100,
+        // Whether the sufficiency note («الكفاية التامة … والحملة تمثّل …»)
+        // appears above a family on the public list, and in the basket. Two
+        // switches, because the association asked for each place separately.
+        'show_sufficiency_note' => true,
+        'show_sufficiency_note_in_basket' => true,
     ],
 ];

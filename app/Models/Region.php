@@ -14,7 +14,7 @@ class Region extends Model
 {
     use Auditable, HasFactory, SoftDeletes, TracksCreator;
 
-    protected $fillable = ['parent_id', 'name_ar', 'type', 'is_active', 'created_by'];
+    protected $fillable = ['parent_id', 'name_ar', 'type', 'is_active', 'funding_target_percent', 'created_by'];
 
     protected $casts = ['is_active' => 'boolean'];
 

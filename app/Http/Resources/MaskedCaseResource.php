@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Beneficiary;
+use App\Models\Setting;
 use App\Services\CoverageService;
 use App\Services\RankingService;
 use App\Services\ScoreService;
@@ -37,6 +38,10 @@ class MaskedCaseResource extends JsonResource
         'need_amount', 'currency', 'coverage_percent', 'coverage_label', 'remaining_amount',
         'urgency_label', 'has_chronic_illness', 'rent_band', 'is_renting', 'waiting_weeks',
         'priority_band', 'priority_label', 'is_urgent', 'accepts_zakat', 'can_share',
+        // T-78 — the funding target. Figures about the appeal, not about the
+        // household: a share of a need the donor is already shown.
+        'target_percent', 'target_amount', 'target_remaining', 'target_complete',
+        'show_sufficiency_note',
     ];
 
     /**
@@ -82,7 +87,7 @@ class MaskedCaseResource extends JsonResource
             'priority_label' => __('sanabel.masked.priority.'.$band),
             // Kept apart from the band on purpose. A case can be nearly covered
             // and still be running out of time; one badge cannot say both.
-            'is_urgent' => \App\Services\ScoreService::urgencyBand($case->urgency_deadline_at) >= 75,
+            'is_urgent' => ScoreService::urgencyBand($case->urgency_deadline_at) >= 75,
             'urgency_label' => $this->urgencyLabel($case),
             'has_chronic_illness' => $this->hasChronicIllness($case),
             'rent_band' => $this->rentBand($case),
@@ -95,6 +100,21 @@ class MaskedCaseResource extends JsonResource
             // Not a fact about the household: the association's own switch for
             // whether this file's link may be passed around.
             'can_share' => (bool) $case->is_shareable,
+
+            /*
+             | T-78 — the stage the association is funding now. The real need is
+             | still `need_amount` beside it, deliberately: a family at 100% of
+             | a 30% target would otherwise read as covered when it is short
+             | seven tenths of what it needs.
+             */
+            'target_percent' => $coverage->targetPercent($case),
+            'target_amount' => $coverage->targetAmount($case),
+            'target_remaining' => $coverage->targetRemaining($case, $confirmed),
+            'target_complete' => $coverage->targetIsComplete($case, $confirmed),
+            'show_sufficiency_note' => (bool) Setting::value(
+                'show_sufficiency_note',
+                config('sanabel.setting_defaults.show_sufficiency_note')
+            ),
         ];
     }
 

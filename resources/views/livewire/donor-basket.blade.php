@@ -42,7 +42,7 @@
     @else
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             @foreach ($items as $item)
-                <x-masked-case-card :case="$item['case']">
+                <x-masked-case-card :case="$item['case']" :show-note="$showSufficiencyNote">
                     @if ($item['campaign'])
                         <p class="mb-2 text-sm font-medium" style="color: var(--accent);">
                             {{ $item['campaign'] }}

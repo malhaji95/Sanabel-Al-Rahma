@@ -15,6 +15,9 @@ class AddToBasket extends Component
 
     public int $remaining;
 
+    /** The stage being funded now, which is what the box offers by default. */
+    public int $targetRemaining = 0;
+
     public ?int $amount = null;
 
     /** The month this pledge answers, as Y-m. */
@@ -26,11 +29,21 @@ class AddToBasket extends Component
     // Named `notice`, not `message`: Blade's @error directive binds $message.
     public ?string $notice = null;
 
-    public function mount(string $fileNumber, int $remaining): void
+    public function mount(string $fileNumber, int $remaining, int $targetRemaining = 0): void
     {
         $this->fileNumber = $fileNumber;
         $this->remaining = $remaining;
-        $this->amount = $remaining > 0 ? $remaining : null;
+        $this->targetRemaining = $targetRemaining;
+
+        /*
+         | T-78 — the box opens on the current stage rather than the whole
+         | month, because that is what the association is asking for now. The
+         | donor may still type the full month's need: the ceiling below is the
+         | real remaining need, not the target.
+         */
+        $offer = $targetRemaining > 0 ? $targetRemaining : $remaining;
+
+        $this->amount = $offer > 0 ? $offer : null;
 
         // The current month, plus the next one once it opens — which is what
         // keeps a family from falling into a gap at the turn of the month.
