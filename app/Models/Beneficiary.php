@@ -356,6 +356,43 @@ class Beneficiary extends Model
 
         static::creating($decision);
         static::updating($decision);
+
+        /*
+         | T-74 — consent, by their decision of 13 October: «موافق ولا يوجد لا،
+         | في حال غير موافق ما يدخل للنظام، ونعتمد انها ما تفتح الا بعد
+         | الاطلاع عليها».
+         |
+         | So two refusals where there used to be a notice. Consent cannot be
+         | recorded for a policy nobody was shown, and a file cannot leave
+         | draft without both. A draft is still filled in any order — the
+         | consent step is not always the first one reached.
+         |
+         | With no signed-in user the rule does not apply: the old-system
+         | import carries rows exactly as the old forms were filled, including
+         | the association's own dossier that says «الاطلاع: لا» beside
+         | «الموافقة: نعم». Those rows keep the review notice; refusing them
+         | would lose the family rather than fix the form.
+         */
+        $consent = function (self $case) {
+            if (! auth()->hasUser()) {
+                return;
+            }
+
+            if ($case->privacy_consent === true && $case->privacy_policy_seen !== true) {
+                throw new \RuntimeException(__('sanabel.beneficiary.privacy_needs_seen_first'));
+            }
+
+            $leavingDraft = $case->isDirty('status')
+                && $case->getOriginal('status') === 'draft'
+                && $case->status !== 'draft';
+
+            if ($leavingDraft && ! ($case->privacy_consent === true && $case->privacy_policy_seen === true)) {
+                throw new \RuntimeException(__('sanabel.beneficiary.privacy_consent_required'));
+            }
+        };
+
+        static::creating($consent);
+        static::updating($consent);
     }
 
     /** sha256 of the normalised national id — rule 11, exact match blocks a second file. */

@@ -183,14 +183,17 @@ it('stops the creator from being the final approver', function () {
         ->and(app(CaseService::class)->approve($case, $admin)->status)->toBe('approved');
 })->group('APP-01');
 
-it('scopes a delegate to their own region subtree', function () {
+it('scopes a delegate to their own village, and to nothing wider', function () {
+    // T-74 — a delegate sees their village. Their own area, and the village
+    // beside theirs in it, are both outside their scope now.
     $area = Region::factory()->create(['parent_id' => $this->region->id]);
-    $otherArea = Region::factory()->create(['parent_id' => $this->region->id]);
+    $village = Region::factory()->village()->create(['parent_id' => $area->id]);
+    $nextVillage = Region::factory()->village()->create(['parent_id' => $area->id]);
 
-    $delegate = userWithRole('delegate', ['region_id' => $area->id]);
+    $delegate = userWithRole('delegate', ['region_id' => $village->id]);
 
-    $inScope = familyOf($area);
-    $outOfScope = familyOf($otherArea);
+    $inScope = familyOf($village);
+    $outOfScope = familyOf($nextVillage);
 
     $this->actingAs($delegate, 'sanctum');
 

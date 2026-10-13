@@ -98,6 +98,11 @@ class RoleAndPermissionSeeder extends Seeder
         // technical account and is still barred from opening a family file.
         'board_director' => 'all',
 
+        // 13 Oct 2026 — «مدير مجلس الأمناء ونائبه كامل البيانات». The deputy
+        // holds the same keys under their own name, as the deputy executive
+        // director does: a deputy is an account, not a shared login.
+        'deputy_board_director' => 'all',
+
         // The administrative sign-off at the end of the path. Reads widely,
         // approves, and touches neither the data entry nor the execution.
         'executive_director' => [
@@ -178,6 +183,7 @@ class RoleAndPermissionSeeder extends Seeder
         'service_provider' => 'مزود خدمة', 'admin' => 'مدير النظام', 'council' => 'مجلس الأمناء',
         'finance' => 'المحاسب', 'content_manager' => 'مدير المحتوى',
         'board_director' => 'مدير مجلس الأمناء',
+        'deputy_board_director' => 'نائب مدير مجلس الأمناء',
         'executive_director' => 'المدير التنفيذي',
         'deputy_executive_director' => 'نائب المدير التنفيذي',
         'deputy_area_supervisor' => 'نائب مشرف المناديب',

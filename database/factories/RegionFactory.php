@@ -22,4 +22,10 @@ class RegionFactory extends Factory
     {
         return $this->state(fn () => ['type' => 'governorate']);
     }
+
+    /** T-74 — a delegate is attached to a village, and to nothing wider. */
+    public function village(): static
+    {
+        return $this->state(fn () => ['type' => 'village']);
+    }
 }

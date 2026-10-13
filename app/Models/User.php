@@ -24,7 +24,24 @@ class User extends Authenticatable implements FilamentUser
     protected $hidden = ['password', 'remember_token', 'phone_encrypted', 'two_factor_secret'];
 
     /** Roles that must pass a second factor before reaching a panel (T-38). */
-    public const TWO_FACTOR_ROLES = ['admin', 'council', 'board_director'];
+    public const TWO_FACTOR_ROLES = ['admin', 'council', 'board_director', 'deputy_board_director'];
+
+    /*
+     | T-74 — how far down a scoped account sees, by the association's decision
+     | of 13 October: «المناديب يقدر يطلع على بيانات قريته فقط، المشرفين على
+     | بيانات منطقته».
+     |
+     | The scope itself was always the account's region and everything under
+     | it. What was missing is this: nothing stopped a delegate being attached
+     | to an area, and an area has villages under it, so one careless
+     | assignment handed a delegate a whole area. The level is now part of the
+     | account, refused on save rather than noticed later.
+     */
+    public const ROLE_REGION_LEVEL = [
+        'delegate' => 'village',
+        'area_supervisor' => 'area',
+        'deputy_area_supervisor' => 'area',
+    ];
 
     protected function casts(): array
     {
@@ -56,6 +73,45 @@ class User extends Authenticatable implements FilamentUser
     public function provider()
     {
         return $this->hasOne(Provider::class);
+    }
+
+    /*
+     | Refused on the model, so the rule holds for the panel, an import and a
+     | console command alike. An account with no region at all is left to the
+     | region scope, which shows such an account nothing.
+     */
+    protected static function booted(): void
+    {
+        $check = function (self $user) {
+            if (! $user->isDirty(['role_id', 'region_id'])) {
+                return;
+            }
+
+            // The role the account is moving to, not the relation already
+            // loaded on it: on a role change the latter is the old one.
+            $roleKey = $user->role_id === $user->role?->getKey()
+                ? $user->role?->key
+                : Role::whereKey($user->role_id)->value('key');
+
+            $level = self::ROLE_REGION_LEVEL[$roleKey ?? ''] ?? null;
+
+            if (! $level || ! $user->region_id) {
+                return;
+            }
+
+            $type = Region::whereKey($user->region_id)->value('type');
+
+            if ($type !== $level) {
+                throw new \RuntimeException(__('sanabel.user.wrong_region_level', [
+                    'role' => $user->role?->name_ar ?? '',
+                    'level' => __('sanabel.region_type.'.$level),
+                    'given' => $type ? __('sanabel.region_type.'.$type) : '',
+                ]));
+            }
+        };
+
+        static::creating($check);
+        static::updating($check);
     }
 
     public function hasRole(string ...$keys): bool

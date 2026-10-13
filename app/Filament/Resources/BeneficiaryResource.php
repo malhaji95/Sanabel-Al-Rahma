@@ -829,12 +829,23 @@ class BeneficiaryResource extends Resource
                         ->label(__('sanabel.beneficiary.privacy_policy_seen'))
                         ->live(),
 
+                    /*
+                     | T-74 — the consent does not open before the policy was
+                     | shown (13 Oct 2026). The model refuses it in any case;
+                     | the screen closes the door rather than letting a clerk
+                     | tick it and be told afterwards.
+                     */
                     Forms\Components\Toggle::make('privacy_consent')
                         ->label(__('sanabel.beneficiary.privacy_consent'))
+                        ->disabled(fn (Forms\Get $get) => $get('privacy_policy_seen') !== true)
+                        ->helperText(fn (Forms\Get $get) => $get('privacy_policy_seen') !== true
+                            ? __('sanabel.beneficiary.privacy_needs_seen_first')
+                            : null)
                         ->live(),
 
-                    // Shown rather than refused: the row is recorded as it was
-                    // given, and the person reading it is told what is wrong.
+                    // Kept for the rows the old-system import carries, where
+                    // the old form was filled that way and refusing the row
+                    // would lose the family rather than fix the form.
                     Forms\Components\Placeholder::make('privacy_contradiction')
                         ->label('')
                         ->content(__('sanabel.beneficiary.privacy_contradiction'))

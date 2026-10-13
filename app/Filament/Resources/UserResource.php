@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
+use App\Models\Region;
 use App\Models\Role;
 use App\Models\User;
 use Filament\Forms;
@@ -50,11 +51,24 @@ class UserResource extends Resource
             Forms\Components\Select::make('role_id')
                 ->label(__('sanabel.user.role'))
                 ->options(fn () => Role::pluck('name_ar', 'id'))
-                ->required(),
+                ->required()
+                ->live(),
 
+            /*
+             | T-74 — a delegate is attached to a village and a supervisor to an
+             | area (13 Oct 2026). The model refuses the wrong level; this
+             | offers only the right one, so the mistake is not made.
+             */
             Forms\Components\Select::make('region_id')
                 ->label(__('sanabel.beneficiary.region'))
-                ->relationship('region', 'name_ar')
+                ->options(function (Forms\Get $get) {
+                    $level = User::ROLE_REGION_LEVEL[Role::whereKey($get('role_id'))->value('key') ?? ''] ?? null;
+
+                    return Region::query()
+                        ->when($level, fn ($query) => $query->where('type', $level))
+                        ->orderBy('name_ar')
+                        ->pluck('name_ar', 'id');
+                })
                 ->searchable()
                 ->helperText(__('sanabel.user.region_help')),
 
