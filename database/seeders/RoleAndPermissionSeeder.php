@@ -115,6 +115,20 @@ class RoleAndPermissionSeeder extends Seeder
             // else's. The chairman holds every key, so this is the other half
             // of the pair, and the two-person rule makes them each other's.
             'request_anonymise' => 'all', 'execute_anonymise' => 'all',
+            /*
+             | 13 Oct 2026 — «مع امكانية تحديد الصلاحيات واظهار البيانات من قبل
+             | المدير التنفيذي». The settings screen is where «إظهار البيانات»
+             | is decided: the funding share, and the switches for what a donor
+             | sees.
+             |
+             | It also repairs a contradiction of our own making. T-75 put the
+             | administrator's anonymisation door in the hands of the two
+             | directors and their deputies — and the page itself was open to
+             | `edit_config` alone, so the account that holds the key could not
+             | reach the lock. Found by the training capture, which opened the
+             | screen as the director and was answered 403.
+             */
+            'edit_config' => 'all',
         ],
 
         // Same powers, own account, own name on every action. The time-bounded
@@ -129,6 +143,9 @@ class RoleAndPermissionSeeder extends Seeder
             // 13 Oct 2026 — the authorised became four: both directors and
             // both deputies.
             'request_anonymise' => 'all', 'execute_anonymise' => 'all',
+            // And the deputy holds the same key to the settings screen, for
+            // the same reason: a deputy is an account, not a shared login.
+            'edit_config' => 'all',
         ],
 
         'deputy_area_supervisor' => [

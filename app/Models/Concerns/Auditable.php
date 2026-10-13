@@ -26,7 +26,21 @@ trait Auditable
             $changed = array_keys($m->getDirty());
             $before = array_intersect_key($m->getOriginal(), array_flip($changed));
 
-            $m->writeAudit('updated', $m->auditPayload($before), $m->auditPayload($m->getDirty()));
+            /*
+             | Both sides read through the casts. getOriginal() applies them and
+             | getDirty() does not, so a cast column used to be logged as one
+             | thing before and another after: a switch going from false to true
+             | read «false → "true"», a JSON column read as its encoded string.
+             | A reviewer comparing the two columns of one row has to be
+             | comparing like with like.
+             */
+            $after = [];
+
+            foreach ($changed as $key) {
+                $after[$key] = $m->getAttribute($key);
+            }
+
+            $m->writeAudit('updated', $m->auditPayload($before), $m->auditPayload($after));
         });
 
         static::deleted(fn (Model $m) => $m->writeAudit('deleted', $m->auditPayload($m->getOriginal()), null));

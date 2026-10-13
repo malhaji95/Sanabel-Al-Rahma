@@ -102,3 +102,33 @@ it('opens the matrix to the roles that oversee, and to nobody else', function ()
         expect(PermissionMatrix::canAccess())->toBeFalse("{$role} should not see the matrix");
     }
 })->group('AUTH-01');
+
+/*
+ | T-86 — the settings screen said «كل فتح وإغلاق مسجَّل باسم من فعله ووقته»
+ | from the day the administrator's door was added, and nothing wrote it down.
+ | Rule 4 counts a permission change among the writes that must be logged, and
+ | `anonymise_admin_allowed` is one: it decides whether the system
+ | administrator may take part in erasing a family's personal data.
+ */
+it('logs who moved an operational switch, and what it was before', function () {
+    $director = userWithRole('executive_director');
+
+    App\Models\Setting::put(App\Services\AnonymiseService::ADMIN_SWITCH, false);
+
+    $this->actingAs($director);
+    App\Models\Setting::put(App\Services\AnonymiseService::ADMIN_SWITCH, true);
+
+    $row = App\Models\Setting::where('key', App\Services\AnonymiseService::ADMIN_SWITCH)->first();
+
+    $entry = AuditLog::where('entity_type', App\Models\Setting::class)
+        ->where('entity_id', $row->getKey())
+        ->where('action', 'updated')
+        ->latest('id')
+        ->first();
+
+    expect($entry)->not->toBeNull('moving a switch wrote nothing to the audit log')
+        ->and($entry->actor_id)->toBe($director->getKey())
+        ->and($entry->actor_role)->toBe('executive_director')
+        ->and($entry->before_json['value_json'])->toBeFalse()
+        ->and($entry->after_json['value_json'])->toBeTrue();
+})->group('OPS-01', 'IAM-01');

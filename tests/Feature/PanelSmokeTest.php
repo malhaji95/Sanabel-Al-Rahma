@@ -314,3 +314,35 @@ it('renders every date field with the panel picker, not the browser one', functi
 
     expect($offenders)->toBeEmpty();
 });
+
+it('gives every setting the screen draws a label, and every switch its sentence', function () {
+    /*
+     | T-86 — the settings screen was showing three of its fields as
+     | «sanabel.settings.keys.basket_warn_hours» and the like: the translation
+     | key itself, printed where the label should be. CLAUDE.md §5 calls a
+     | hardcoded string a bug; a missing one is the same bug seen from the
+     | other side, and this is the screen the association runs its own
+     | decisions from.
+     |
+     | Found by photographing the screen for the executive director's training
+     | guide. Nothing else looks at it: the page builds its fields from config,
+     | so a new setting arrives on screen whether or not anyone wrote it a name.
+     */
+    foreach (config('sanabel.setting_defaults') as $key => $default) {
+        // The form draws the numbers as fields and the booleans as switches;
+        // anything else is not on the screen and needs no name for it.
+        if (! is_int($default) && ! is_bool($default)) {
+            continue;
+        }
+
+        $label = 'sanabel.settings.keys.'.$key;
+
+        expect(__($label))->not->toBe($label, $key.' has no label on the settings screen');
+
+        if (is_bool($default)) {
+            $help = 'sanabel.settings.help.'.$key;
+
+            expect(__($help))->not->toBe($help, $key.' is a switch with nothing said about it');
+        }
+    }
+});

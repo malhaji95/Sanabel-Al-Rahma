@@ -2,11 +2,28 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Every operational decision the association owns, as data.
+ *
+ * T-86 — audited. Rule 4 lists a permission change among the writes that must
+ * be logged, and one of these rows is exactly that: `anonymise_admin_allowed`
+ * decides whether the system administrator may take part in erasing a family's
+ * personal data. The screen has told the association since T-75 that «كل فتح
+ * وإغلاق مسجَّل باسم من فعله ووقته», and until now nothing wrote that line
+ * down — found while writing the training guide for the screen, which is the
+ * second time a guide has caught the system claiming more than it did.
+ *
+ * The rest of the rows ride along, which is right: a changed reservation
+ * window or funding share changes what donors are asked for, and knowing who
+ * changed it and when is the same question.
+ */
 class Setting extends Model
 {
+    use Auditable;
     use HasFactory;
 
     protected $fillable = ['key', 'value_json', 'updated_by'];

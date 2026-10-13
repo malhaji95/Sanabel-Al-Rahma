@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Beneficiary;
+use App\Services\RankingService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
@@ -117,13 +118,35 @@ class TrainingGuides extends Command
             return $path;
         }
 
-        $case = Beneficiary::where('status', $m[2])->orderBy('id')->first();
+        $case = $m[2] === 'published'
+            ? $this->openOpportunity() ?? Beneficiary::where('status', 'published')->orderBy('id')->first()
+            : Beneficiary::where('status', $m[2])->orderBy('id')->first();
 
         if (! $case) {
             return null;
         }
 
         return str_replace($m[0], $m[1] === 'case' ? (string) $case->getKey() : $case->file_number, $path);
+    }
+
+    /**
+     * A published file a donor could actually give to.
+     *
+     * The first published file by id is not necessarily one of them: a file
+     * whose month is answered, or whose remainder is held, answers the
+     * opportunity page with «اكتملت تغطية هذه الفرصة». The guide then
+     * photographed a dead end and called it the case page — which is what it
+     * did until this was noticed in the capture. The funding list is the
+     * donor's own view, so it is the right place to ask.
+     */
+    private function openOpportunity(): ?Beneficiary
+    {
+        $open = app(RankingService::class)->fundingList('monthly')->pluck('beneficiary');
+
+        // Preferring one with an account on file is not decoration: the guide
+        // tells the trainee that the donor sees the last four digits of it,
+        // and a page that cannot show them teaches the opposite.
+        return $open->first(fn (Beneficiary $b) => filled($b->wallet_encrypted)) ?? $open->first();
     }
 
     private function serving(): bool

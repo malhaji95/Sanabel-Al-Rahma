@@ -1,6 +1,7 @@
 <?php
 
 use App\Filament\Pages\ManageSettings;
+use Filament\Facades\Filament;
 use App\Livewire\FamilyPortal;
 use App\Models\Setting;
 use App\Services\AnonymiseService;
@@ -233,3 +234,34 @@ it('shows one family their own account and never another family\'s', function ()
         ->assertDontSee('0944222222')
         ->assertDontSee($theirs->file_number);
 });
+
+it('opens the settings screen to the account that holds the key to it', function () {
+    /*
+     | T-86 — found by the training capture, which opened every screen in each
+     | guide as the account that guide is for, and was answered 403 here.
+     |
+     | Two things were wrong at once. The association said on 13 October that
+     | «اظهار البيانات» is the executive director's to decide, and the screen
+     | where it is decided was open to `edit_config` alone. And T-75 had put
+     | the administrator's anonymisation door in the hands of the two directors
+     | and their deputies — so the account holding that key could not reach the
+     | lock.
+     */
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+
+    foreach (['executive_director', 'deputy_executive_director'] as $role) {
+        $this->actingAs(userWithRole($role));
+
+        expect(ManageSettings::canAccess())->toBeTrue($role.' cannot open the settings screen')
+            // The door they were given, now reachable.
+            ->and(ManageSettings::maySwitch(AnonymiseService::ADMIN_SWITCH))->toBeTrue()
+            // And the display decisions the association put in their hands.
+            ->and(ManageSettings::maySwitch('show_wallet_last4'))->toBeTrue()
+            ->and(ManageSettings::maySwitch('funding_target_percent'))->toBeTrue();
+    }
+
+    // Unchanged: the board of trustees looks and does not touch.
+    $this->actingAs(userWithRole('council'));
+
+    expect(ManageSettings::canAccess())->toBeFalse();
+})->group('FILE-04', 'IAM-01');
