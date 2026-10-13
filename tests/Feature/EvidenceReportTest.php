@@ -29,7 +29,7 @@ function evidenceTags(): array
 
         foreach (file($file->getPathname()) as $line) {
             if (preg_match("/^(?:it|test)\('(.*?)',/", $line, $m)) {
-                $description = $m[1];
+                $description = str_replace("\\'", "'", $m[1]);
             }
 
             if ($description !== null && preg_match('/->group\((.*?)\)/', $line, $m)) {
@@ -104,7 +104,11 @@ it('points every tag at a test that is really there', function () {
         foreach ($tests as [$file, $name]) {
             $source = File::get(base_path($file));
 
-            expect(str_contains($source, "'".$name."'"))->toBeTrue(
+            // Escaped again on the way back: the source spells an apostrophe
+            // \' and the tag now holds it plain.
+            $inSource = str_replace("'", "\\'", $name);
+
+            expect(str_contains($source, "'".$inSource."'"))->toBeTrue(
                 "{$id} points at \"{$name}\" in {$file}, which no longer exists"
             );
         }
@@ -170,6 +174,23 @@ it('writes a report that names every item and the commit it was built from', fun
         ->and($report)->toContain('./vendor/bin/pest --group=AUTH-02');
 
     File::delete($out);
+});
+
+it('spells a tagged description the way the suite reports it', function () {
+    /*
+     | The gap this covers. A description holding an apostrophe is written
+     | `file\'s` in the source and reported `file's` by the suite, so the tag
+     | and the result never met and the item read «غير موجود» — a test that
+     | passed, shown in the report as missing. An item whose proof cannot be
+     | matched is exactly what this report exists to prevent.
+     */
+    foreach (evidenceTags() as $id => $tests) {
+        foreach ($tests as [$file, $name]) {
+            expect($name)->not->toContain('\\',
+                "{$id} holds an escape in \"{$name}\"; the suite reports it plain"
+            );
+        }
+    }
 });
 
 it('offers a tag per item, so an independent reviewer can check one on its own', function () {

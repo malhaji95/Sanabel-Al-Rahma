@@ -71,7 +71,11 @@ class EvidenceReport extends Command
 
             foreach (file($file->getPathname()) as $line) {
                 if (preg_match("/^(?:it|test)\('(.*?)',/", $line, $m)) {
-                    $description = $m[1];
+                    // A description holding an apostrophe is escaped in the
+                    // source and plain in the JUnit log, so it is unescaped
+                    // here or the two never meet and the item reads as proved
+                    // by a test that does not exist.
+                    $description = str_replace("\\'", "'", $m[1]);
                 }
 
                 if ($description !== null && preg_match('/->group\((.*?)\)/', $line, $m)) {
