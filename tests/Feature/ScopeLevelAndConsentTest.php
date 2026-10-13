@@ -29,8 +29,10 @@ it('attaches a delegate to a village and refuses anything wider', function () {
 
     expect($delegate->fresh()->region_id)->toBe($this->village->id);
 
+    // Straight through the factory: userWithRole() corrects the level for the
+    // rest of the suite, and what is being proved here is the refusal.
     foreach (['area' => $this->area, 'governorate' => $this->governorate] as $level => $region) {
-        expect(fn () => userWithRole('delegate', ['region_id' => $region->id]))
+        expect(fn () => User::factory()->role('delegate')->create(['region_id' => $region->id]))
             ->toThrow(RuntimeException::class, '', "a delegate was attached to a {$level}");
     }
 })->group('AUTH-02');
@@ -40,9 +42,9 @@ it('attaches a supervisor to an area and refuses a village or a governorate', fu
 
     expect($supervisor->fresh()->region_id)->toBe($this->area->id);
 
-    expect(fn () => userWithRole('area_supervisor', ['region_id' => $this->village->id]))
+    expect(fn () => User::factory()->role('area_supervisor')->create(['region_id' => $this->village->id]))
         ->toThrow(RuntimeException::class)
-        ->and(fn () => userWithRole('area_supervisor', ['region_id' => $this->governorate->id]))
+        ->and(fn () => User::factory()->role('area_supervisor')->create(['region_id' => $this->governorate->id]))
         ->toThrow(RuntimeException::class);
 })->group('AUTH-02');
 
@@ -74,7 +76,7 @@ it('leaves the roles with no level of their own alone', function () {
 
 it('says which level the role needs, so the fix is one click', function () {
     try {
-        userWithRole('delegate', ['region_id' => $this->area->id]);
+        User::factory()->role('delegate')->create(['region_id' => $this->area->id]);
     } catch (RuntimeException $e) {
         expect($e->getMessage())->toContain(__('sanabel.region_type.village'))
             ->and($e->getMessage())->toContain(__('sanabel.region_type.area'));

@@ -1,5 +1,6 @@
 <?php
 
+use App\Filament\Pages\ManageSettings;
 use App\Livewire\FamilyPortal;
 use App\Models\Setting;
 use App\Services\AnonymiseService;
@@ -110,13 +111,16 @@ it('names the date the period ends, so the answer is not just no', function () {
     $this->fail('the request was not refused');
 })->group('FILE-04');
 
-it('opens the act to the two the association named, and to nobody else', function () {
-    $case = fileLastTouched(6, $this->region);
+it('opens the act to the four the association named, and to nobody else', function () {
+    // T-75 — widened on 13 October: both directors and both deputies, which
+    // also means it no longer waits whenever one of two people is away.
+    $deputyChairman = userWithRole('deputy_board_director');
+    $deputyDirector = userWithRole('deputy_executive_director');
 
-    expect($this->service->isAuthorised($this->chairman, 'request_anonymise'))->toBeTrue()
-        ->and($this->service->isAuthorised($this->director, 'request_anonymise'))->toBeTrue()
-        ->and($this->service->isAuthorised($this->chairman, 'execute_anonymise'))->toBeTrue()
-        ->and($this->service->isAuthorised($this->director, 'execute_anonymise'))->toBeTrue();
+    foreach ([$this->chairman, $this->director, $deputyChairman, $deputyDirector] as $user) {
+        expect($this->service->isAuthorised($user, 'request_anonymise'))->toBeTrue()
+            ->and($this->service->isAuthorised($user, 'execute_anonymise'))->toBeTrue();
+    }
 
     foreach (['case_officer', 'area_supervisor', 'association', 'council', 'oversight_director', 'treasurer'] as $role) {
         $user = userWithRole($role, ['region_id' => $this->region->id]);
@@ -125,18 +129,64 @@ it('opens the act to the two the association named, and to nobody else', functio
     }
 })->group('FILE-04');
 
-it('keeps the system administrator out of it, permissions or no permissions', function () {
+it('keeps the system administrator out of it until the door is opened', function () {
     // admin holds every permission key in the matrix, which is why the check is
-    // on the role as well: the association named two people, and this is not
-    // one of them.
+    // on the role as well. And on 13 October the association asked for that to
+    // be a switch rather than a wall: «نحتاج تكون صلاحية مدير النظام اختياري
+    // متى ما نحتاج نفتحها او نسكرها».
     $admin = userWithRole('admin', ['region_id' => $this->region->id]);
     $case = fileLastTouched(6, $this->region);
 
-    expect($admin->can_('request_anonymise'))->toBeTrue()
+    expect(AnonymiseService::adminIsAllowed())->toBeFalse()
+        ->and($admin->can_('request_anonymise'))->toBeTrue()
         ->and($this->service->isAuthorised($admin, 'request_anonymise'))->toBeFalse();
 
     expect(fn () => $this->service->request($case, $admin, 'سند قانوني'))
         ->toThrow(RuntimeException::class);
+})->group('FILE-04');
+
+it('lets the administrator in while the door is open, and out again when it is shut', function () {
+    $admin = userWithRole('admin', ['region_id' => $this->region->id]);
+    $case = fileLastTouched(6, $this->region);
+
+    Setting::put(AnonymiseService::ADMIN_SWITCH, true);
+    Setting::forgetLoaded();
+
+    expect(AnonymiseService::adminIsAllowed())->toBeTrue()
+        ->and($this->service->isAuthorised($admin, 'request_anonymise'))->toBeTrue();
+
+    $this->service->request($case, $admin, 'سند قانوني بطلب من جهة قضائية');
+
+    expect($case->fresh()->anonymise_requested_by)->toBe($admin->getKey());
+
+    // Shut again: the request already raised stands, and the administrator
+    // cannot carry one out any more.
+    Setting::put(AnonymiseService::ADMIN_SWITCH, false);
+    Setting::forgetLoaded();
+
+    expect($this->service->isAuthorised($admin, 'execute_anonymise'))->toBeFalse();
+})->group('FILE-04');
+
+it('keeps the administrator from opening his own door', function () {
+    // A door the administrator opens for himself is not a door. The switch
+    // belongs to the accounts that hold the authority.
+    $admin = userWithRole('admin');
+    $chairman = userWithRole('board_director');
+
+    $this->actingAs($admin);
+    expect(ManageSettings::maySwitch(AnonymiseService::ADMIN_SWITCH))->toBeFalse();
+
+    $this->actingAs($chairman);
+    expect(ManageSettings::maySwitch(AnonymiseService::ADMIN_SWITCH))->toBeTrue();
+
+    // Every other setting still follows edit_config, which the administrator holds.
+    $this->actingAs($admin);
+    expect(ManageSettings::maySwitch('anonymise_after_years'))->toBeTrue();
+})->group('FILE-04');
+
+it('keeps the switch shut by default, so nothing changes until somebody decides', function () {
+    expect(config('sanabel.setting_defaults.'.AnonymiseService::ADMIN_SWITCH))->toBeFalse()
+        ->and(AnonymiseService::adminIsAllowed())->toBeFalse();
 })->group('FILE-04');
 
 it('still takes two of them, now that only two may do it at all', function () {

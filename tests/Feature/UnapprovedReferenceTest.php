@@ -41,10 +41,15 @@ it('names the region and the class, so the gap can be filled', function () {
         app(NeedEngine::class)->compute($family->fresh());
         expect(false)->toBeTrue('the assessment should have been refused');
     } catch (ReferenceValueMissing $e) {
-        expect($e->regionName)->toBe($region->name_ar)
+        // The family's own region, which since T-74 is the village they live
+        // in rather than the governorate above it. The rate was missing there,
+        // and that is the region the person filling the gap needs named.
+        $where = $family->region->name_ar;
+
+        expect($e->regionName)->toBe($where)
             ->and($e->missing)->toContain(__('sanabel.person_class.child'))
             ->and($e->missing)->toContain(__('sanabel.person_class.elderly'))
-            ->and($e->getMessage())->toContain($region->name_ar);
+            ->and($e->getMessage())->toContain($where);
     }
 });
 

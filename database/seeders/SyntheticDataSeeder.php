@@ -100,6 +100,20 @@ class SyntheticDataSeeder extends Seeder
         $this->command?->info('Synthetic data seeded. No real family data is present.');
     }
 
+    /**
+     * A village under the first area, so the demo can show a delegate at all:
+     * since 13 Oct 2026 a delegate is attached to a village and the model
+     * refuses anything wider. The association's own villages are reference
+     * data they enter; this one is generated, like every other demo row.
+     */
+    private function demoVillage($areas): Region
+    {
+        return Region::firstOrCreate(
+            ['parent_id' => $areas->first()->id, 'type' => 'village'],
+            ['name_ar' => 'قرية تجريبية', 'is_active' => true],
+        );
+    }
+
     /** @return array<string,User> */
     private function staff($areas): array
     {
@@ -117,7 +131,7 @@ class SyntheticDataSeeder extends Seeder
             'admin' => $make('admin', 'admin@sanabel.local', 'مدير النظام'),
             'officer' => $make('case_officer', 'officer@sanabel.local', 'مسؤول الحالات'),
             'supervisor' => $make('area_supervisor', 'supervisor@sanabel.local', 'مشرف المنطقة', $areas->first()->id),
-            'delegate' => $make('delegate', 'delegate@sanabel.local', 'مندوب ميداني', $areas->first()->id),
+            'delegate' => $make('delegate', 'delegate@sanabel.local', 'مندوب ميداني', $this->demoVillage($areas)->id),
             'association' => $make('association', 'association@sanabel.local', 'جمعية شريكة', $areas->first()->id),
             'council' => $make('council', 'council@sanabel.local', 'عضو مجلس الإدارة'),
             'provider' => $make('service_provider', 'provider@sanabel.local', 'مركز طبي'),

@@ -56,15 +56,35 @@ use Illuminate\Support\Facades\Storage;
 class AnonymiseService
 {
     /**
-     * Who may do this at all, named by the association on 12 October: the
-     * chairman of the board of trustees and the executive director.
+     * Who may do this at all, named by the association on 12 October and
+     * widened on 13 October to include both deputies: the chairman of the
+     * board of trustees and his deputy, the executive director and his deputy.
      *
      * A role check and not only a permission, in the manner of the council's
      * read-only rule: the system administrator holds every permission key, and
      * the association did not name the system administrator. Destroying a
      * family's identity is not an administrative convenience.
+     *
+     * Four accounts rather than two, which also answers the risk in the first
+     * version: it takes two different people, and with two it waited whenever
+     * one of them was away.
      */
-    public const AUTHORISED_ROLES = ['board_director', 'executive_director'];
+    public const AUTHORISED_ROLES = [
+        'board_director', 'deputy_board_director',
+        'executive_director', 'deputy_executive_director',
+    ];
+
+    /**
+     * The system administrator is outside that list, by a switch rather than
+     * by a rule in the code: «نحتاج تكون صلاحية مدير النظام اختياري متى ما
+     * نحتاج نفتحها او نسكرها» (13 Oct 2026).
+     *
+     * Closed by default, opened from the settings screen when the association
+     * needs it, and closed again afterwards. Opening it is itself a change to
+     * a setting, so it carries a name and a time in the audit trail — which is
+     * the point of a door that can be opened rather than a wall with a hole.
+     */
+    public const ADMIN_SWITCH = 'anonymise_admin_allowed';
 
     /**
      * What is cleared, per record. Everything not named here survives, which
@@ -228,7 +248,24 @@ class AnonymiseService
 
     public function isAuthorised(User $user, string $permission): bool
     {
-        return $user->hasRole(...self::AUTHORISED_ROLES) && $user->can_($permission);
+        if (! $user->can_($permission)) {
+            return false;
+        }
+
+        if ($user->hasRole(...self::AUTHORISED_ROLES)) {
+            return true;
+        }
+
+        return $user->hasRole('admin') && self::adminIsAllowed();
+    }
+
+    /** Whether the administrator's door is open right now. Data, not code. */
+    public static function adminIsAllowed(): bool
+    {
+        return (bool) Setting::value(
+            self::ADMIN_SWITCH,
+            config('sanabel.setting_defaults.'.self::ADMIN_SWITCH)
+        );
     }
 
     /** The statutory period, in years. Data, so the association moves it. */

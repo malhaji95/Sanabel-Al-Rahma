@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Models\Setting;
+use App\Services\AnonymiseService;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -43,6 +44,23 @@ class ManageSettings extends Page implements HasForms
         return auth()->user()?->can_('edit_config') ?? false;
     }
 
+    /**
+     * Who may move a switch. The administrator's own door belongs to the
+     * accounts the association named as authorised, so the administrator
+     * cannot open it for himself; the rest of the switches follow
+     * `edit_config` like every other setting.
+     */
+    public static function maySwitch(string $key): bool
+    {
+        $user = auth()->user();
+
+        if ($key === AnonymiseService::ADMIN_SWITCH) {
+            return (bool) $user?->hasRole(...AnonymiseService::AUTHORISED_ROLES);
+        }
+
+        return (bool) $user?->can_('edit_config');
+    }
+
     public function mount(): void
     {
         $wallet = Setting::value('platform_wallet', []);
@@ -71,8 +89,23 @@ class ManageSettings extends Page implements HasForms
             ->values()
             ->all();
 
+        /*
+         | T-75 — the switches. The administrator's door is one of them, and it
+         | is shown only to the accounts that themselves hold the authority:
+         | a door the administrator can open for himself is not a door.
+         */
+        $switches = collect(config('sanabel.setting_defaults'))
+            ->filter(fn ($default) => is_bool($default))
+            ->map(fn ($default, $key) => Forms\Components\Toggle::make($key)
+                ->label(__('sanabel.settings.keys.'.$key))
+                ->helperText(__('sanabel.settings.help.'.$key))
+                ->visible(fn () => self::maySwitch($key))
+                ->dehydrated(fn () => self::maySwitch($key)))
+            ->values()
+            ->all();
+
         return $form
-            ->schema(array_merge($numeric, [
+            ->schema(array_merge($numeric, $switches, [
                 Forms\Components\TextInput::make('platform_wallet_number')
                     ->label(__('sanabel.settings.keys.platform_wallet_number')),
 
@@ -100,7 +133,17 @@ class ManageSettings extends Page implements HasForms
 
         unset($state['platform_wallet_number'], $state['platform_wallet_holder']);
 
+        $defaults = config('sanabel.setting_defaults');
+
         foreach ($state as $key => $value) {
+            if (is_bool($defaults[$key] ?? null)) {
+                abort_unless(self::maySwitch($key), 403);
+
+                Setting::put($key, (bool) $value);
+
+                continue;
+            }
+
             Setting::put($key, (int) $value);
         }
 

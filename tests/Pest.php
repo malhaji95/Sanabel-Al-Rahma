@@ -75,7 +75,7 @@ function regionWithRates(
 function familyOf(Region $region, int $adults = 2, int $children = 3, array $attributes = []): Beneficiary
 {
     $beneficiary = Beneficiary::factory()->create(
-        array_merge(['region_id' => $region->id], $attributes)
+        array_merge(['region_id' => placeIn($region, 'village')->id], $attributes)
     );
 
     HouseholdMember::factory()->count($adults)->adult()->create(['beneficiary_id' => $beneficiary->id]);
@@ -85,8 +85,64 @@ function familyOf(Region $region, int $adults = 2, int $children = 3, array $att
     return $beneficiary->refresh();
 }
 
+/*
+ | T-74 — a family lives in a village, and a scoped account sits at the level
+ | its role allows: a delegate in a village, a supervisor in the area above it.
+ |
+ | The fixtures used to put both straight into whatever region the test made,
+ | usually a governorate. That was never how the association works, and since
+ | the level became part of the account the model refuses it. So one helper
+ | places a node of the wanted level inside a region, building the chain down
+ | to it once and answering from memory afterwards — reference values resolve
+ | up the lineage, so a village inherits the rates its governorate carries.
+ */
+function placeIn(Region $region, string $level): Region
+{
+    static $cache = [];
+
+    $key = $region->id.':'.$level;
+
+    if (isset($cache[$key])) {
+        return $cache[$key];
+    }
+
+    if ($region->type === $level) {
+        return $cache[$key] = $region;
+    }
+
+    $order = ['governorate', 'area', 'village'];
+    $from = array_search($region->type, $order, true);
+    $to = array_search($level, $order, true);
+
+    // A level above the region given: walk up to it instead.
+    if ($from === false || $to === false || $to < $from) {
+        return $cache[$key] = $region->ancestorOfType($level) ?? $region;
+    }
+
+    $node = $region;
+
+    foreach (array_slice($order, $from + 1, $to - $from) as $type) {
+        $node = Region::firstOrCreate(
+            ['parent_id' => $node->id, 'type' => $type],
+            ['name_ar' => __('sanabel.region_type.'.$type).' '.fake()->unique()->numberBetween(1, 999999), 'is_active' => true],
+        );
+    }
+
+    return $cache[$key] = $node;
+}
+
 function userWithRole(string $roleKey, array $attributes = []): User
 {
+    $level = User::ROLE_REGION_LEVEL[$roleKey] ?? null;
+
+    if ($level && ! empty($attributes['region_id'])) {
+        $region = Region::find($attributes['region_id']);
+
+        if ($region && $region->type !== $level) {
+            $attributes['region_id'] = placeIn($region, $level)->id;
+        }
+    }
+
     return User::factory()->role($roleKey)->create($attributes);
 }
 

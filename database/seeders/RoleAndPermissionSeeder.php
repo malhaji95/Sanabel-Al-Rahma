@@ -126,6 +126,9 @@ class RoleAndPermissionSeeder extends Seeder
             'handle_complaint' => 'all', 'manage_campaigns' => 'all', 'approve_content' => 'all',
             'approve_disbursement' => 'all',
             'file_complaint' => 'own', 'view_reports' => 'all',
+            // 13 Oct 2026 — the authorised became four: both directors and
+            // both deputies.
+            'request_anonymise' => 'all', 'execute_anonymise' => 'all',
         ],
 
         'deputy_area_supervisor' => [

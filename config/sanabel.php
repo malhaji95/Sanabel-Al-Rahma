@@ -190,5 +190,10 @@ return [
         // The period runs from the file's last activity, not from its
         // creation, so a family still being helped is never due.
         'anonymise_after_years' => 5,
+        // Whether the system administrator may take part in anonymising a
+        // family. Closed by default and opened from the settings screen when
+        // the association needs it (13 Oct 2026). Opening it is a change to a
+        // setting, so it carries a name and a time.
+        'anonymise_admin_allowed' => false,
     ],
 ];
