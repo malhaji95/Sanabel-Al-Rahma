@@ -133,3 +133,131 @@ it('keeps every directory the test suites name inside the repository', function 
         }
     }
 })->group('CICD-02');
+
+/*
+ | T-94 — CICD-02 and CICD-04, the two halves of «what did we ship».
+ |
+ | The scan used to read the checkout, which answers «is a credential there
+ | now» and not «was one ever pushed» — and the second is the question that
+ | matters, because a credential removed in a later commit is still in every
+ | clone. And a release could not say what was inside it: the answer was «read
+ | the lock files», which nobody does when an advisory lands.
+ */
+
+it('reads the whole history, not only the files as they stand', function () {
+    $planted = base_path('storage/framework/testing/secret-history-'.bin2hex(random_bytes(4)));
+    File::ensureDirectoryExists($planted);
+
+    try {
+        Process::path($planted)->run('git init -q .')->throw();
+        Process::path($planted)->run('git config user.email scan@example.test')->throw();
+        Process::path($planted)->run('git config user.name scan')->throw();
+
+        // Committed, then deleted and committed again — the shape of «we took
+        // it out», which left the key in the clone and the scan silent.
+        File::put($planted.'/deploy.env', 'AWS_SECRET'.'_ACCESS_KEY=wJalrXUtnFEMIK7MDENGbPxRfiCY');
+        Process::path($planted)->run('git add -A')->throw();
+        Process::path($planted)->run('git commit -q -m "oops"')->throw();
+
+        File::delete($planted.'/deploy.env');
+        Process::path($planted)->run('git add -A')->throw();
+        Process::path($planted)->run('git commit -q -m "removed"')->throw();
+
+        // The checkout is clean, and says so.
+        $tree = Process::path(base_path())->run('scripts/secret-scan.sh '.escapeshellarg($planted));
+        expect($tree->successful())->toBeTrue($tree->output().$tree->errorOutput());
+
+        // The history is not, and that is what the push must fail on.
+        $history = Process::path(base_path())
+            ->run('scripts/secret-scan.sh --history '.escapeshellarg($planted));
+
+        expect($history->successful())->toBeFalse('the history scan passed a key that is still in the clone')
+            ->and($history->output())->toContain('deploy.env');
+    } finally {
+        File::deleteDirectory($planted);
+    }
+})->group('CICD-02', 'CICD-03');
+
+it('passes this repository history, and says how much of it it read', function () {
+    $result = Process::path(base_path())->run('scripts/secret-scan.sh --history');
+
+    expect($result->successful())->toBeTrue($result->output().$result->errorOutput())
+        ->and($result->output())->toContain('blobs of the history');
+})->group('CICD-02');
+
+it('clears a historical blob by its content and never by its name', function () {
+    $allowed = File::get(base_path('scripts/secret-scan-allowed-blobs.txt'));
+
+    $hashes = collect(explode("\n", $allowed))
+        ->map(fn (string $line) => trim($line))
+        ->filter(fn (string $line) => $line !== '' && ! str_starts_with($line, '#'));
+
+    foreach ($hashes as $hash) {
+        // A content hash, so an entry can never excuse a future credential:
+        // one changed character is a different blob with no allowance. A path
+        // would be exempt forever, which is how an allow-list becomes a hole.
+        expect($hash)->toMatch('/^[0-9a-f]{40}$/', $hash.' is not a blob hash');
+
+        $exists = Process::path(base_path())->run('git cat-file -e '.escapeshellarg($hash));
+        expect($exists->successful())->toBeTrue($hash.' is allowed and is not in this repository');
+    }
+
+    // And each one carries its reason above it, not a bare line.
+    expect(substr_count($allowed, '#'))->toBeGreaterThan($hashes->count());
+})->group('CICD-02');
+
+it('writes a bill of materials naming every component of this release', function () {
+    $path = base_path('storage/framework/testing/sbom-'.bin2hex(random_bytes(4)).'.json');
+
+    try {
+        $this->artisan('sbom', ['--out' => $path, '--dev' => true])->assertSuccessful();
+
+        $document = json_decode(File::get($path), true);
+
+        expect($document['bomFormat'])->toBe('CycloneDX')
+            ->and($document['specVersion'])->toBe('1.5')
+            ->and($document['metadata']['component']['name'])->toBe('sanabel-al-rahma');
+
+        $components = collect($document['components']);
+
+        // Every component carries the three things an auditor reads: what it
+        // is, which version, and the identifier a scanner matches on.
+        foreach ($components as $component) {
+            expect($component['name'] ?? '')->not->toBeEmpty()
+                ->and($component['version'] ?? '')->not->toBeEmpty()
+                ->and($component['purl'] ?? '')->toContain('@');
+        }
+
+        // Both package managers, and the framework itself by name and version.
+        $framework = $components->firstWhere('name', 'laravel/framework');
+
+        expect($components->filter(fn ($c) => str_starts_with($c['purl'], 'pkg:composer/'))->count())
+            ->toBeGreaterThan(50)
+            ->and($components->filter(fn ($c) => str_starts_with($c['purl'], 'pkg:npm/'))->count())
+            ->toBeGreaterThan(0)
+            ->and($framework)->not->toBeNull()
+            ->and($framework['version'])->toBe(
+                collect(json_decode(File::get(base_path('composer.lock')), true)['packages'])
+                    ->firstWhere('name', 'laravel/framework')['version']
+            );
+
+        // A development dependency is listed and marked as not shipped, so the
+        // document cannot be read as «this is what runs in production».
+        expect($components->firstWhere('name', 'pestphp/pest')['scope'])->toBe('excluded');
+    } finally {
+        File::delete($path);
+    }
+})->group('CICD-04');
+
+it('keeps the bill of materials out of the release it describes', function () {
+    // It is written per build and uploaded as an artifact of that build; a
+    // copy committed here would be stale by the next merge and would read as
+    // the inventory of something that no longer exists.
+    $tracked = Process::path(base_path())->run('git ls-files storage/app/sbom sbom.json');
+
+    expect(trim($tracked->output()))->toBe('');
+
+    expect(File::get(base_path('.github/workflows/checks.yml')))
+        ->toContain('php artisan sbom')
+        ->toContain('upload-artifact');
+})->group('CICD-04');

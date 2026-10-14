@@ -12,11 +12,13 @@
 #   tests         the project's own suite, on PostgreSQL, with the front end
 #                 built, on the PHP version the production image carries
 #   dependencies  advisories in what we ship, PHP and npm both
-#   secrets       nothing credential-shaped in any tracked file
+#   secrets       nothing credential-shaped in any tracked file, and nothing in
+#                 any blob the history ever carried (T-94)
+#   sbom          the bill of materials for this commit, kept as an artifact
 #
-# Still open under CICD-02, and not pretended otherwise: static analysis, and a
-# real secret scanner over the whole history. scripts/secret-scan.sh says in
-# its own header what it is and what it is not.
+# Still open under CICD-02, and not pretended otherwise: static analysis, which
+# needs a package and therefore a decision. scripts/secret-scan.sh says in its
+# own header what it is and what it is not.
 
 name: Checks
 
@@ -181,5 +183,42 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # The whole history, not the tip: a credential deleted in a later commit
+      # is still in every clone, and a shallow checkout cannot see it. The scan
+      # refuses to pass on a shallow clone rather than report a clean history
+      # it never read.
       - uses: actions/checkout@v5
-      - run: scripts/secret-scan.sh
+        with:
+          fetch-depth: 0
+
+      - run: scripts/secret-scan.sh --history
+
+  sbom:
+    name: SBOM
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      # CICD-04 — one document per release, naming every component and its
+      # version, in the format every scanner reads. Built from the lock files,
+      # which are what `composer install` and `npm ci` actually lay down.
+      - run: php artisan sbom --dev --out=sbom.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ github.sha }}
+          path: sbom.json
+          retention-days: 90
