@@ -5,6 +5,16 @@
  | only a file number and a link to the relevant screen after login.
  */
 return [
+    /*
+     | T-95 — OPS-03. Rule 10: the alert names the kind of record and its
+     | number, never the record. Whoever receives it opens the audit log and
+     | reads the rest there, behind their own sign-in.
+     */
+    'security_alert' => [
+        'subject' => 'تنبيه أمني: تغيير يستدعي انتباهك',
+        'body' => 'جرى تغيير من النوع :ref على السجل رقم :id. راجعه في سجل التدقيق من لوحتك: فيه من فعله ووقته والقيمة قبل وبعد.',
+    ],
+
     'donation_verified' => [
         'subject' => 'تم التحقق من تبرعكم',
         'body' => 'تم التحقق من تبرعكم رقم :ref. شكراً لدعمكم. للاطلاع على التفاصيل يرجى تسجيل الدخول.',

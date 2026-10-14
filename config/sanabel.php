@@ -247,6 +247,14 @@ return [
     ],
 
     'setting_defaults' => [
+        /*
+         | T-95 — OPS-03. Who hears a security alert: the roles the association
+         | names. Empty until they do, and nothing is sent while it is empty —
+         | an alert addressed to nobody is worse than none, because it reads
+         | like a control that exists.
+         */
+        'security_alert_roles' => [],
+
         'basket_hold_hours' => 24,
         // How long before a hold runs out the donor hears about it.
         'basket_warn_hours' => 6,

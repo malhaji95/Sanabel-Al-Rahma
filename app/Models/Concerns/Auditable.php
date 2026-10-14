@@ -16,6 +16,10 @@ trait Auditable
     protected array $auditRedacted = [
         'national_id_encrypted', 'national_id_hash', 'phone_encrypted', 'wallet_encrypted',
         'landlord_phone_encrypted', 'contact_encrypted', 'password', 'remember_token',
+        // T-95 — the account's own secrets and its address. That a sign-in
+        // address changed is the signal an auditor needs; the address itself
+        // belongs to the row, not to a log that is read by more people.
+        'email', 'two_factor_secret',
     ];
 
     public static function bootAuditable(): void
@@ -65,7 +69,7 @@ trait Auditable
     {
         $actor = Auth::user();
 
-        AuditLog::create([
+        $entry = AuditLog::create([
             'actor_id' => $actor?->getKey(),
             'actor_role' => $actor?->role?->key,
             'action' => $action,
@@ -74,6 +78,14 @@ trait Auditable
             'before_json' => $before,
             'after_json' => $after,
         ]);
+
+        /*
+         | T-95 — OPS-03. Every sensitive write already passed through here, so
+         | this is where the handful that somebody must hear about is noticed.
+         | The service decides which, and sends nothing at all until the
+         | association has named a recipient.
+         */
+        app(\App\Services\SecurityAlerts::class)->consider($entry);
     }
 
     public function auditEntries()

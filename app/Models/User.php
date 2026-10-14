@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use App\Services\PermissionService;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -14,7 +15,15 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable implements FilamentUser
 {
-    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
+    /*
+     | T-95 — rule 4 counts a permission change among the writes that must be
+     | logged, and the account is where a permission lives: its role, its
+     | region, whether it works at all. None of it was logged — a role could be
+     | widened, an account switched off, a password reset, and the system kept
+     | no record of who did it. The trait redacts the password, the second
+     | factor and the address; what is kept is that they changed.
+     */
+    use Auditable, HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [
         'name', 'email', 'password', 'role_id', 'region_id', 'association_id', 'phone_encrypted', 'is_active',

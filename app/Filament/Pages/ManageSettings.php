@@ -111,6 +111,20 @@ class ManageSettings extends Page implements HasForms
 
                 Forms\Components\TextInput::make('platform_wallet_holder')
                     ->label(__('sanabel.settings.keys.platform_wallet_holder')),
+
+                /*
+                 | T-95 — OPS-03. Who hears a security alert. Roles rather than
+                 | addresses: an address in a settings row is a copy that goes
+                 | stale the day someone leaves, and a role follows whoever
+                 | holds it. Empty means nothing is sent, and the helper text
+                 | says so rather than leaving it to be discovered.
+                 */
+                Forms\Components\Select::make('security_alert_roles')
+                    ->label(__('sanabel.settings.keys.security_alert_roles'))
+                    ->helperText(__('sanabel.settings.help.security_alert_roles'))
+                    ->multiple()
+                    ->options(fn () => \App\Models\Role::orderBy('id')->pluck('name_ar', 'key'))
+                    ->columnSpanFull(),
             ]))
             ->columns(2)
             ->statePath('data');
@@ -131,7 +145,11 @@ class ManageSettings extends Page implements HasForms
                 : null,
         ]);
 
-        unset($state['platform_wallet_number'], $state['platform_wallet_holder']);
+        Setting::put('security_alert_roles', array_values(array_filter(
+            (array) ($state['security_alert_roles'] ?? [])
+        )));
+
+        unset($state['platform_wallet_number'], $state['platform_wallet_holder'], $state['security_alert_roles']);
 
         $defaults = config('sanabel.setting_defaults');
 
