@@ -74,7 +74,13 @@ jobs:
           --health-retries 10
 
     steps:
+      # The suite reads the repository's own history in two of its checks
+      # (T-94), and a shallow checkout has none. They skip themselves on a
+      # shallow clone rather than fail, so without this they would quietly
+      # stop running here.
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: PHP 8.3
         uses: shivammathur/setup-php@v2

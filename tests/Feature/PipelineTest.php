@@ -183,7 +183,20 @@ it('passes this repository history, and says how much of it it read', function (
 
     expect($result->successful())->toBeTrue($result->output().$result->errorOutput())
         ->and($result->output())->toContain('blobs of the history');
-})->group('CICD-02');
+})->skip(fn () => hasShallowHistory(), 'a shallow clone has no history to read')
+    ->group('CICD-02');
+
+/**
+ | A clone fetched with --depth has no past, so the two checks that read it
+ | say so instead of failing. CI fetches the whole history for exactly this
+ | reason, which is where they are meant to run.
+ */
+function hasShallowHistory(): bool
+{
+    return file_exists(trim(
+        Process::path(base_path())->run('git rev-parse --git-dir')->output()
+    ).'/shallow');
+}
 
 it('clears a historical blob by its content and never by its name', function () {
     $allowed = File::get(base_path('scripts/secret-scan-allowed-blobs.txt'));
@@ -202,9 +215,11 @@ it('clears a historical blob by its content and never by its name', function () 
         expect($exists->successful())->toBeTrue($hash.' is allowed and is not in this repository');
     }
 
+
     // And each one carries its reason above it, not a bare line.
     expect(substr_count($allowed, '#'))->toBeGreaterThan($hashes->count());
-})->group('CICD-02');
+})->skip(fn () => hasShallowHistory(), 'a shallow clone does not carry the blobs the list names')
+    ->group('CICD-02');
 
 it('writes a bill of materials naming every component of this release', function () {
     $path = base_path('storage/framework/testing/sbom-'.bin2hex(random_bytes(4)).'.json');
