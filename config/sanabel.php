@@ -16,6 +16,14 @@ return [
     'allow_indexing' => env('SANABEL_ALLOW_INDEXING', ! env('DEMO_SEED', false)),
 
     /*
+     | T-97 — whether this deployment is a demonstration: synthetic families
+     | are allowed to exist, and `demo:reset` is allowed to empty the database
+     | and build it again. A real deployment never sets it, and the command
+     | refuses outright without it.
+     */
+    'demo_seed' => (bool) env('DEMO_SEED', false),
+
+    /*
      | T-87 — how long a page of the donor's list of families is held before it
      | is computed again.
      |

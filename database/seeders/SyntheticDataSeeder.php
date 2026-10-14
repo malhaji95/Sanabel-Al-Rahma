@@ -362,6 +362,52 @@ class SyntheticDataSeeder extends Seeder
             ]);
         }
 
+        /*
+         | T-97 — a spread, so the demo shows what was built.
+         |
+         | Before this the seeder funded four families and left the rest at
+         | nothing, and the list a visitor opened read «0%» thirty times over.
+         | Every band, every priority colour and the «مكتملة» state were in the
+         | code and invisible on the screen — which is the one thing a demo is
+         | for. These are real transfers through the real services, so nothing
+         | here is a picture of a feature: it is the feature.
+         */
+        $spread = Beneficiary::where('status', 'published')
+            ->orderBy('id')
+            ->skip(6)
+            ->take(8)
+            ->get();
+
+        $shares = [1.0, 0.85, 0.7, 0.55, 0.4, 0.3, 0.2, 0.1];
+
+        if ($spread->isNotEmpty()) {
+            $basket = $baskets->openFor($donors[2] ?? $donors[0]);
+            $total = 0;
+
+            foreach ($spread as $index => $case) {
+                $amount = (int) floor($coverage->remainingNeed($case) * ($shares[$index] ?? 0.25));
+
+                if ($amount > 0) {
+                    $baskets->addItem($basket, $case, $amount);
+                    $total += $amount;
+                }
+            }
+
+            if ($total > 0) {
+                $baskets->reserve($basket);
+
+                $donations->verify(
+                    $donations->record([
+                        'donor_id' => ($donors[2] ?? $donors[0])->id,
+                        'basket_id' => $basket->id,
+                        'amount' => $total,
+                        'transaction_ref' => 'DEMO-TRX-0004',
+                    ]),
+                    $staff['admin']->id,
+                );
+            }
+        }
+
         app(SponsorshipService::class)->create([
             'donor_id' => $donors[1]->id,
             'beneficiary_id' => $cases[5]->id,

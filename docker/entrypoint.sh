@@ -98,6 +98,20 @@ php /app/artisan db:seed --force
 # Synthetic families, so the demo has something to show. Rule 11: generated
 # data only, never real families. Runs once; skipped if a file already exists.
 if [ "${DEMO_SEED:-false}" = "true" ]; then
+    # T-97 — and that «runs once» is why the demo drifted: everything added to
+    # the seeder after the first boot never ran, so the association was looking
+    # at screens the code fills and the database had not been told about —
+    # no wallet, no campaigns, no verified money.
+    #
+    # Setting DEMO_RESET to any value empties the database and builds it again
+    # from this release. The value is remembered, so leaving the variable in
+    # place does not wipe on every deploy: change it to rebuild again.
+    if [ -n "${DEMO_RESET:-}" ]; then
+        say "rebuilding the demonstration data"
+        php /app/artisan demo:reset --force --token="${DEMO_RESET}" \
+            || echo "the demonstration data could not be rebuilt; the old data is still there" >&2
+    fi
+
     if [ "$(php /app/artisan tinker --execute='echo App\Models\Beneficiary::count();' 2>/dev/null | tr -dc '0-9')" = "0" ]; then
         say "seeding synthetic demo families"
         php /app/artisan db:seed --class=SyntheticDataSeeder --force
