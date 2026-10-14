@@ -407,6 +407,18 @@ class EvidenceReport extends Command
                     $out[] = '**'.__('evidence.gap').':** '.$item['gap'];
                     $out[] = '';
                 }
+
+                /*
+                 | T-93 — an item answered by an absence says when the absence
+                 | ends. «No payment gateway, so no webhook» is true today and
+                 | a lie the day one is connected, and the association asked
+                 | for that in writing on 14 October rather than left to
+                 | memory.
+                 */
+                if (! empty($item['reactivates'])) {
+                    $out[] = '**'.__('evidence.reactivates').':** '.$item['reactivates'];
+                    $out[] = '';
+                }
             }
         }
 

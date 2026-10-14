@@ -172,7 +172,8 @@ it('never lets a browser store a page served to a signed-in account', function (
         ['/cases', $donor],
         ['/', $donor],
     ] as [$path, $user]) {
-        assertNotStored($this->actingAs($user)->get($path), $path);
+        // Each row is a different person, so each gets their own session.
+        assertNotStored($this->actingFreshly($user)->get($path), $path);
     }
 })->group('APP-07');
 
@@ -242,8 +243,8 @@ it('serves each household its own page and never the other household from a cach
     $secondCase = publishedCase($this->region);
     $secondCase->forceFill(['user_id' => $second->getKey()])->save();
 
-    $firstBody = $this->actingAs($first)->get('/portal/family')->getContent();
-    $secondBody = $this->actingAs($second)->get('/portal/family')->getContent();
+    $firstBody = $this->actingFreshly($first)->get('/portal/family')->getContent();
+    $secondBody = $this->actingFreshly($second)->get('/portal/family')->getContent();
 
     expect($firstBody)->toContain($firstCase->file_number)
         ->and($firstBody)->not->toContain($secondCase->file_number)

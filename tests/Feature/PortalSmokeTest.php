@@ -183,8 +183,8 @@ it('serves the delegate field app to a delegate and refuses everyone else', func
         ->assertSee('data-updated', escape: false)
         ->assertSee('manifest', escape: false);
 
-    $this->actingAs(donorFor())->get(route('field'))->assertForbidden();
-    $this->actingAs(userWithRole('council'))->get(route('field'))->assertForbidden();
+    $this->actingFreshly(donorFor())->get(route('field'))->assertForbidden();
+    $this->actingFreshly(userWithRole('council'))->get(route('field'))->assertForbidden();
 });
 
 it('serves the field manifest and service worker', function () {

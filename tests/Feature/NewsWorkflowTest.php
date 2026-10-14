@@ -114,14 +114,14 @@ it('shows an unpublished piece to an editor and to nobody else', function () {
     // A visitor who guesses the address gets nothing.
     $this->get(route('post.preview', 'still-a-draft'))->assertRedirect();
 
-    $this->actingAs(userWithRole('content_manager'))
+    $this->actingFreshly(userWithRole('content_manager'))
         ->get(route('post.preview', 'still-a-draft'))
         ->assertOk()
         ->assertSee('نص لم يُنشر بعد', false)
         ->assertSee(__('sanabel.post.preview_notice'));
 
     // A delegate has no business reading unpublished content.
-    $this->actingAs(userWithRole('delegate'))
+    $this->actingFreshly(userWithRole('delegate'))
         ->get(route('post.preview', 'still-a-draft'))
         ->assertForbidden();
 });

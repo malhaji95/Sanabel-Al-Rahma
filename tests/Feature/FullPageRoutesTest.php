@@ -70,7 +70,8 @@ it('holds every full-page component to the same contract', function () {
         ['/portal/basket', $donor],
         ['/portal/family', $account],
     ] as [$path, $user]) {
-        $response = $user ? $this->actingAs($user)->get($path) : $this->get($path);
+        // A different person each time, so each one gets their own session.
+        $response = $user ? $this->actingFreshly($user)->get($path) : $this->get($path);
 
         $response->assertOk();
         expect($response->getContent())->toContain('dir="rtl"');
