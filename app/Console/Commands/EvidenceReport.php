@@ -21,7 +21,8 @@ class EvidenceReport extends Command
     protected $signature = 'evidence:report
         {--out= : Write the report here instead of storage/app/evidence}
         {--skip-tests : Build from the tags alone, without running the suite}
-        {--pdf : Also print the report, for handing to the association}';
+        {--pdf : Also print the report, for handing to the association}
+        {--gate : Fail unless the launch bar is met: no P0 left unstarted}';
 
     protected $description = 'Map every security-file item to the tests that prove it';
 
@@ -264,7 +265,41 @@ class EvidenceReport extends Command
             $problems[] = __('evidence.cli.no_run');
         }
 
+        /*
+         | T-96 — the association's bar of 14 October: a P0 that is not done
+         | must say what is missing, why, and whether deferring it is
+         | justified. An item left open without that sentence is the thing
+         | this report exists to make impossible, so it fails the command
+         | exactly as a «تم» without a test does.
+         */
+        foreach ($this->openP0($catalogue) as $id => $item) {
+            if (empty($item['defer']) || empty($item['why'])) {
+                $problems[] = __('evidence.cli.open_without_reason', ['id' => $id]);
+            }
+        }
+
+        // And with --gate, the bar itself: nothing may be left unstarted.
+        if ($this->option('gate')) {
+            $unstarted = $this->openP0($catalogue)->where('state', 'pending');
+
+            if ($unstarted->isNotEmpty()) {
+                $problems[] = __('evidence.cli.gate_failed', [
+                    'count' => $unstarted->count(),
+                    'items' => $unstarted->keys()->implode('، '),
+                ]);
+            }
+        }
+
         return $problems;
+    }
+
+    /** @return Collection<string, array> every P0 that is neither done nor out of scope */
+    private function openP0(array $catalogue)
+    {
+        return collect($catalogue['items'])->filter(
+            fn ($item) => $item['priority'] === 'P0'
+                && ! in_array($item['state'], ['done', 'not_applicable'], true)
+        );
     }
 
     /** Without a run we can only say the test exists, not that it passed. */
@@ -309,9 +344,14 @@ class EvidenceReport extends Command
 
         $out[] = '';
         $out[] = $this->summary($catalogue);
+        // T-96 — the bar before launch, said in the report rather than left to
+        // be worked out from the summary table.
+        $out[] = $this->gate($catalogue);
         $out[] = $this->detail($catalogue, $tags, $results);
         $out[] = $this->acceptance($catalogue, $tags, $results);
         $out[] = $this->open($catalogue);
+        $out[] = $this->hosting($catalogue);
+        $out[] = $this->afterHosting($catalogue);
         $out[] = '---';
         $out[] = '';
         $out[] = __('evidence.footer');
@@ -461,6 +501,113 @@ class EvidenceReport extends Command
         }
 
         return implode("\n", $out)."\n";
+    }
+
+    /*
+     | T-96 — the bar, and where the system stands against it. Written as the
+     | association put it on 14 October: no P0 left unstarted, and any P0 left
+     | partial saying what is missing, why, and whether the deferral is real.
+     */
+    private function gate(array $catalogue): string
+    {
+        $open = $this->openP0($catalogue);
+        $unstarted = $open->where('state', 'pending');
+        $met = $unstarted->isEmpty();
+
+        $out = ['## '.__('evidence.gate.title'), ''];
+        $out[] = '> '.__('evidence.gate.bar');
+        $out[] = '';
+        $out[] = '**'.__('evidence.gate.verdict').':** '
+            .($met ? __('evidence.gate.met') : __('evidence.gate.not_met', ['count' => $unstarted->count()]));
+        $out[] = '';
+
+        // Grouped by the verdict rather than by section: the question here is
+        // «what stands between this and launch», and it is answered by who
+        // holds each one, not by which chapter of the file it came from.
+        foreach (array_keys(__('evidence.defer')) as $verdict) {
+            $items = $open->where('defer', $verdict);
+
+            if ($items->isEmpty()) {
+                continue;
+            }
+
+            $out[] = '### '.__("evidence.defer.{$verdict}").' — '.$items->count();
+            $out[] = '';
+            $out[] = '| '.__('evidence.col_item').' | '.__('evidence.col_title').' | '.__('evidence.col_state')
+                .' | '.__('evidence.gate.why').' |';
+            $out[] = '|---|---|---|---|';
+
+            foreach ($items as $id => $item) {
+                $out[] = '| '.$id.' | '.$item['title'].' | '.__("evidence.state.{$item['state']}")
+                    .' | '.($item['why'] ?? '—').' |';
+            }
+
+            $out[] = '';
+        }
+
+        return implode("\n", $out);
+    }
+
+    /*
+     | T-96 — the hosting annex the association asked for in writing: for every
+     | item that waits on the environment, how it will be done, who does it,
+     | what it costs and how it is tested once installed. It lives beside the
+     | items rather than in a document of its own, because a proposal kept
+     | somewhere else drifts from the catalogue inside a week.
+     */
+    private function hosting(array $catalogue): string
+    {
+        $plan = $catalogue['hosting_plan'] ?? [];
+
+        if ($plan === []) {
+            return '';
+        }
+
+        $out = ['## '.__('evidence.hosting.title'), '', __('evidence.hosting.intro'), ''];
+        $out[] = '> '.$plan['note'];
+        $out[] = '';
+
+        foreach ($plan as $id => $entry) {
+            if ($id === 'note') {
+                continue;
+            }
+
+            $item = $catalogue['items'][$id] ?? null;
+
+            $out[] = '### '.$id.' · '.($item['title'] ?? '');
+            $out[] = '';
+            $out[] = '`'.__('evidence.col_state').': '.__('evidence.state.'.($item['state'] ?? 'pending')).'`'
+                .' · `'.__('evidence.col_priority').': '.($item['priority'] ?? '—').'`';
+            $out[] = '';
+            $out[] = '| | |';
+            $out[] = '|---|---|';
+            $out[] = '| **'.__('evidence.hosting.how').'** | '.$entry['how'].' |';
+            $out[] = '| **'.__('evidence.hosting.responsible').'** | '.$entry['responsible'].' |';
+            $out[] = '| **'.__('evidence.hosting.cost').'** | '.$entry['cost'].' |';
+            $out[] = '| **'.__('evidence.hosting.verify').'** | '.$entry['verify'].' |';
+            $out[] = '';
+        }
+
+        return implode("\n", $out);
+    }
+
+    /** T-96 — what is re-run once an environment close to production exists. */
+    private function afterHosting(array $catalogue): string
+    {
+        $steps = $catalogue['after_hosting'] ?? [];
+
+        if ($steps === []) {
+            return '';
+        }
+
+        $out = ['## '.__('evidence.after_hosting.title'), '', __('evidence.after_hosting.intro'), ''];
+
+        foreach ($steps as $index => $step) {
+            $out[] = '**'.($index + 1).'. '.$step['title'].'** — '.$step['body'];
+            $out[] = '';
+        }
+
+        return implode("\n", $out);
     }
 
     private function open(array $catalogue): string

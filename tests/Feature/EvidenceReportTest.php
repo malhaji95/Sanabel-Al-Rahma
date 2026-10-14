@@ -276,3 +276,130 @@ it('never reads an acceptance test as done while an item under it is not', funct
 
     File::delete($out);
 });
+
+/*
+ | T-96 — the association's three instructions of 14 October, each held by a
+ | test rather than by a promise.
+ |
+ |   the bar      no P0 may be left «لم يبدأ» at launch, and any P0 left
+ |                «جزئي» must say what is missing, why, and whether the
+ |                deferral is real
+ |   the proposal every item that waits on the environment carries how, who,
+ |                what it costs and how it is tested once installed
+ |   afterwards   what is re-run once an environment close to production exists
+ */
+
+it('makes every open P0 say whether there is a real reason to defer it', function () {
+    $open = collect(catalogue()['items'])->filter(
+        fn ($item) => $item['priority'] === 'P0'
+            && ! in_array($item['state'], ['done', 'not_applicable'], true)
+    );
+
+    expect($open)->not->toBeEmpty('there is nothing open to check; update this test');
+
+    $verdicts = array_keys(__('evidence.defer'));
+
+    foreach ($open as $id => $item) {
+        expect($item['defer'] ?? null)->toBeIn($verdicts, "{$id} carries no verdict on deferring it")
+            ->and(trim($item['why'] ?? ''))->not->toBeEmpty("{$id} gives no reason");
+
+        // A reason that only repeats the title teaches nobody anything.
+        expect(strlen($item['why']))->toBeGreaterThan(80, "{$id} gives a reason too short to be one");
+    }
+});
+
+it('refuses to pass the launch bar while a P0 has not been started', function () {
+    $out = storage_path('app/evidence/test-gate.md');
+    File::delete($out);
+
+    $unstarted = collect(catalogue()['items'])
+        ->filter(fn ($item) => $item['priority'] === 'P0' && $item['state'] === 'pending');
+
+    // As things stand, eighteen of them. The command must say so rather than
+    // let a release be cut on a report that reads tidy.
+    $this->artisan('evidence:report', ['--skip-tests' => true, '--gate' => true, '--out' => $out])
+        ->assertFailed();
+
+    // And without the flag it still writes the report: the bar is a question
+    // asked at release, not a reason to stop producing the evidence.
+    $this->artisan('evidence:report', ['--skip-tests' => true, '--out' => $out])
+        ->assertSuccessful();
+
+    $report = File::get($out);
+
+    expect($report)->toContain(__('evidence.gate.title'))
+        ->and($report)->toContain(__('evidence.gate.bar'))
+        ->and($report)->toContain(__('evidence.gate.not_met', ['count' => $unstarted->count()]));
+
+    File::delete($out);
+});
+
+it('puts every hosting item in the proposal with its four answers', function () {
+    $catalogue = catalogue();
+    $plan = $catalogue['hosting_plan'];
+
+    // Every item whose scope is the hosting decision has a plan, so none of
+    // them can be left as «in the hosting proposal» pointing at nothing.
+    $hosting = collect($catalogue['items'])->filter(fn ($item) => $item['scope'] === 'hosting');
+
+    foreach ($hosting as $id => $item) {
+        expect(array_key_exists($id, $plan))->toBeTrue("{$id} waits on hosting and is not in the proposal");
+    }
+
+    foreach ($plan as $id => $entry) {
+        if ($id === 'note') {
+            continue;
+        }
+
+        expect(array_key_exists($id, $catalogue['items']))->toBeTrue("the proposal plans {$id}, which is not an item");
+
+        foreach (['how', 'responsible', 'cost', 'verify'] as $field) {
+            expect(trim($entry[$field] ?? ''))->not->toBeEmpty("{$id} does not say its {$field}");
+        }
+
+        // Who does it is the part that goes wrong in silence, so it names a
+        // party and not a job title.
+        expect($entry['responsible'])->toMatch('/نحن|المؤسسة|المزوّد/u', "{$id} names nobody responsible");
+    }
+});
+
+it('writes the proposal and the plan that follows it into the report', function () {
+    $out = storage_path('app/evidence/test-hosting.md');
+    File::delete($out);
+
+    $this->artisan('evidence:report', ['--skip-tests' => true, '--out' => $out])->assertSuccessful();
+
+    $report = File::get($out);
+    $catalogue = catalogue();
+
+    expect($report)->toContain(__('evidence.hosting.title'))
+        ->and($report)->toContain(__('evidence.hosting.cost'))
+        ->and($report)->toContain(__('evidence.hosting.verify'))
+        ->and($report)->toContain(__('evidence.after_hosting.title'));
+
+    // Every step of what happens once the environment exists, in order.
+    foreach ($catalogue['after_hosting'] as $step) {
+        expect($report)->toContain($step['title']);
+    }
+
+    File::delete($out);
+});
+
+it('keeps the webhook binding again the day a gateway is connected', function () {
+    // The association's own words on 14 October: «لا يسري» stands only while
+    // there is no payment provider. An item answered by an absence says when
+    // the absence ends, or it reads as a permanent pass.
+    $catalogue = catalogue();
+
+    $absent = collect($catalogue['items'])->filter(fn ($item) => $item['state'] === 'not_applicable');
+
+    expect($absent)->not->toBeEmpty();
+
+    foreach ($absent as $id => $item) {
+        expect(trim($item['reactivates'] ?? ''))->not->toBeEmpty(
+            "{$id} is answered by an absence and does not say when it comes back"
+        );
+    }
+
+    expect($catalogue['items']['PAY-02']['reactivates'])->toContain('بوابة دفع');
+});
