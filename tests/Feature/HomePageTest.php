@@ -275,3 +275,97 @@ it('keeps the zakat door on the bar and a way to reach the association in the fo
 
     expect($tile?->link)->toContain('zakat=1');
 })->group('APP-06');
+
+/*
+ | T-99 — the association's review of 15 October, walked on a phone.
+ */
+
+it('carries the approved logo itself in the bar and in the footer', function () {
+    $html = $this->get('/')->assertSuccessful()->getContent();
+
+    // The full lockup, not the name-only version: their instruction, and the
+    // artwork is used as supplied rather than recomposed.
+    expect(substr_count($html, config('brand.logo.full')))->toBeGreaterThanOrEqual(2)
+        ->and($html)->not->toContain(config('brand.logo.wordmark'));
+})->group('APP-06');
+
+it('turns the hero by itself, and stops when a reader takes hold of it', function () {
+    $this->seed(\Database\Seeders\HomePageSeeder::class);
+
+    expect(\App\Models\Banner::where('is_published', true)->count())->toBeGreaterThanOrEqual(5);
+
+    $html = $this->get('/')->getContent();
+
+    expect($html)->toContain('setInterval')
+        // A reader pointing at a slide is reading it; it must not move.
+        ->and($html)->toContain('x-on:mouseenter="stop()"')
+        ->and($html)->toContain('prefers-reduced-motion');
+})->group('APP-06');
+
+it('counts the money from verified transfers only, never from pending ones', function () {
+    $region = regionWithRates();
+    publishedCase($region);
+
+    \App\Models\Donation::factory()->create(['amount' => 70_000, 'status' => 'verified']);
+    \App\Models\Donation::factory()->create(['amount' => 500_000, 'status' => 'pending']);
+
+    $html = $this->get('/')->getContent();
+
+    // A transfer the finance desk has not matched is not money yet, and a
+    // front page that counted it would be making a claim the books cannot
+    // support.
+    expect($html)->toContain(number_format(70_000))
+        ->and($html)->not->toContain(number_format(570_000));
+})->group('APP-06', 'PAY-04');
+
+it('lets the association switch any single counter off', function () {
+    $region = regionWithRates();
+    publishedCase($region);
+
+    expect($this->get('/')->getContent())->toContain(__('sanabel.public.stat_donated'));
+
+    \App\Models\Setting::put('stat_donated', false);
+
+    $html = $this->get('/')->getContent();
+
+    // One off, the rest standing.
+    expect($html)->not->toContain(__('sanabel.public.stat_donated'))
+        ->and($html)->toContain(__('sanabel.public.stat_families'));
+})->group('APP-06');
+
+it('shows the partners band at the foot of the page, and only once they add one', function () {
+    $this->seed(\Database\Seeders\HomePageSeeder::class);
+
+    // Nothing is seeded: a partner is a real organisation with a real
+    // agreement, and inventing three for a demonstration would put names on
+    // their page that never agreed to be there.
+    expect(\App\Models\ContentCard::block('partner')->count())->toBe(0)
+        ->and($this->get('/')->getContent())->not->toContain(__('sanabel.public.partners'));
+
+    \App\Models\ContentCard::create([
+        'block' => 'partner',
+        'title_ar' => 'جمعية شريكة',
+        'link' => 'https://example.test',
+        'is_published' => true,
+        'sort_order' => 1,
+    ]);
+
+    $html = $this->get('/')->getContent();
+
+    expect($html)->toContain(__('sanabel.public.partners'))
+        ->and($html)->toContain('جمعية شريكة');
+})->group('APP-06');
+
+it('puts كفالات and زكاة on the bar, and still refuses a heading that leads nowhere', function () {
+    $this->seed(\Database\Seeders\HomePageSeeder::class);
+
+    $nav = \App\Models\ContentCard::block('nav_link')->published()->pluck('link', 'title_ar');
+
+    expect($nav)->toHaveKey('كفالات')
+        ->and($nav['كفالات'])->toContain('supportType=monthly')
+        ->and($nav)->toHaveKey('زكاة مستحقة')
+        ->and($nav)->toHaveKey('الحملات')
+        // «هدية» waits for the feature. A heading leading to a page that
+        // cannot do what it says is worse than its absence.
+        ->and($nav)->not->toHaveKey('هدية');
+})->group('APP-06');

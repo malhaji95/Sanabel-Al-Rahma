@@ -48,9 +48,14 @@
         style="border-color: var(--border); background-color: color-mix(in srgb, var(--page) 85%, transparent);"
     >
         <div class="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3">
-            {{-- The name-only version: a header bar is not room for the full
-                 vertical lockup, which appears in the hero instead. --}}
-            <x-brand.logo-plate variant="wordmark" :height="32" :href="route('home')" class="shrink-0" />
+            {{-- T-99 — the association asked on 15 October for the approved
+                 logo itself in the bar and the footer, not the name-only
+                 version. The supplied artwork is a stacked lockup (symbol over
+                 the name over the line), so in a bar it is given height rather
+                 than width: 48px keeps the name legible without making the
+                 sticky header a third of a phone screen. A horizontal lockup,
+                 if the designer supplies one, is one path change here. --}}
+            <x-brand.logo-plate variant="full" :height="48" :href="route('home')" class="shrink-0" />
 
             <nav class="ms-auto flex items-center gap-1 text-sm" aria-label="{{ __('sanabel.public.main_nav') }}">
                 {{-- T-89 — the bar is rows the association edits, so adding a
@@ -108,10 +113,12 @@
         <div class="mx-auto max-w-6xl px-4 py-10">
             <div class="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <x-brand.logo-plate variant="wordmark" :height="30" />
-                    <p class="mt-3 text-sm" style="color: var(--text-muted);">
-                        {{ config('brand.tagline_ar') }}
-                    </p>
+                    {{-- The footer has the room the bar does not, so the lockup
+                         is shown at a size where its own tagline can be read.
+                         The line beneath it is therefore dropped: the artwork
+                         already carries it. --}}
+                    <x-brand.logo-plate variant="full" :height="120" />
+
                 </div>
 
                 {{-- The footer the design asks for, as rows: how we work,

@@ -93,10 +93,20 @@ it('renders the public pages right-to-left with the brand logo and icons', funct
         ->assertSee(config('brand.logo.full'), escape: false);
 });
 
-it('uses the name-only version in the header, where the full lockup does not fit', function () {
-    $this->get(route('news'))
-        ->assertOk()
-        ->assertSee(config('brand.logo.wordmark'), escape: false);
+it('uses the approved lockup itself, in the bar and in the footer', function () {
+    /*
+     | T-99 — this held the opposite until 15 October: the name-only version in
+     | the bar, because the supplied artwork is a stacked lockup and a header
+     | is not shaped for one. The association looked at it on a phone and asked
+     | for their own logo in both places, which is their call to make about
+     | their own identity. It is given height rather than width so the name
+     | stays legible, and a horizontal lockup — if the designer supplies one —
+     | is a single path change in config/brand.php.
+     */
+    $html = $this->get(route('news'))->assertOk()->getContent();
+
+    expect(substr_count($html, config('brand.logo.full')))->toBeGreaterThanOrEqual(2)
+        ->and($html)->not->toContain(config('brand.logo.wordmark'));
 });
 
 it('never recolours the artwork onto a dark field while the white version is missing', function () {

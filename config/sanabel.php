@@ -263,6 +263,18 @@ return [
          */
         'security_alert_roles' => [],
 
+        /*
+         | T-99 — the figures on the home page, one switch each. The
+         | association asked on 15 October to be able to turn any of them off:
+         | a counter reading zero on a launch day says the wrong thing, and so
+         | does a money total before there is money.
+         */
+        'stat_families' => true,
+        'stat_covered' => true,
+        'stat_bands' => true,
+        'stat_donated' => true,
+        'stat_donations' => true,
+
         'basket_hold_hours' => 24,
         // How long before a hold runs out the donor hears about it.
         'basket_warn_hours' => 6,

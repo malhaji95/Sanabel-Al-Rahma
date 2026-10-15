@@ -7,6 +7,7 @@ use App\Models\Banner;
 use App\Models\Beneficiary;
 use App\Models\Campaign;
 use App\Models\ContentCard;
+use App\Models\Donation;
 use App\Models\Page;
 use App\Models\Post;
 use App\Models\Setting;
@@ -60,6 +61,8 @@ class PublicController extends Controller
             'features' => $cards->get('feature', collect()),
             'tiles' => $cards->get('tile', collect()),
             'advantages' => $cards->get('advantage', collect()),
+            // T-99 — at the foot of the page only, and absent until they add one.
+            'partners' => $cards->get('partner', collect()),
             // The two cards at the foot of the page: the association's own
             // words, on pages it already edits.
             'about' => Page::where('slug', 'about')->where('is_published', true)->first(),
@@ -95,6 +98,18 @@ class PublicController extends Controller
 
         $bands['complete'] += $families - count($needs);
 
+        /*
+         | T-99 — the two figures the association asked for on 15 October, and
+         | both are money, so both are read from verified rows only: a transfer
+         | the finance desk has matched to its notice. A pending one is not a
+         | donation yet, and a figure on the front page that counts it would be
+         | a claim the books cannot support.
+         |
+         | Rule 9 — integers in the smallest unit, formatted where they are
+         | shown and never divided here.
+         */
+        $verified = Donation::where('status', 'verified');
+
         return [
             'families' => $families,
             'regions' => Region::where('is_active', true)->where('type', '!=', 'governorate')->count(),
@@ -103,6 +118,11 @@ class PublicController extends Controller
             // What the «الدفع المباشر» card counts: families a donor could give
             // to right now.
             'open' => $families - $bands['complete'],
+            'donated' => (int) (clone $verified)->sum('amount'),
+            // «عداد التبرع المباشر»: how many transfers arrived and were
+            // matched. A count rather than a sum, beside the sum, so the page
+            // says both «how much» and «from how many hands».
+            'donations' => (clone $verified)->count(),
         ];
     }
 

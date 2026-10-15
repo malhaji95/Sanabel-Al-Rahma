@@ -15,7 +15,24 @@
     @if ($banners->isNotEmpty())
         <section
             class="card relative overflow-hidden !p-0"
-            x-data="{ slide: 0, count: {{ $banners->count() }} }"
+            {{-- T-99 — «بنرات متحركة»: it advances by itself every six seconds,
+                 and stops the moment a reader points at it or tabs into it, so
+                 the slide does not move out from under somebody reading it.
+                 A browser asked to reduce motion is left alone. --}}
+            x-data="{
+                slide: 0,
+                count: {{ $banners->count() }},
+                timer: null,
+                start() {
+                    if (this.count < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+                    this.timer = setInterval(() => { this.slide = (this.slide + 1) % this.count }, 6000)
+                },
+                stop() { clearInterval(this.timer) },
+            }"
+            x-init="start()"
+            x-on:mouseenter="stop()"
+            x-on:mouseleave="start()"
+            x-on:focusin="stop()"
             aria-roledescription="carousel"
             aria-label="{{ __('sanabel.public.hero_carousel') }}"
         >
@@ -136,25 +153,51 @@
         </div>
     @endif
 
-    {{-- ---------- the figures -------------------------------------------- --}}
-    <section class="card mt-6 !p-0" aria-label="{{ __('sanabel.public.stats') }}">
-        <div class="grid grid-cols-2 sm:grid-cols-5">
-            @foreach ([
-                ['families', $stats['families'], __('sanabel.public.stat_families'), 'family', 'var(--accent)'],
-                ['critical', $stats['bands']['critical'], __('sanabel.masked.priority.critical'), 'heart', '#b91c1c'],
-                ['middle', $stats['bands']['middle'], __('sanabel.masked.priority.middle'), 'hand-heart', 'var(--brand-gold)'],
-                ['low', $stats['bands']['low'], __('sanabel.masked.priority.low'), 'info', 'var(--text-muted)'],
-                ['complete', $stats['bands']['complete'], __('sanabel.public.stat_covered'), 'check-circle', 'var(--accent)'],
-            ] as [$key, $value, $label, $icon, $colour])
-                <div class="border-b border-s p-4 text-center last:border-b-0 sm:border-b-0"
-                     style="border-color: var(--border);">
-                    <x-brand.icon :name="$icon" class="mx-auto mb-1.5 h-6 w-6" style="color: {{ $colour }};" />
-                    <p class="tabular text-2xl font-bold" style="color: {{ $colour }};">{{ number_format($value) }}</p>
-                    <p class="mt-1 text-xs" style="color: var(--text-muted);">{{ $label }}</p>
-                </div>
-            @endforeach
-        </div>
-    </section>
+    {{-- ---------- the figures --------------------------------------------
+         T-99 — each counter has its own switch on the settings screen, so the
+         association turns one off without losing the rest. The money ones read
+         verified transfers only: a pending one is not a donation yet, and a
+         figure on the front page that counted it would be a claim the books
+         cannot support.
+    --------------------------------------------------------------------- --}}
+    @php
+        $on = fn (string $key) => (bool) \App\Models\Setting::value($key, config('sanabel.setting_defaults.'.$key));
+
+        $figures = collect([
+            ['stat_families', $stats['families'], __('sanabel.public.stat_families'), 'family', 'var(--accent)', false],
+            ['stat_bands', $stats['bands']['critical'], __('sanabel.masked.priority.critical'), 'heart', '#b91c1c', false],
+            ['stat_bands', $stats['bands']['middle'], __('sanabel.masked.priority.middle'), 'hand-heart', 'var(--brand-gold)', false],
+            ['stat_bands', $stats['bands']['low'], __('sanabel.masked.priority.low'), 'info', 'var(--text-muted)', false],
+            ['stat_covered', $stats['bands']['complete'], __('sanabel.public.stat_covered'), 'check-circle', 'var(--accent)', false],
+            ['stat_donated', $stats['donated'], __('sanabel.public.stat_donated'), 'card', 'var(--brand-gold)', true],
+            ['stat_donations', $stats['donations'], __('sanabel.public.stat_donations'), 'hand-heart', 'var(--accent)', false],
+        ])->filter(fn (array $figure) => $on($figure[0]));
+    @endphp
+
+    @if ($figures->isNotEmpty())
+        <section class="card mt-6 !p-0" aria-label="{{ __('sanabel.public.stats') }}">
+            <div @class([
+                'grid grid-cols-2',
+                'sm:grid-cols-3' => $figures->count() === 3,
+                'sm:grid-cols-4' => $figures->count() === 4,
+                'sm:grid-cols-5' => $figures->count() >= 5,
+            ])>
+                @foreach ($figures as [$key, $value, $label, $icon, $colour, $isMoney])
+                    <div class="border-b border-s p-4 text-center last:border-b-0 sm:border-b-0"
+                         style="border-color: var(--border);">
+                        <x-brand.icon :name="$icon" class="mx-auto mb-1.5 h-6 w-6" style="color: {{ $colour }};" />
+                        <p class="tabular text-2xl font-bold" style="color: {{ $colour }};">
+                            {{ number_format($value) }}
+                            @if ($isMoney)
+                                <span class="text-xs font-normal" style="color: var(--text-muted);">{{ config('sanabel.currency') }}</span>
+                            @endif
+                        </p>
+                        <p class="mt-1 text-xs" style="color: var(--text-muted);">{{ $label }}</p>
+                    </div>
+                @endforeach
+            </div>
+        </section>
+    @endif
 
     {{-- ---------- today's appeals ---------------------------------------- --}}
     <section class="mt-10">
@@ -277,4 +320,41 @@
             </ul>
         </article>
     </section>
+
+    {{-- ---------- our partners ------------------------------------------
+         T-99 — at the foot of the page and nowhere else, as the association
+         asked on 15 October. Rows like everything else: a logo, a name, and a
+         link to the partner's own site if there is one. The band does not
+         exist until they add the first one, so the page never carries an
+         empty «شركاؤنا» heading.
+    --------------------------------------------------------------------- --}}
+    @if ($partners->isNotEmpty())
+        <section class="mt-10" aria-label="{{ __('sanabel.public.partners') }}">
+            <h2 class="mb-4 inline-flex items-center gap-2 text-xl">
+                <x-brand.icon name="hand-heart" class="h-5 w-5" style="color: var(--accent);" />
+                {{ __('sanabel.public.partners') }}
+            </h2>
+
+            <div class="card flex flex-wrap items-center justify-center gap-x-10 gap-y-6 py-6">
+                @foreach ($partners as $partner)
+                    @php($logo = $partner->imageUrl())
+
+                    <a @if ($partner->link) href="{{ $partner->link }}" rel="noopener" target="_blank" @endif
+                       class="inline-flex flex-col items-center gap-2 no-underline"
+                       title="{{ $partner->title_ar }}">
+                        @if ($logo)
+                            {{-- Greyed until pointed at, so a row of logos does
+                                 not shout louder than the families above it. --}}
+                            <img src="{{ $logo }}" alt="{{ $partner->title_ar }}" loading="lazy"
+                                 class="h-12 w-auto opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0">
+                        @else
+                            <x-brand.icon name="shield-check" class="h-10 w-10" style="color: var(--text-muted);" />
+                        @endif
+
+                        <span class="text-xs" style="color: var(--text-muted);">{{ $partner->title_ar }}</span>
+                    </a>
+                @endforeach
+            </div>
+        </section>
+    @endif
 @endsection

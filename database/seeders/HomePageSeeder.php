@@ -34,6 +34,7 @@ class HomePageSeeder extends Seeder
         $this->tiles();
         $this->advantages();
         $this->footerLinks();
+        $this->partners();
     }
 
     /**
@@ -41,18 +42,40 @@ class HomePageSeeder extends Seeder
      * fresh install. Banners already carry a picture, a title, a line and a
      * destination; the association edits this one or adds its own beside it.
      */
+    /*
+     | T-99 — five slides, because the association asked for five on 15 October
+     | and because a carousel with one slide is a picture.
+     |
+     | Each one leads where its own words promise: the one that says «زكاة» to
+     | the zakat-eligible list, the one that says «كفالة» to the monthly list.
+     | A slide whose button goes somewhere other than its sentence is the
+     | commonest lie on a charity home page, and the easiest to avoid.
+     |
+     | Artwork: the design pack supplied five images, and the three slides it
+     | did not cover open on their colour band rather than on somebody else's
+     | photograph. The association replaces any of it from the panel without a
+     | release — image, words, destination, order and whether it shows at all.
+     */
     private function heroSlide(): void
     {
-        Banner::firstOrCreate(
-            ['title_ar' => 'بيدك.. تصنع الأمل'],
-            [
-                'body_ar' => 'معاً نحيي حياة.. ونرسم مستقبلاً أفضل',
-                'image' => 'images/home/hero-child.webp',
-                'link' => '/cases',
-                'is_published' => true,
-                'sort_order' => 1,
-            ],
-        );
+        foreach ([
+            ['بيدك.. تصنع الأمل', 'معاً نحيي حياة.. ونرسم مستقبلاً أفضل', 'images/home/hero-child.webp', '/cases'],
+            ['كفالة يتيم', 'كفالة شهرية تُغطّي احتياج أسرة، وتُجدَّد شهراً بشهر', 'images/home/direct-donation.webp', '/cases?supportType=monthly'],
+            ['زكاة مستحقة', 'ملفّات راجعتها الجمعية وأقرّت أن الزكاة تُصرف عليها', null, '/cases?zakat=1'],
+            ['علاج مريض', 'تكلفة علاجٍ محسوبة، وإثبات صرفٍ مرفوع', 'images/home/medical.webp', '/cases?supportType=one_time'],
+            ['حملاتنا المفتوحة', 'هدفٌ معلن، وما جُمع منه، وسياسة الفائض مكتوبة', null, '/campaigns'],
+        ] as $index => [$title, $body, $image, $link]) {
+            Banner::firstOrCreate(
+                ['title_ar' => $title],
+                [
+                    'body_ar' => $body,
+                    'image' => $image,
+                    'link' => $link,
+                    'is_published' => true,
+                    'sort_order' => $index + 1,
+                ],
+            );
+        }
     }
 
     private function card(string $block, string $title, array $attributes, int $order): void
@@ -72,17 +95,40 @@ class HomePageSeeder extends Seeder
      * answers 404 is worse than a bar that does not. They are added here, from
      * the panel, the day they exist.
      */
+    /*
+     | T-99 — «شركاؤنا». No rows are seeded: a partner is a real organisation
+     | with a real logo and a real agreement, and inventing three for a
+     | demonstration would put names on the association's page that never
+     | agreed to be there. The band appears the moment they add the first one,
+     | from the same screen as everything else, and stays invisible until then.
+     */
+    private function partners(): void
+    {
+        // Intentionally empty. The block exists; its rows are theirs.
+    }
+
     private function navLinks(): void
     {
+        /*
+         | T-99 — the bar the association named on 15 October: هدية، كفالات،
+         | حملات، زكاة مستحقة. Three of the four are here, in their order, with
+         | الرئيسية and الحالات and الأخبار around them.
+         |
+         | «هدية» is not. There is no gift anywhere in the system — no donation
+         | on behalf of someone, no card, no recipient — and a heading leading
+         | to a page that cannot do what it says is worse than its absence. The
+         | row goes in the day the feature does.
+         */
         foreach ([
             ['الرئيسية', '/'],
             ['الحالات', '/cases'],
-            // T-98 — the association asked for it beside the campaigns on 15
-            // October. It is the published list narrowed to the files a zakat
-            // payment may be spent on, not a page of its own: one list, one
-            // ranking, one set of masked cards.
-            ['زكاة مستحقة', '/cases?zakat=1'],
+            // Monthly support is what a sponsorship is: the same published
+            // list, narrowed to the families whose need renews every month.
+            ['كفالات', '/cases?supportType=monthly'],
             ['الحملات', '/campaigns'],
+            // T-98 — the files the association has judged zakat may be spent
+            // on. One list, one ranking, one set of masked cards.
+            ['زكاة مستحقة', '/cases?zakat=1'],
             ['الأخبار', '/news'],
         ] as $index => [$title, $link]) {
             $this->card('nav_link', $title, ['link' => $link], $index + 1);

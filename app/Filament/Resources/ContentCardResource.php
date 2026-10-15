@@ -60,7 +60,9 @@ class ContentCardResource extends Resource
                 ->label(__('sanabel.content_card.body'))
                 ->rows(2)
                 ->columnSpanFull()
-                ->visible(fn (Forms\Get $get) => ! in_array($get('block'), ['footer_link', 'nav_link'], true)),
+                // A partner is a logo and a name; the sentence belongs to the
+                // cards above it, not to a row of logos.
+                ->visible(fn (Forms\Get $get) => ! in_array($get('block'), ['footer_link', 'nav_link', 'partner'], true)),
 
             Forms\Components\TextInput::make('link')
                 ->label(__('sanabel.content_card.link'))

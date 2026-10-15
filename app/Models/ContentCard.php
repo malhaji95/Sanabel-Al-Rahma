@@ -22,7 +22,9 @@ class ContentCard extends Model
     use Auditable, HasFactory, SoftDeletes, TracksCreator;
 
     /** The bands of the page, in the order they appear on it. */
-    public const BLOCKS = ['nav_link', 'feature', 'tile', 'advantage', 'footer_link'];
+    // T-99 — «شركاؤنا», at the foot of the page and nowhere else, by the
+    // association's own instruction of 15 October.
+    public const BLOCKS = ['nav_link', 'feature', 'tile', 'advantage', 'footer_link', 'partner'];
 
     protected $guarded = ['id'];
 
