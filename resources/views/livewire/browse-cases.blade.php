@@ -75,11 +75,16 @@
                             </a>
                         @endauth
 
-                        {{-- The opportunity's own address, and a way to send it on. --}}
+                        {{-- The opportunity's own address, and a way to send it
+                             on. T-102 — it used to be labelled «تبرع الآن», the
+                             same words as the button directly above it, so the
+                             family's own page read as a second donate button and
+                             nobody opened it. --}}
                         <div class="mt-2 flex items-center gap-2">
                             <a href="{{ route('opportunity', $case['file_number']) }}"
-                               class="btn-secondary flex-1 justify-center no-underline">
-                                {{ __('sanabel.public.donate_now') }}
+                               class="btn-secondary flex-1 justify-center gap-1 no-underline">
+                                {{ __('sanabel.public.more_info') }}
+                                <x-brand.icon name="chevron-left" class="h-4 w-4" />
                             </a>
 
                             @if ($case['can_share'] ?? true)

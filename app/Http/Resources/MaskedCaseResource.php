@@ -71,7 +71,7 @@ class MaskedCaseResource extends JsonResource
         'housing_type_label', 'rooms', 'bathrooms', 'has_kitchen',
         'home_safety_label', 'home_services_label',
         'has_debt', 'debt_amount',
-        'conditions',
+        'conditions', 'ongoing_treatment',
         'has_vehicle', 'vehicles', 'has_livestock', 'livestock', 'has_property', 'property',
         'dependents',
     ];
@@ -209,6 +209,14 @@ class MaskedCaseResource extends JsonResource
             ...$this->housingDetail($case),
             ...$this->debt($case),
             'conditions' => $this->conditions($case->healthRecords->whereNull('member_id')),
+            /*
+             | T-102 — «علاج دائم», asked for on 15 October beside the illness.
+             | It is the one health answer that changes what a donation is
+             | for: a condition that is being treated every month is a
+             | recurring cost, and a donor reading «سكري» alone cannot tell
+             | the difference.
+             */
+            'ongoing_treatment' => $this->ongoingTreatment($case),
             ...$this->possessions($case),
             'dependents' => $this->dependents($case, $members),
         ];
@@ -328,6 +336,16 @@ class MaskedCaseResource extends JsonResource
             ->map(fn (string $condition) => __('sanabel.health.conditions.'.$condition))
             ->values()
             ->all();
+    }
+
+    /** Whether anyone in the household is under continuing treatment. */
+    private function ongoingTreatment(Beneficiary $case): ?bool
+    {
+        if (! $this->switched('show_health_condition')) {
+            return null;
+        }
+
+        return $case->healthRecords->where('ongoing_treatment', true)->isNotEmpty();
     }
 
     /**

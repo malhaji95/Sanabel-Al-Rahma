@@ -32,6 +32,24 @@
                 ? number_format((int) $case['debt_amount']) . ' ' . config('sanabel.currency')
                 : __('sanabel.no'))
             : null,
+
+        /*
+         | T-102 — the health answers, asked for on 15 October and the only
+         | ones that were drawn solely when there was something to draw. A
+         | family with no illness recorded showed no line at all, which reads
+         | as a question nobody asked rather than as an answer.
+         |
+         | `ongoing_treatment` is null exactly when the association has closed
+         | the health switch, so it says which of the two silences this is.
+         */
+        __('sanabel.masked.conditions') => isset($case['ongoing_treatment'])
+            ? (($case['conditions'] ?? []) !== []
+                ? implode('، ', $case['conditions'])
+                : __(($case['has_chronic_illness'] ?? false) ? 'sanabel.yes' : 'sanabel.no'))
+            : null,
+        __('sanabel.masked.ongoing_treatment') => isset($case['ongoing_treatment'])
+            ? __($case['ongoing_treatment'] ? 'sanabel.yes' : 'sanabel.no')
+            : null,
     ])->filter(fn ($value) => filled($value));
 
     // What the household owns. Each line is a yes with the kinds beside it, or
@@ -53,11 +71,10 @@
             : __($case['has_livestock'] ? 'sanabel.yes' : 'sanabel.no');
     }
 
-    $conditions = $case['conditions'] ?? [];
     $dependents = $case['dependents'] ?? [];
 @endphp
 
-@if ($rows->isNotEmpty() || $owned->isNotEmpty() || $conditions !== [] || $dependents !== [])
+@if ($rows->isNotEmpty() || $owned->isNotEmpty() || $dependents !== [])
     <section class="card mt-5">
         <h2 class="text-base font-bold">{{ __('sanabel.masked.household') }}</h2>
 
@@ -70,17 +87,6 @@
                     </div>
                 @endforeach
             </dl>
-        @endif
-
-        @if ($conditions !== [])
-            <div class="mt-4">
-                <p class="text-sm" style="color: var(--text-muted);">{{ __('sanabel.masked.conditions') }}</p>
-                <div class="mt-1.5 flex flex-wrap gap-1.5">
-                    @foreach ($conditions as $condition)
-                        <span class="badge" style="background-color: var(--page); color: var(--text-muted);">{{ $condition }}</span>
-                    @endforeach
-                </div>
-            </div>
         @endif
 
         @if ($dependents !== [])

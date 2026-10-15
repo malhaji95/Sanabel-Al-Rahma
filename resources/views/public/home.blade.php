@@ -227,8 +227,9 @@
             @foreach ($cases->take(max(0, 3 - $open->count())) as $case)
                 <x-masked-case-card :case="$case">
                     <a href="{{ route('opportunity', $case['file_number']) }}"
-                       class="btn-primary w-full justify-center no-underline">
-                        {{ __('sanabel.public.donate_now') }}
+                       class="btn-primary w-full justify-center gap-1 no-underline">
+                        {{ __('sanabel.public.more_info') }}
+                        <x-brand.icon name="chevron-left" class="h-4 w-4" />
                     </a>
                 </x-masked-case-card>
             @endforeach

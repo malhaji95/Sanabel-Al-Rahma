@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Resources\MaskedCaseResource;
+use App\Livewire\BrowseCases;
 use App\Models\Asset;
 use App\Models\Beneficiary;
 use App\Models\Debt;
@@ -280,4 +281,47 @@ it('empties the block from the page when the association closes every switch', f
     // Not an empty card with a heading over it: the section is not drawn.
     expect($body)->not->toContain(__('sanabel.masked.household'))
         ->and($body)->not->toContain('سكري');
+})->group('AUTH-03');
+
+/*
+ | T-102 — three answers the association asked for on 15 October that the
+ | page was not giving, after they read it on the live demonstration.
+ */
+
+it('says whether the illness is under continuing treatment', function () {
+    $case = describedCase($this->region);
+    $case->healthRecords()->update(['ongoing_treatment' => true]);
+
+    $payload = (new MaskedCaseResource($case->refresh()))->toArray(request());
+
+    expect($payload['ongoing_treatment'])->toBeTrue();
+
+    Setting::put('show_health_condition', false);
+
+    // Null rather than false: a closed switch is not an answer of «لا».
+    expect((new MaskedCaseResource($case->refresh()))->toArray(request())['ongoing_treatment'])
+        ->toBeNull();
+})->group('AUTH-03');
+
+it('answers the health question on a family with no illness, instead of saying nothing', function () {
+    $case = publishedCase($this->region, children: 0);
+
+    $body = $this->get(route('opportunity', $case->file_number))->assertOk()->getContent();
+
+    // The row is drawn with «لا» in it. A question with no line at all reads
+    // as a question nobody asked.
+    expect($body)->toContain(__('sanabel.masked.conditions'))
+        ->and($body)->toContain(__('sanabel.masked.ongoing_treatment'));
+})->group('AUTH-03');
+
+it('labels the family page as more information, not as a second donate button', function () {
+    publishedCase($this->region);
+
+    $browse = Livewire\Livewire::test(BrowseCases::class);
+
+    $browse->assertSee(__('sanabel.public.more_info'));
+
+    $home = $this->get(route('home'))->assertOk()->getContent();
+
+    expect($home)->toContain(__('sanabel.public.more_info'));
 })->group('AUTH-03');

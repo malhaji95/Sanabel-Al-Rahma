@@ -254,6 +254,8 @@ class SyntheticDataSeeder extends Seeder
                 'severity_band' => [25, 50, 75][$index % 3],
                 'economic_impact_band' => [25, 50][$index % 2],
                 'care_burden_band' => 25,
+                // T-102 — «علاج دائم» is on the donor's card now.
+                'ongoing_treatment' => $index % 8 === 0,
                 'monthly_medical_cost' => 5_000,
                 'currency' => config('sanabel.currency'),
                 // T-101 — the illness the donor is told, out of the list.
