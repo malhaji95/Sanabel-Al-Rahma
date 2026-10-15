@@ -147,6 +147,16 @@ class BeneficiaryResource extends Resource
                         ->label(__('sanabel.beneficiary.workplace_ar'))
                         ->visible(fn (Forms\Get $get) => (bool) $get('works')),
 
+                    /*
+                     | T-100 — the survey asks it of the head and of every
+                     | dependant. It is a question about expenditure, not about
+                     | character, and the helper text says so: an assessor who
+                     | reads it as a judgement will not ask it honestly.
+                     */
+                    Forms\Components\Toggle::make('smokes')
+                        ->label(__('sanabel.beneficiary.smokes'))
+                        ->helperText(__('sanabel.beneficiary.smokes_help')),
+
                     Forms\Components\Toggle::make('has_quran_memorizers')
                         ->label(__('sanabel.beneficiary.has_quran_memorizers'))
                         ->live(),
@@ -339,6 +349,9 @@ class BeneficiaryResource extends Resource
                                 ->label(__('sanabel.household_member.workplace_ar'))
                                 ->visible(fn (Forms\Get $get) => (bool) $get('works')),
 
+                            Forms\Components\Toggle::make('smokes')
+                                ->label(__('sanabel.household_member.smokes')),
+
                             Forms\Components\Toggle::make('is_quran_memorizer')
                                 ->label(__('sanabel.household_member.is_quran_memorizer')),
 
@@ -467,6 +480,23 @@ class BeneficiaryResource extends Resource
                     Forms\Components\Textarea::make('furnishing_ar')
                         ->label(__('sanabel.housing.furnishing_ar'))
                         ->rows(2)
+                        ->columnSpanFull(),
+
+                    /*
+                     | T-100 — «حالة الفقير», in the assessor's own words.
+                     |
+                     | Every other column on this file is a band, a count or an
+                     | amount, which is what makes the need computable and the
+                     | ranking defensible. This one is read by nobody and moves
+                     | nothing — deliberately, so that no family can be moved up
+                     | the list by a better paragraph. It is there for the
+                     | person who opens the file after the visit.
+                     */
+                    Forms\Components\Textarea::make('situation_ar')
+                        ->label(__('sanabel.beneficiary.situation_ar'))
+                        ->helperText(__('sanabel.beneficiary.situation_help'))
+                        ->rows(4)
+                        ->maxLength(2000)
                         ->columnSpanFull(),
                 ]),
 

@@ -53,7 +53,9 @@ class Beneficiary extends Model
         // The association's own social survey, carried into the file.
         'gender', 'birth_date', 'town_ar', 'latitude', 'longitude', 'works', 'workplace_ar',
         'has_quran_memorizers', 'quran_memorizer_count', 'livelihood_proposal_ar',
-        'proposal_skills_ar', 'proposal_cost', 'surveyed_by_ar', 'furnishing_ar', 'urgency_deadline_at', 'documented_debt', 'status', 'last_assessment_at', 'next_assessment_due_at', 'source',
+        'proposal_skills_ar', 'proposal_cost', 'surveyed_by_ar', 'furnishing_ar',
+        // T-100 — the two the survey asks and the file had no room for.
+        'smokes', 'situation_ar', 'urgency_deadline_at', 'documented_debt', 'status', 'last_assessment_at', 'next_assessment_due_at', 'source',
         'merged_into_id', 'duplicate_review_flag', 'approved_by', 'approved_at', 'reject_reason_ar',
         'field_verified_by', 'field_verified_at', 'endorsed_by', 'endorsed_at',
         'published_at', 'created_by',
@@ -122,6 +124,7 @@ class Beneficiary extends Model
             'declaration_on' => 'date',
             'birth_date' => 'date',
             'works' => 'boolean',
+            'smokes' => 'boolean',
             'has_quran_memorizers' => 'boolean',
             'national_id_encrypted' => 'encrypted',
             'phone_encrypted' => 'encrypted',

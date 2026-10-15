@@ -24,6 +24,8 @@ class HouseholdMember extends Model
         'is_quran_memorizer', 'certificate_ar', 'skills_ar',
         // T-69 - «تصنيف اليتم», and a married dependant's husband.
         'is_orphan', 'spouse_national_id_encrypted',
+        // T-100 — asked of every dependant on the survey, as of the head.
+        'smokes',
     ];
 
     protected $hidden = ['national_id_encrypted', 'spouse_national_id_encrypted'];
@@ -42,6 +44,7 @@ class HouseholdMember extends Model
         'national_id_encrypted' => 'encrypted',
         'spouse_national_id_encrypted' => 'encrypted',
         'is_orphan' => 'boolean',
+        'smokes' => 'boolean',
         'birth_date' => 'date',
         'works' => 'boolean',
         'is_quran_memorizer' => 'boolean',

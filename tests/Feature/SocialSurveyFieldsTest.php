@@ -11,6 +11,8 @@ use App\Models\Livestock;
 use App\Models\SupportSource;
 use App\Services\NeedEngine;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 
 /*
  | The association's own social survey, carried into the file: 104 columns on
@@ -224,3 +226,50 @@ it('holds the housing and treatment columns', function () {
         ->and($record->fresh()->ongoing_treatment)->toBeTrue()
         ->and($record->fresh()->treatment_place_ar)->toBe('مشفى درعا الوطني');
 });
+
+/*
+ | T-100 — the association read the file against their own survey on 15
+ | October. Two questions it asks had nowhere to go.
+ */
+
+it('asks whether the household smokes, of the head and of every dependant', function () {
+    $this->family->update(['smokes' => true]);
+
+    $member = HouseholdMember::where('beneficiary_id', $this->family->id)->first();
+    $member->update(['smokes' => false]);
+
+    expect($this->family->fresh()->smokes)->toBeTrue()
+        ->and($member->fresh()->smokes)->toBeFalse();
+
+    // It was already asked of the caregiver, which is where the survey asks it
+    // last; the two places it asks first had nowhere to put the answer.
+    expect(Schema::hasColumn('caregivers', 'smokes'))->toBeTrue();
+})->group('DATA-06');
+
+it('keeps a paragraph in the assessor own words, and keeps it out of every number', function () {
+    $this->family->update([
+        'situation_ar' => 'البيت غرفة واحدة، والجدّة تعيل ثلاثة أحفاد بعد وفاة أمّهم.',
+    ]);
+
+    expect($this->family->fresh()->situation_ar)->toContain('الجدّة');
+
+    /*
+     | It moves nothing. Every other column here is a band, a count or an
+     | amount, which is what makes the need computable and the ranking
+     | defensible — so no family can be moved up the list by a better
+     | paragraph. Nothing in the services reads it, and this is what holds
+     | that: the day one of them does, this fails.
+     */
+    foreach (File::allFiles(app_path('Services')) as $file) {
+        expect(File::get($file->getPathname()))->not->toContain('situation_ar',
+            basename($file->getPathname()).' reads the free-text narrative'
+        );
+    }
+})->group('DATA-06');
+
+it('never shows either of them to a donor', function () {
+    // Rule 2 — the allowlist is the whole answer, and neither is on it.
+    expect(\App\Http\Resources\MaskedCaseResource::ALLOWED_KEYS)
+        ->not->toContain('smokes')
+        ->not->toContain('situation_ar');
+})->group('AUTH-04');
