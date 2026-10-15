@@ -201,17 +201,14 @@
 
     {{-- ---------- today's appeals ---------------------------------------- --}}
     <section class="mt-10">
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h2 class="inline-flex items-center gap-2 text-xl">
-                <x-brand.icon name="heart" class="h-5 w-5" style="color: var(--accent);" />
-                {{ __('sanabel.public.needs_you_today') }}
-            </h2>
-
-            <a href="{{ route('cases.browse') }}" class="btn-secondary inline-flex items-center gap-1 no-underline">
-                {{ __('sanabel.public.all_cases') }}
-                <x-brand.icon name="chevron-left" class="h-4 w-4" />
-            </a>
-        </div>
+        {{-- T-103 — the heading alone. «عرض جميع الحالات» used to sit beside
+             it, above the three cards it was meant to follow, and the
+             association asked for it under them: a visitor asks for more only
+             after reading what is there. --}}
+        <h2 class="mb-4 inline-flex items-center gap-2 text-xl">
+            <x-brand.icon name="heart" class="h-5 w-5" style="color: var(--accent);" />
+            {{ __('sanabel.public.needs_you_today') }}
+        </h2>
 
         {{-- The open campaigns first — they are written and published by the
              association, so they carry a title and a picture — then the masked
@@ -233,6 +230,13 @@
                     </a>
                 </x-masked-case-card>
             @endforeach
+        </div>
+
+        <div class="mt-5 text-center">
+            <a href="{{ route('cases.browse') }}" class="btn-secondary inline-flex items-center gap-1 no-underline">
+                {{ __('sanabel.public.all_cases') }}
+                <x-brand.icon name="chevron-left" class="h-4 w-4" />
+            </a>
         </div>
     </section>
 

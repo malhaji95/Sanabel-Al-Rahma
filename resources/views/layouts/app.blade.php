@@ -141,6 +141,34 @@
         </div>
     </footer>
 
+    {{--
+        T-103 — the donate button that follows the page.
+
+        Asked for on 15 October: «نحتاج سهم تبع الدفع المباشر يمشي معه في
+        الشاشة لما يطلع في الشاشة أو ينزل». It appears once the visitor has
+        scrolled past the offer at the top, so it is an second chance rather
+        than a thing in the way, and it is not drawn on the page it leads to.
+
+        It is a link, not a script: with Alpine unavailable it still works,
+        it is simply always visible.
+    --}}
+    @unless (request()->routeIs('donate.general'))
+        <div
+            x-data="{ shown: false }"
+            x-init="shown = window.scrollY > 400; window.addEventListener('scroll', () => shown = window.scrollY > 400, { passive: true })"
+            x-show="shown"
+            x-cloak
+            x-transition.opacity
+            class="fixed bottom-5 end-5 z-40 print:hidden"
+        >
+            <a href="{{ route('donate.general') }}"
+               class="btn-primary inline-flex items-center gap-2 !rounded-full shadow-lg no-underline">
+                <x-brand.icon name="hand-heart" class="h-5 w-5" />
+                {{ __('sanabel.public.donate_sticky') }}
+            </a>
+        </div>
+    @endunless
+
     @livewireScripts
 </body>
 </html>

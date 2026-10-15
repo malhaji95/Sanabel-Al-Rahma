@@ -138,11 +138,20 @@ class HomePageSeeder extends Seeder
     /** The two offers under the hero. */
     private function features(): void
     {
-        $this->card('feature', 'الدفع المباشر', [
-            'body_ar' => 'ساهم الآن مباشرة في دعم الحالات المحتاجة',
+        /*
+         | T-103 — it was «الدفع المباشر» landing on the list of families, and
+         | the association asked for both halves of that to change on 15
+         | October. The name read as though the money went from the donor to
+         | the household outside the association, which is the one thing the
+         | system does not do and their own decision of 29 September forbids.
+         | And the card promised an act and delivered a list: it now lands on
+         | the act, with no file to pick.
+         */
+        $this->card('feature', 'تبرع عام', [
+            'body_ar' => 'ساهم الآن ونحن نوصلها لأكثر الحالات حاجة',
             'image' => 'images/home/direct-donation.webp',
             'icon' => 'hand-heart',
-            'link' => '/cases',
+            'link' => '/donate',
         ], 1);
 
         $this->card('feature', 'هدية', [
@@ -188,11 +197,13 @@ class HomePageSeeder extends Seeder
     private function advantages(): void
     {
         foreach ([
-            ['لا نستلم نقداً من المتبرع للمستحق مباشرة', 'card'],
+            // T-103 — أعادت الجمعية صياغتها في 15 تشرين الأول: المعنى نفسه
+            // بصيغة تقول ما نفعله بدل ما لا نفعله.
+            ['تمر التبرعات عبر مسار مالي موثق ومراقب حتى تصل لمستحقيها', 'card'],
             ['الأشد حاجة شعارنا والمناطقية ليست معيارنا', 'family'],
             ['نحقق وندقق لننصف المحتاج ونبعد غير المحتاج', 'file-search'],
             ['كرامة المحتاج أولويتنا', 'heart'],
-            ['نعمل بالعدل لا بالمساواة', 'shield-check'],
+            ['نوجّه الدعم حسب الحاجة والاستحقاق', 'shield-check'],
             ['هيئة شرعية معتمدة', 'scales'],
         ] as $index => [$title, $icon]) {
             $this->card('advantage', $title, ['icon' => $icon], $index + 1);

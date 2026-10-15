@@ -5,8 +5,9 @@ use App\Http\Controllers\FieldController;
 use App\Http\Controllers\PublicController;
 use App\Livewire\BrowseCases;
 use App\Livewire\DonorBasket;
-use App\Livewire\FamilyPortal;
 use App\Livewire\DonorPortal;
+use App\Livewire\FamilyPortal;
+use App\Livewire\GeneralDonation;
 use Illuminate\Support\Facades\Route;
 
 // Public site — every page is CMS-driven (T-36).
@@ -43,6 +44,15 @@ Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 Route::middleware('auth')->group(function () {
     Route::get('/portal', DonorPortal::class)->name('donor.portal');
     Route::get('/portal/basket', DonorBasket::class)->name('donor.basket');
+
+    /*
+     | T-103 — giving without picking a family. The association asked that the
+     | offer on the front page land on the act itself rather than on a list to
+     | choose from, and the domain has always had a general donation; it had
+     | no door. Behind auth like every other way of giving, because a donation
+     | is recorded against a donor.
+     */
+    Route::get('/donate', GeneralDonation::class)->name('donate.general');
 
     // The household's own page: their file, and the one question only they
     // may answer — did the money arrive.

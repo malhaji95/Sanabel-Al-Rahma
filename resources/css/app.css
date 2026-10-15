@@ -13,6 +13,17 @@
  | one stylesheet correct in Arabic right-to-left.
  */
 @layer base {
+    /*
+     | Alpine hides an element carrying x-cloak only once it has booted, and
+     | only if the stylesheet says so. Without this rule the attribute does
+     | nothing and the element it guards is drawn for one frame before Alpine
+     | takes it away — which is a flash of the floating donate button on every
+     | page load.
+     */
+    [x-cloak] {
+        display: none !important;
+    }
+
     :root {
         --brand-primary: #2E7D32;
         --brand-gold: #C9A227;

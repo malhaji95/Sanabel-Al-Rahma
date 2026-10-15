@@ -1,12 +1,17 @@
 <?php
 
-use App\Models\Banner;
-use Filament\Facades\Filament;
-use App\Models\ContentCard;
-use App\Models\Page;
 use App\Filament\Resources\ContentCardResource;
+use App\Models\Banner;
+use App\Models\Campaign;
+use App\Models\ContentCard;
+use App\Models\Donation;
+use App\Models\Page;
+use App\Models\Setting;
+use App\Services\DonorCaseList;
+use App\Services\RankingService;
 use Database\Seeders\HomePageSeeder;
 use Database\Seeders\PrivacyPolicySeeder;
+use Filament\Facades\Filament;
 
 /*
  | T-89 — the home page the association approved, and the thing that makes it
@@ -40,7 +45,12 @@ it('draws every band of the page from rows the association edits', function () {
         // the hero
         ->assertSee('بيدك.. تصنع الأمل')
         // the two offers
-        ->assertSee('الدفع المباشر')
+        // T-103 — renamed on the association's own instruction of 15 October:
+        // «الدفع المباشر» read as though the money went to the household
+        // outside the association's books, which is the one thing it never
+        // does.
+        ->assertSee('تبرع عام')
+        ->assertDontSee('الدفع المباشر')
         ->assertSee('هدية')
         // the ways to give
         ->assertSee('ترميم منزل')
@@ -177,8 +187,8 @@ it('keeps the campaigns screen with the role that holds the key to it', function
      | later decides the content manager should run campaigns, this test is
      | what says the decision has been made rather than drifted into.
      */
-    expect(userWithRole('content_manager')->can('viewAny', App\Models\Campaign::class))->toBeFalse()
-        ->and(userWithRole('executive_director')->can('create', App\Models\Campaign::class))->toBeTrue();
+    expect(userWithRole('content_manager')->can('viewAny', Campaign::class))->toBeFalse()
+        ->and(userWithRole('executive_director')->can('create', Campaign::class))->toBeTrue();
 
     // And the guides must not promise a screen the account cannot open.
     $guides = require resource_path('training/guides.php');
@@ -225,7 +235,7 @@ it('narrows the published list to the files a zakat payment may be spent on', fu
     expect($eligible->zakat_category)->not->toBeNull()
         ->and($notEligible->zakat_category)->toBeNull();
 
-    $ranking = app(\App\Services\RankingService::class);
+    $ranking = app(RankingService::class);
 
     $all = $ranking->fundingList($eligible->support_type, withCovered: true)->pluck('beneficiary_id');
     $zakat = $ranking->fundingList($eligible->support_type, withCovered: true, zakatOnly: true)->pluck('beneficiary_id');
@@ -243,7 +253,7 @@ it('serves the filtered list from its own cache, never the general one', functio
     publishedCase($region, attributes: ['zakat_category' => 'poor']);
     publishedCase($region);
 
-    $list = app(\App\Services\DonorCaseList::class);
+    $list = app(DonorCaseList::class);
 
     $all = $list->page('monthly', null, 1, 12);
     $zakat = $list->page('monthly', null, 1, 12, zakatOnly: true);
@@ -255,23 +265,23 @@ it('serves the filtered list from its own cache, never the general one', functio
 })->group('APP-07');
 
 it('keeps the zakat door on the bar and a way to reach the association in the footer', function () {
-    $this->seed(\Database\Seeders\HomePageSeeder::class);
+    $this->seed(HomePageSeeder::class);
 
-    $nav = \App\Models\ContentCard::block('nav_link')->published()->pluck('link', 'title_ar');
+    $nav = ContentCard::block('nav_link')->published()->pluck('link', 'title_ar');
 
     expect($nav)->toHaveKey('زكاة مستحقة')
         ->and($nav['زكاة مستحقة'])->toContain('zakat=1');
 
-    $footer = \App\Models\ContentCard::block('footer_link')->published()->pluck('link', 'title_ar');
+    $footer = ContentCard::block('footer_link')->published()->pluck('link', 'title_ar');
 
     expect($footer)->toHaveKey('تواصل معنا');
 
     // And the page behind it exists, so the link is not a dead end.
-    expect(\App\Models\Page::where('slug', 'contact')->where('is_published', true)->exists())->toBeTrue();
+    expect(Page::where('slug', 'contact')->where('is_published', true)->exists())->toBeTrue();
 
     // The zakat tile lands on the zakat list rather than on every one-time
     // need: it is the one tile a donor could act on and be wrong about.
-    $tile = \App\Models\ContentCard::block('tile')->where('title_ar', 'زكاة واجبة')->first();
+    $tile = ContentCard::block('tile')->where('title_ar', 'زكاة واجبة')->first();
 
     expect($tile?->link)->toContain('zakat=1');
 })->group('APP-06');
@@ -290,9 +300,9 @@ it('carries the approved logo itself in the bar and in the footer', function () 
 })->group('APP-06');
 
 it('turns the hero by itself, and stops when a reader takes hold of it', function () {
-    $this->seed(\Database\Seeders\HomePageSeeder::class);
+    $this->seed(HomePageSeeder::class);
 
-    expect(\App\Models\Banner::where('is_published', true)->count())->toBeGreaterThanOrEqual(5);
+    expect(Banner::where('is_published', true)->count())->toBeGreaterThanOrEqual(5);
 
     $html = $this->get('/')->getContent();
 
@@ -306,8 +316,8 @@ it('counts the money from verified transfers only, never from pending ones', fun
     $region = regionWithRates();
     publishedCase($region);
 
-    \App\Models\Donation::factory()->create(['amount' => 70_000, 'status' => 'verified']);
-    \App\Models\Donation::factory()->create(['amount' => 500_000, 'status' => 'pending']);
+    Donation::factory()->create(['amount' => 70_000, 'status' => 'verified']);
+    Donation::factory()->create(['amount' => 500_000, 'status' => 'pending']);
 
     $html = $this->get('/')->getContent();
 
@@ -324,7 +334,7 @@ it('lets the association switch any single counter off', function () {
 
     expect($this->get('/')->getContent())->toContain(__('sanabel.public.stat_donated'));
 
-    \App\Models\Setting::put('stat_donated', false);
+    Setting::put('stat_donated', false);
 
     $html = $this->get('/')->getContent();
 
@@ -334,15 +344,15 @@ it('lets the association switch any single counter off', function () {
 })->group('APP-06');
 
 it('shows the partners band at the foot of the page, and only once they add one', function () {
-    $this->seed(\Database\Seeders\HomePageSeeder::class);
+    $this->seed(HomePageSeeder::class);
 
     // Nothing is seeded: a partner is a real organisation with a real
     // agreement, and inventing three for a demonstration would put names on
     // their page that never agreed to be there.
-    expect(\App\Models\ContentCard::block('partner')->count())->toBe(0)
+    expect(ContentCard::block('partner')->count())->toBe(0)
         ->and($this->get('/')->getContent())->not->toContain(__('sanabel.public.partners'));
 
-    \App\Models\ContentCard::create([
+    ContentCard::create([
         'block' => 'partner',
         'title_ar' => 'جمعية شريكة',
         'link' => 'https://example.test',
@@ -357,9 +367,9 @@ it('shows the partners band at the foot of the page, and only once they add one'
 })->group('APP-06');
 
 it('puts كفالات and زكاة on the bar, and still refuses a heading that leads nowhere', function () {
-    $this->seed(\Database\Seeders\HomePageSeeder::class);
+    $this->seed(HomePageSeeder::class);
 
-    $nav = \App\Models\ContentCard::block('nav_link')->published()->pluck('link', 'title_ar');
+    $nav = ContentCard::block('nav_link')->published()->pluck('link', 'title_ar');
 
     expect($nav)->toHaveKey('كفالات')
         ->and($nav['كفالات'])->toContain('supportType=monthly')
