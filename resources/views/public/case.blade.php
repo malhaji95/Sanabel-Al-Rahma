@@ -31,6 +31,11 @@
         <div class="mx-auto max-w-2xl">
             <x-masked-case-card :case="$card" />
 
+            {{-- T-101 — the household itself, on the family's own page. It is
+                 not on the grid card: a dozen fields and a roster per card
+                 would bury the one thing the grid is for, which is choosing. --}}
+            <x-case-household :case="$card" />
+
             <div class="mt-5 flex flex-wrap items-center gap-3">
                 <a href="{{ route('donor.basket') }}" class="btn-primary no-underline">
                     {{ __('sanabel.public.donate_now') }}

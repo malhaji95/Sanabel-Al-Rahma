@@ -14,7 +14,7 @@ class HealthRecord extends Model
     use Auditable, HasFactory, SoftDeletes, TracksCreator;
 
     protected $fillable = [
-        'beneficiary_id', 'member_id', 'severity_band', 'economic_impact_band', 'care_burden_band',
+        'beneficiary_id', 'member_id', 'condition', 'severity_band', 'economic_impact_band', 'care_burden_band',
         'monthly_medical_cost', 'currency', 'description_ar', 'evidence_media_id', 'created_by',
         'ongoing_treatment', 'treatment_place_ar', 'medicines_ar', 'doctor_name_ar',
         'doctor_phone_encrypted',

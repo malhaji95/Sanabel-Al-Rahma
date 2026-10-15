@@ -508,6 +508,14 @@ class BeneficiaryResource extends Resource
                         ))
                         ->label(__('sanabel.beneficiary.health'))
                         ->schema([
+                            // T-101 — المرض من قائمة، وهو الحقل الصحي الوحيد
+                            // الذي يراه المتبرّع. التفاصيل في «الوصف» أدناه،
+                            // وهو داخلي ولا يُنشر.
+                            Forms\Components\Select::make('condition')
+                                ->label(__('sanabel.health.condition'))
+                                ->helperText(__('sanabel.health.condition_help'))
+                                ->options(__('sanabel.health.conditions'))
+                                ->searchable(),
                             Forms\Components\Select::make('severity_band')->label(__('sanabel.health.severity'))->options(__('sanabel.bands.severity'))->default(0)->required(),
                             Forms\Components\Select::make('economic_impact_band')->label(__('sanabel.health.economic_impact'))->options(__('sanabel.bands.economic_impact'))->default(0)->required(),
                             Forms\Components\Select::make('care_burden_band')->label(__('sanabel.health.care_burden'))->options(__('sanabel.bands.care_burden'))->default(0)->required(),

@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Beneficiary;
+use App\Models\HealthRecord;
 use App\Models\Setting;
 use App\Services\CoverageService;
 use App\Services\RankingService;
@@ -10,14 +11,24 @@ use App\Services\ScoreService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * Rule 2 — donors are served exclusively by this class.
  *
  * Shown:       file number, area (not village), family size, need type,
- *              need amount, coverage %, urgency label.
+ *              need amount, coverage %, urgency label — and, since T-101 and
+ *              the association's list of 15 October, the household itself:
+ *              male or female, marital status, smoking, dependants, the
+ *              house, the debt total, the illnesses named from a list, what
+ *              is owned, and a row per dependant.
  * Never shown: any name, national ID, phone, address, wallet, landlord,
- *              media, diagnosis, exact age, exact rent, raw score.
+ *              media, exact age, exact rent, raw score — nor any free text
+ *              whatever, which is what makes the T-101 fields publishable:
+ *              `description_ar`, `furnishing_ar`, `situation_ar`,
+ *              `details_ar`, `kind_other_ar`, `notes_ar` and a creditor's own
+ *              particulars are all the researcher writing to the committee,
+ *              and not one of them is a list or a band.
  *
  * The wallet a donor pays into is Sanabel Al-Rahma's own and the same for
  * every family, so it is a setting shown where payment happens. Of a
@@ -51,6 +62,31 @@ class MaskedCaseResource extends JsonResource
         'wallet_last4',
         // T-83 — which month these figures answer, and whether it is answered.
         'coverage_month', 'coverage_month_label', 'is_covered',
+        /*
+         | T-101 — the fields the association named on 15 October. Counts,
+         | bands and labels out of a list; not one of them is free text, and
+         | each group is closed again by its own switch.
+         */
+        'applicant_gender_label', 'marital_status_label', 'smokes', 'dependents_count',
+        'housing_type_label', 'rooms', 'bathrooms', 'has_kitchen',
+        'home_safety_label', 'home_services_label',
+        'has_debt', 'debt_amount',
+        'conditions',
+        'has_vehicle', 'vehicles', 'has_livestock', 'livestock', 'has_property', 'property',
+        'dependents',
+    ];
+
+    /**
+     * T-101 — every key one row of `dependents` is allowed to carry.
+     *
+     * A second allowlist rather than a comment: the rows are the one nested
+     * shape on this resource, and the leak test checks them against this the
+     * way it checks the payload against ALLOWED_KEYS. A name, a birth year or
+     * a national ID added to a row would otherwise pass unseen under a key
+     * that is itself allowed.
+     */
+    public const DEPENDENT_KEYS = [
+        'gender_label', 'is_under_15', 'is_orphan', 'status_labels', 'conditions',
     ];
 
     /**
@@ -161,8 +197,251 @@ class MaskedCaseResource extends JsonResource
             'coverage_month' => $month->format('Y-m'),
             'coverage_month_label' => $month->translatedFormat('F Y'),
             'is_covered' => $coverage->monthIsCovered($case, $month, $confirmed),
+
+            /*
+             | T-101 — the household as the association asked it be described
+             | on 15 October, in six groups with six switches. Each group is
+             | emitted whether it is open or closed — a key that disappears
+             | would move the leak test's allowlist from «these and no others»
+             | to «whatever the settings happen to say today».
+             */
+            ...$this->profile($case),
+            ...$this->housingDetail($case),
+            ...$this->debt($case),
+            'conditions' => $this->conditions($case->healthRecords->whereNull('member_id')),
+            ...$this->possessions($case),
+            'dependents' => $this->dependents($case, $members),
         ];
     }
+
+    /** Whether one of the association's donor-disclosure switches is open. */
+    private function switched(string $key): bool
+    {
+        return (bool) Setting::value($key, config('sanabel.setting_defaults.'.$key));
+    }
+
+    /**
+     * Who the applicant is, in the four answers the association asked for:
+     * male or female, marital status, whether they smoke, and how many people
+     * depend on them.
+     *
+     * The marital status reads in the gender of the person it describes —
+     * «أرملة» for a woman and «أرمل» for a man — because most of these files
+     * are a woman's and the association wrote it that way in their own list.
+     */
+    private function profile(Beneficiary $case): array
+    {
+        if (! $this->switched('show_household_profile')) {
+            return [
+                'applicant_gender_label' => null,
+                'marital_status_label' => null,
+                'smokes' => null,
+                'dependents_count' => null,
+            ];
+        }
+
+        return [
+            'applicant_gender_label' => $case->gender
+                ? __('sanabel.gender.'.$case->gender)
+                : null,
+            'marital_status_label' => $case->marital_status
+                ? __('sanabel.'.($case->gender === 'female' ? 'marital_status_f' : 'marital_status').'.'.$case->marital_status)
+                : null,
+            'smokes' => $case->smokes,
+            'dependents_count' => $case->members->where('dependent', true)->count(),
+        ];
+    }
+
+    /**
+     * The house: owned, rented or lent, how many rooms and bathrooms, whether
+     * there is a kitchen, and the state of the building.
+     *
+     * The state is the two bands the researcher already grades, safety and
+     * services, and not `furnishing_ar` beside them, which is a sentence.
+     */
+    private function housingDetail(Beneficiary $case): array
+    {
+        $housing = $case->housing;
+
+        if (! $this->switched('show_housing_detail') || ! $housing) {
+            return [
+                'housing_type_label' => null,
+                'rooms' => null,
+                'bathrooms' => null,
+                'has_kitchen' => null,
+                'home_safety_label' => null,
+                'home_services_label' => null,
+            ];
+        }
+
+        return [
+            'housing_type_label' => $housing->housing_type
+                ? __('sanabel.housing_type.'.$housing->housing_type)
+                : null,
+            'rooms' => $housing->habitable_rooms,
+            'bathrooms' => $housing->bathrooms,
+            'has_kitchen' => $housing->has_kitchen,
+            'home_safety_label' => __('sanabel.bands.safety.'.(int) $housing->safety_band),
+            'home_services_label' => __('sanabel.bands.services.'.(int) $housing->services_band),
+        ];
+    }
+
+    /**
+     * Whether the household owes money, and how much.
+     *
+     * The figure is `documented_debt`, which is the committee's own verified
+     * total and the one the score reads — never the rows behind it, because a
+     * debt row carries the creditor's name, address and telephone number.
+     */
+    private function debt(Beneficiary $case): array
+    {
+        if (! $this->switched('show_debt_amount')) {
+            return ['has_debt' => null, 'debt_amount' => null];
+        }
+
+        $amount = (int) $case->documented_debt;
+
+        return [
+            'has_debt' => $amount > 0,
+            'debt_amount' => $amount > 0 ? $amount : null,
+        ];
+    }
+
+    /**
+     * The illnesses named, as labels out of the list the researcher chooses
+     * from — never `description_ar`, which is the paragraph written for the
+     * committee and the one field on this file nobody wrote for a donor.
+     *
+     * @param  Collection<int,HealthRecord>  $records
+     * @return array<int,string>
+     */
+    private function conditions($records): array
+    {
+        if (! $this->switched('show_health_condition')) {
+            return [];
+        }
+
+        return $records
+            ->pluck('condition')
+            ->filter()
+            ->unique()
+            ->map(fn (string $condition) => __('sanabel.health.conditions.'.$condition))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * What the household owns: a vehicle, livestock, other property.
+     *
+     * «ذكرها» is answered out of the kind column, which is a list — a car, a
+     * tractor, a plot, sheep and how many head. `kind_other_ar` and
+     * `details_ar` beside them are the researcher's own words for the
+     * committee, and stay there.
+     */
+    private function possessions(Beneficiary $case): array
+    {
+        if (! $this->switched('show_possessions')) {
+            return [
+                'has_vehicle' => null, 'vehicles' => [],
+                'has_livestock' => null, 'livestock' => [],
+                'has_property' => null, 'property' => [],
+            ];
+        }
+
+        $assets = $case->assets->groupBy(fn ($asset) => in_array($asset->kind, self::VEHICLE_KINDS, true)
+            ? 'vehicle'
+            : 'property');
+
+        $label = fn ($rows) => collect($rows)
+            ->pluck('kind')
+            ->filter()
+            ->unique()
+            ->map(fn (string $kind) => __('sanabel.asset.kinds.'.$kind))
+            ->values()
+            ->all();
+
+        $livestock = $case->livestock
+            ->map(fn ($head) => [
+                'label' => __('sanabel.livestock.kinds.'.$head->kind),
+                'count' => (int) $head->head_count,
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'has_vehicle' => $assets->has('vehicle'),
+            'vehicles' => $label($assets->get('vehicle', [])),
+            'has_livestock' => $livestock !== [],
+            'livestock' => $livestock,
+            'has_property' => $assets->has('property'),
+            'property' => $label($assets->get('property', [])),
+        ];
+    }
+
+    /**
+     * One row per dependant, in the five answers the association asked for on
+     * 15 October: a boy or a girl, under fifteen or not, orphaned, what they
+     * do, and any illness.
+     *
+     * No name, no birth year, no exact age: a roster of ages beside an area
+     * and a family size is a household, and the age is therefore the one
+     * question the association actually asked — whether they are under
+     * fifteen.
+     *
+     * The orphan answer is theirs too, and conditional in their own words —
+     * «يتيم اذا كانت ارملة». A child is not described as orphaned on a file
+     * where the father is alive and on it.
+     */
+    private function dependents(Beneficiary $case, $members): array
+    {
+        if (! $this->switched('show_dependents')) {
+            return [];
+        }
+
+        $widowed = $case->marital_status === 'widowed';
+
+        return $members
+            ->where('dependent', true)
+            ->map(fn ($member) => [
+                'gender_label' => $member->gender ? __('sanabel.gender.'.$member->gender) : null,
+                'is_under_15' => $member->birth_year ? $member->age() < 15 : null,
+                'is_orphan' => $widowed ? (bool) $member->is_orphan : false,
+                'status_labels' => $this->memberStatus($member),
+                'conditions' => $this->conditions($case->healthRecords->where('member_id', $member->id)),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * What a dependant does, which the association's list mixes with marital
+     * status — «طالبة مطلقه ارمله موظفة غيره». The file keeps the two apart,
+     * so the card puts them back together: a status and, beside it, studying
+     * or working.
+     *
+     * @return array<int,string>
+     */
+    private function memberStatus($member): array
+    {
+        $labels = [];
+
+        if ($member->marital_status) {
+            $labels[] = __('sanabel.'.($member->gender === 'female' ? 'marital_status_f' : 'marital_status').'.'.$member->marital_status);
+        }
+
+        if ($member->is_student) {
+            $labels[] = __('sanabel.masked.is_student');
+        }
+
+        if ($member->works) {
+            $labels[] = __('sanabel.masked.works');
+        }
+
+        return $labels;
+    }
+
+    /** Which of the asset kinds is a vehicle, for the association's «آلية». */
+    private const VEHICLE_KINDS = ['car', 'tractor', 'motorcycle'];
 
     /**
      * The last four digits of the household's account, or nothing.

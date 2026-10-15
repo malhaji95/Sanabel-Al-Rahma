@@ -180,7 +180,13 @@ class RankingService
 
         $families = Beneficiary::query()
             ->whereIn('id', $ids)
-            ->with(['assessments.overrides', 'region', 'members', 'housing', 'healthRecords', 'basketItems.basket', 'association'])
+            // T-101 — debts, assets and livestock joined the card on 15
+            // October, so they are loaded with it. Without them the page
+            // would ask three more questions per family.
+            ->with([
+                'assessments.overrides', 'region', 'members', 'housing', 'healthRecords',
+                'basketItems.basket', 'association', 'debts', 'assets', 'livestock',
+            ])
             ->get()
             ->keyBy('id');
 

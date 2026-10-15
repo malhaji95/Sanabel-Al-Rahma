@@ -350,5 +350,30 @@ return [
          | have both on the page or the campaign alone.
          */
         'show_monthly_funding_on_campaign' => true,
+
+        /*
+         | T-101 — what a donor is told about a household, decided field by
+         | field on 15 October.
+         |
+         | The association asked for the whole file; the answer was that a
+         | village plus a family size plus one named illness converges on one
+         | household, and that every published field narrows the set further.
+         | They then named the fields they wanted, and these are those fields —
+         | each behind its own switch, because the one thing their own privacy
+         | policy (clause 4) cannot allow is a disclosure that cannot be
+         | withdrawn without a deploy.
+         |
+         | All six open by default, because they asked for all six. Nothing
+         | here publishes free text: every value below is a count, a band or a
+         | label out of a list, so no sentence a researcher typed for the
+         | committee can reach a donor through any of them. That is why they
+         | could be opened by default at all.
+         */
+        'show_household_profile' => true,
+        'show_housing_detail' => true,
+        'show_debt_amount' => true,
+        'show_health_condition' => true,
+        'show_possessions' => true,
+        'show_dependents' => true,
     ],
 ];

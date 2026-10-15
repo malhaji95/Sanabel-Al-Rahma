@@ -2,7 +2,6 @@
 
 use App\Http\Resources\MaskedCaseResource;
 use App\Models\Asset;
-use App\Models\Beneficiary;
 use App\Models\Caregiver;
 use App\Models\Debt;
 use App\Models\HealthRecord;
@@ -267,9 +266,21 @@ it('keeps a paragraph in the assessor own words, and keeps it out of every numbe
     }
 })->group('DATA-06');
 
-it('never shows either of them to a donor', function () {
-    // Rule 2 — the allowlist is the whole answer, and neither is on it.
-    expect(\App\Http\Resources\MaskedCaseResource::ALLOWED_KEYS)
-        ->not->toContain('smokes')
-        ->not->toContain('situation_ar');
+it('never shows the narrative to a donor, whatever is published around it', function () {
+    /*
+     | Written on 15 October, when neither field was meant to leave the
+     | association. One of the two has since been published on the
+     | association's own instruction — they asked that a donor be told
+     | «يدخن نعم لا», and T-101 publishes it behind their switch. That was
+     | theirs to decide, and it is a yes or a no.
+     |
+     | The narrative is not, and no instruction has changed it. It is the
+     | researcher's own paragraph about the family, which is exactly the kind
+     | of field that carries a name, a quarter or a neighbour along with it —
+     | so it stays off the allowlist, and this is what holds that.
+     */
+    expect(MaskedCaseResource::ALLOWED_KEYS)
+        ->not->toContain('situation_ar')
+        ->not->toContain('furnishing_ar')
+        ->toContain('smokes');
 })->group('AUTH-04');

@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Asset;
 use App\Models\Beneficiary;
 use App\Models\Campaign;
 use App\Models\Complaint;
@@ -14,6 +15,7 @@ use App\Models\HouseholdMember;
 use App\Models\Housing;
 use App\Models\Income;
 use App\Models\JobProfile;
+use App\Models\Livestock;
 use App\Models\Member;
 use App\Models\Page;
 use App\Models\Post;
@@ -170,6 +172,10 @@ class SyntheticDataSeeder extends Seeder
             'phone_encrypted' => '0900'.str_pad((string) $index, 6, '0', STR_PAD_LEFT),
             'region_id' => $region->id,
             'marital_status' => $index % 4 === 0 ? 'widowed' : 'married',
+            // T-101 — the donor card now says who the applicant is and
+            // whether they smoke, so the demo has to have an answer.
+            'gender' => $index % 4 === 0 ? 'female' : 'male',
+            'smokes' => $index % 5 === 0,
             'support_type' => $index % 3 === 0 ? 'one_time' : 'monthly',
             'status' => 'draft',
             'source' => $index % 5 === 0 ? 'association' : 'delegate',
@@ -205,6 +211,12 @@ class SyntheticDataSeeder extends Seeder
                     'person_class' => $personClass,
                     'dependent' => DependencyRules::isDependent($age, false, false),
                     'unable_to_earn' => false,
+                    // T-101 — what a dependant's own row carries.
+                    'marital_status' => $class === 'child' ? null : ($n % 2 === 0 ? 'single' : 'married'),
+                    'is_student' => $class === 'child',
+                    'works' => $class === 'adult' && $n % 2 === 1,
+                    'is_orphan' => $class === 'child' && $index % 4 === 0,
+                    'smokes' => $class !== 'child' && $n % 3 === 0,
                 ]);
             }
         }
@@ -229,6 +241,8 @@ class SyntheticDataSeeder extends Seeder
             'monthly_rent' => $renting ? 25_000 + 1_000 * ($index % 10) : 0,
             'currency' => config('sanabel.currency'),
             'habitable_rooms' => 1 + ($index % 3),
+            'bathrooms' => $index % 7 === 0 ? 0 : 1,
+            'has_kitchen' => $index % 3 !== 0,
             'safety_band' => [0, 25, 50, 75][$index % 4],
             'services_band' => [0, 50, 100][$index % 3],
             'eviction_band' => $renting ? [0, 25, 50][$index % 3] : 0,
@@ -242,7 +256,36 @@ class SyntheticDataSeeder extends Seeder
                 'care_burden_band' => 25,
                 'monthly_medical_cost' => 5_000,
                 'currency' => config('sanabel.currency'),
+                // T-101 — the illness the donor is told, out of the list.
+                'condition' => ['diabetes', 'blood_pressure', 'heart', 'kidney'][$index % 4],
                 'description_ar' => 'حالة مزمنة (بيانات تجريبية)',
+            ]);
+        }
+
+        /*
+         | T-101 — «هل تمتلك آلية / مواشي / ممتلكات». A few families own
+         | something, because a card that answers «لا» for every family on the
+         | list is not a demonstration of the question.
+         */
+        if ($index % 5 === 0) {
+            Asset::create([
+                'beneficiary_id' => $case->id,
+                'kind' => $index % 10 === 0 ? 'motorcycle' : 'land',
+                'details_ar' => 'بيانات تجريبية',
+                'necessity' => $index % 10 === 0 ? 'essential' : 'surplus',
+                'currency' => config('sanabel.currency'),
+            ]);
+        }
+
+        if ($index % 7 === 0) {
+            Livestock::create([
+                'beneficiary_id' => $case->id,
+                'kind' => 'sheep',
+                'head_count' => 3 + ($index % 4),
+                'income_kind' => 'family_use',
+                'monthly_income' => 0,
+                'currency' => config('sanabel.currency'),
+                'is_stable' => false,
             ]);
         }
 

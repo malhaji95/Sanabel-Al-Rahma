@@ -10,12 +10,13 @@ use App\Models\ContentCard;
 use App\Models\Donation;
 use App\Models\Page;
 use App\Models\Post;
-use App\Models\Setting;
-use Illuminate\Http\Request;
 use App\Models\Region;
+use App\Models\Setting;
 use App\Services\CoverageService;
 use App\Services\DonorCaseList;
 use App\Services\RankingService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 /** T-36 — the public site, driven entirely by CMS rows an admin edits. */
@@ -171,7 +172,7 @@ class PublicController extends Controller
     public function case(string $fileNumber): View
     {
         $case = Beneficiary::published()
-            ->with(['region', 'members', 'housing', 'healthRecords', 'association'])
+            ->with(['region', 'members', 'housing', 'healthRecords', 'association', 'debts', 'assets', 'livestock'])
             ->where('file_number', $fileNumber)
             ->first();
 
@@ -228,7 +229,7 @@ class PublicController extends Controller
      * also what keeps the page to one batch of sums instead of walking the
      * open months once per campaign on it.
      *
-     * @param  \Illuminate\Support\Collection<int,Campaign>  $campaigns
+     * @param  Collection<int,Campaign>  $campaigns
      * @return array<int,array<string,mixed>>
      */
     private function monthlyFunding($campaigns): array
