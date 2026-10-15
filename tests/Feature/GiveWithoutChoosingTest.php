@@ -1,9 +1,12 @@
 <?php
 
 use App\Livewire\GeneralDonation;
+use App\Models\Beneficiary;
 use App\Models\Campaign;
+use App\Models\ContentCard;
 use App\Models\Donation;
 use App\Models\Donor;
+use App\Models\Page;
 use App\Models\Setting;
 use App\Models\User;
 use Livewire\Livewire;
@@ -132,4 +135,54 @@ it('puts the whole-list link under the cases rather than above them', function (
         // Asked for on 15 October: a visitor asks for more after reading what
         // is in front of them, not before.
         ->and($allCases)->toBeGreaterThan($heading);
+});
+
+/*
+ | T-104 — note 6 of 15 October: «قبل النسخة النهائية بدنا تنظيف كامل لأي
+ | شيء تجريبي». A promise to remember is worth nothing on the day, so the
+ | question is asked of the database instead.
+ */
+
+it('names every piece of demonstration content still in the system', function () {
+    Page::create([
+        'slug' => 'about',
+        'title_ar' => 'من نحن',
+        'body_ar' => 'هذه الصفحة بانتظار نصّها من الجمعية.',
+        'is_published' => true,
+    ]);
+
+    ContentCard::create([
+        'block' => 'tile',
+        'title_ar' => 'صدقة جارية',
+        'icon' => 'mosque',
+        'is_published' => true,
+    ]);
+
+    publishedCase($this->region, attributes: ['file_number' => 'DEMO-9001']);
+
+    $this->artisan('launch:check')
+        ->expectsOutputToContain('DEMO-')
+        ->expectsOutputToContain('من نحن')
+        ->expectsOutputToContain('صدقة جارية')
+        ->assertFailed();
+});
+
+it('passes once there is nothing demonstration left', function () {
+    config()->set('sanabel.demo_seed', false);
+
+    $this->artisan('launch:check')
+        ->expectsOutputToContain(__('sanabel.launch.clean'))
+        ->assertSuccessful();
+});
+
+it('only ever looks, so it can be run against the live site', function () {
+    publishedCase($this->region, attributes: ['file_number' => 'DEMO-9002']);
+
+    $before = Beneficiary::withTrashed()->count();
+
+    $this->artisan('launch:check');
+
+    // Rule 3 admits no deletion, and this command is the one most likely to
+    // be reached for on a day when somebody wants the demo gone.
+    expect(Beneficiary::withTrashed()->count())->toBe($before);
 });

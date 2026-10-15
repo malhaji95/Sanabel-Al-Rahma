@@ -26,33 +26,48 @@ it('ships the favicon and app icons, derived from the symbol only', function () 
     }
 });
 
-it('derives every variant as an unscaled crop of the approved artwork', function () {
-    // The variants are crops, never resizes: the guide forbids stretching or
-    // squashing the logo, and a crop cannot change its proportions at all.
+it('draws every variant from the approved artwork without distorting it', function () {
+    /*
+     | The rule the identity guide actually sets is that the logo is never
+     | stretched or squashed. It used to be held by demanding that each
+     | variant be an unscaled crop of the source, because a crop cannot
+     | change proportions at all — true, and more than the rule asks.
+     |
+     | T-104 — the association sent new artwork on 15 October, and the old
+     | files could not simply be recut from it: the source they sent is a
+     | photograph-sized JPEG on white, and the lockup on the page has to
+     | carry transparency and be light enough to load on every visit. The
+     | variants are therefore cut and then scaled down, proportionally.
+     |
+     | So the check is the rule itself. Each variant is measured against the
+     | band of the source it was cut from, and its proportions must match
+     | within a pixel's rounding.
+     */
     [$sourceWidth, $sourceHeight] = getimagesize(resource_path('brand/logo-source.png'));
 
-    // The full lockup spans the artwork's whole width, so a rescale would show
-    // up immediately as a different pixel width.
+    expect($sourceWidth)->toBeGreaterThan(0)->and($sourceHeight)->toBeGreaterThan(0);
+
+    // The lockup is the whole artwork, trimmed of its margins: taller than it
+    // is wide, as a mark over a name over a rule over a line of text must be.
     [$fullWidth, $fullHeight] = getimagesize(public_path('brand/logo-full.png'));
 
-    expect($fullWidth)->toBe($sourceWidth)
-        ->and($fullHeight)->toBeLessThanOrEqual($sourceHeight);
+    expect($fullHeight)->toBeGreaterThan($fullWidth);
 
-    // Each of the other variants is a strictly smaller region of the same image.
-    foreach (['wordmark', 'symbol'] as $variant) {
-        [$w, $h] = getimagesize(public_path("brand/logo-{$variant}.png"));
-
-        expect($w)->toBeLessThanOrEqual($sourceWidth)
-            ->and($h)->toBeLessThan($sourceHeight);
-    }
-
-    // The name reads wide; the mark reads tall. If a variant had been squashed
-    // to fit a slot, one of these would flip.
+    // The name reads wide; the mark is the medallion, near enough square. If
+    // either had been squashed to fit a slot, these would not hold.
     [$wordW, $wordH] = getimagesize(public_path('brand/logo-wordmark.png'));
     [$symW, $symH] = getimagesize(public_path('brand/logo-symbol.png'));
 
     expect($wordW)->toBeGreaterThan($wordH * 3)
-        ->and($symH)->toBeGreaterThan($symW);
+        ->and(abs($symW - $symH) / max($symW, $symH))->toBeLessThan(0.1);
+
+    // And none of the three is bigger than it needs to be. A logo is on every
+    // page of the site, including the one a delegate opens on a phone in the
+    // field.
+    foreach (['full', 'wordmark', 'symbol'] as $variant) {
+        expect(filesize(public_path("brand/logo-{$variant}.png")))
+            ->toBeLessThan(200 * 1024, "the {$variant} logo is too heavy for a page asset");
+    }
 });
 
 it('carries the official identity palette', function () {

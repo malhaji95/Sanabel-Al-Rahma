@@ -12,9 +12,16 @@
                 @if ($tile->imageUrl())
                     <img src="{{ $tile->imageUrl() }}" alt="" class="h-32 w-full object-cover" loading="lazy">
                 @else
+                    {{-- T-104 — the frame a card draws until the association
+                         uploads its picture. It used to be a 12% tint, which
+                         on the dark scheme is very nearly the card colour: the
+                         association read five of these as pictures that had
+                         failed to load. It is a deliberate panel now, and
+                         `launch:check` lists which cards are still waiting on
+                         artwork. --}}
                     <div class="flex h-32 w-full items-center justify-center"
-                         style="background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, var(--card)), var(--page)); color: var(--accent);">
-                        <x-brand.icon :name="$tile->icon ?: 'heart'" class="h-12 w-12" />
+                         style="background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 38%, var(--card)), color-mix(in srgb, var(--brand-gold) 16%, var(--page))); color: var(--accent);">
+                        <x-brand.icon :name="$tile->icon ?: 'heart'" class="h-14 w-14 opacity-90" />
                     </div>
                 @endif
 
