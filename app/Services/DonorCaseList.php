@@ -48,17 +48,18 @@ class DonorCaseList
         int $page,
         int $perPage,
         bool $withCovered = true,
+        bool $zakatOnly = false,
     ): array {
         $seconds = (int) config('sanabel.public_list_cache_seconds');
 
-        $build = fn () => $this->build($supportType, $regionId, $page, $perPage, $withCovered);
+        $build = fn () => $this->build($supportType, $regionId, $page, $perPage, $withCovered, $zakatOnly);
 
         if ($seconds <= 0) {
             return $build();
         }
 
         return Cache::remember(
-            $this->key($supportType, $regionId, $page, $perPage, $withCovered),
+            $this->key($supportType, $regionId, $page, $perPage, $withCovered, $zakatOnly),
             $seconds,
             $build,
         );
@@ -71,8 +72,9 @@ class DonorCaseList
         int $page,
         int $perPage,
         bool $withCovered,
+        bool $zakatOnly,
     ): array {
-        $ranked = $this->ranking->fundingList($supportType, $regionId, $withCovered);
+        $ranked = $this->ranking->fundingList($supportType, $regionId, $withCovered, $zakatOnly);
 
         return [
             'cards' => $this->ranking
@@ -87,8 +89,14 @@ class DonorCaseList
         ];
     }
 
-    private function key(string $supportType, ?int $regionId, int $page, int $perPage, bool $withCovered): string
-    {
+    private function key(
+        string $supportType,
+        ?int $regionId,
+        int $page,
+        int $perPage,
+        bool $withCovered,
+        bool $zakatOnly,
+    ): string {
         return implode(':', [
             'sanabel.cases',
             Setting::fingerprint(),
@@ -98,6 +106,9 @@ class DonorCaseList
             $page,
             $perPage,
             $withCovered ? 'with-covered' : 'open-only',
+            // T-98 — a filtered list is a different list, so it is a different
+            // key. Without this the zakat list would be served the general one.
+            $zakatOnly ? 'zakat' : 'any',
         ]);
     }
 

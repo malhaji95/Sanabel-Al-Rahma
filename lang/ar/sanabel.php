@@ -1360,6 +1360,10 @@ return [
         'donor_account_required' => 'هذا الحساب ليس حساب متبرع.',
         'fully_covered' => 'اكتملت تغطية هذه الأسرة لشهر :month. ويُفتح الشهر التالي في موعده.',
         'cases_count' => ':count حالة متاحة',
+        // T-98 — the association asked for a door of its own to the files a
+        // zakat payment may be spent on.
+        'zakat_only' => 'زكاة مستحقة',
+        'zakat_only_empty' => 'لا توجد حالياً حالة منشورة تُصرف عليها الزكاة بهذا النوع من الدعم. جرّب النوع الآخر أو أزل المرشّح.',
         'all_regions' => 'كل المناطق',
         'no_cases' => 'لا توجد حالات متاحة حالياً.',
         'no_campaigns' => 'لا توجد حملات منشورة حالياً.',

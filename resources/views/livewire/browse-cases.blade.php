@@ -30,6 +30,20 @@
                 @endforeach
             </div>
 
+            {{-- T-98 — «زكاة مستحقة»: the files a zakat payment may be spent on.
+                 A switch rather than a third tab, because it narrows either
+                 list rather than replacing them. --}}
+            <button
+                type="button"
+                wire:click="$toggle('zakat')"
+                aria-pressed="{{ $zakat ? 'true' : 'false' }}"
+                class="rounded-xl border px-4 py-2 text-sm font-medium transition"
+                @style([
+                    'border-color: var(--border); background-color: var(--card); color: var(--text-muted)' => ! $zakat,
+                    'border-color: var(--accent); background-color: var(--accent); color: var(--accent-contrast)' => $zakat,
+                ])
+            >{{ __('sanabel.public.zakat_only') }}</button>
+
             <label class="sr-only" for="region-filter">{{ __('sanabel.beneficiary.region') }}</label>
             <select id="region-filter" wire:model.live="regionId" class="field w-48">
                 <option value="">{{ __('sanabel.public.all_regions') }}</option>
@@ -42,7 +56,7 @@
 
     <div wire:loading.class="opacity-50" class="transition-opacity">
         @if ($cases->isEmpty())
-            <x-empty-state :title="__('sanabel.public.no_cases')" />
+            <x-empty-state :title="$zakat ? __('sanabel.public.zakat_only_empty') : __('sanabel.public.no_cases')" />
         @else
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach ($cases as $case)

@@ -126,9 +126,13 @@ class RankingService
      *
      * @return Collection<int,array{beneficiary_id:int,file_number:string,confirmed:int,need:int,month:Carbon,covered:bool,ranking:array}>
      */
-    public function fundingList(string $supportType, ?int $regionId = null, bool $withCovered = false): Collection
-    {
-        $families = $this->rankingRows($supportType, $regionId);
+    public function fundingList(
+        string $supportType,
+        ?int $regionId = null,
+        bool $withCovered = false,
+        bool $zakatOnly = false,
+    ): Collection {
+        $families = $this->rankingRows($supportType, $regionId, $zakatOnly);
 
         if ($families->isEmpty()) {
             return collect();
@@ -201,9 +205,20 @@ class RankingService
      *
      * @return Collection<int,object>
      */
-    private function rankingRows(?string $supportType, ?int $regionId): Collection
+    private function rankingRows(?string $supportType, ?int $regionId, bool $zakatOnly = false): Collection
     {
         $query = Beneficiary::query()->published();
+
+        /*
+         | T-98 — «زكاة مستحقة»: the families the association has judged a
+         | zakat payment may be spent on. The judgement is `zakat_category`,
+         | one of the eight, and rule 2 keeps WHICH of them behind the
+         | association's door — the donor is told only that zakat is accepted
+         | on this file, which is the one thing they need in order to decide.
+         */
+        if ($zakatOnly) {
+            $query->whereNotNull('beneficiaries.zakat_category');
+        }
 
         if ($supportType) {
             // Qualified throughout: this is the one query in the system that

@@ -209,3 +209,69 @@ it('puts a slide in the hero out of the box', function () {
 
     $this->get('/')->assertOk()->assertSee('بيدك.. تصنع الأمل');
 });
+
+/*
+ | T-98 — what the association asked for on 15 October, after walking the demo
+ | on a phone: a door to the zakat-eligible files beside the campaigns, and a
+ | way to reach them.
+ */
+
+it('narrows the published list to the files a zakat payment may be spent on', function () {
+    $region = regionWithRates();
+
+    $eligible = publishedCase($region, attributes: ['zakat_category' => 'poor']);
+    $notEligible = publishedCase($region);
+
+    expect($eligible->zakat_category)->not->toBeNull()
+        ->and($notEligible->zakat_category)->toBeNull();
+
+    $ranking = app(\App\Services\RankingService::class);
+
+    $all = $ranking->fundingList($eligible->support_type, withCovered: true)->pluck('beneficiary_id');
+    $zakat = $ranking->fundingList($eligible->support_type, withCovered: true, zakatOnly: true)->pluck('beneficiary_id');
+
+    expect($all)->toContain($eligible->id)
+        ->and($all)->toContain($notEligible->id)
+        // The judgement is the association's, recorded per file. A donor
+        // paying zakat is shown only the files it may be spent on.
+        ->and($zakat)->toContain($eligible->id)
+        ->and($zakat)->not->toContain($notEligible->id);
+})->group('AUTH-04');
+
+it('serves the filtered list from its own cache, never the general one', function () {
+    $region = regionWithRates();
+    publishedCase($region, attributes: ['zakat_category' => 'poor']);
+    publishedCase($region);
+
+    $list = app(\App\Services\DonorCaseList::class);
+
+    $all = $list->page('monthly', null, 1, 12);
+    $zakat = $list->page('monthly', null, 1, 12, zakatOnly: true);
+
+    // Two lists, two keys. Without that the second request is answered with
+    // the first list's cards, which is the bug this is here to prevent.
+    expect($all['total'])->toBeGreaterThan($zakat['total'])
+        ->and($zakat['total'])->toBe(1);
+})->group('APP-07');
+
+it('keeps the zakat door on the bar and a way to reach the association in the footer', function () {
+    $this->seed(\Database\Seeders\HomePageSeeder::class);
+
+    $nav = \App\Models\ContentCard::block('nav_link')->published()->pluck('link', 'title_ar');
+
+    expect($nav)->toHaveKey('زكاة مستحقة')
+        ->and($nav['زكاة مستحقة'])->toContain('zakat=1');
+
+    $footer = \App\Models\ContentCard::block('footer_link')->published()->pluck('link', 'title_ar');
+
+    expect($footer)->toHaveKey('تواصل معنا');
+
+    // And the page behind it exists, so the link is not a dead end.
+    expect(\App\Models\Page::where('slug', 'contact')->where('is_published', true)->exists())->toBeTrue();
+
+    // The zakat tile lands on the zakat list rather than on every one-time
+    // need: it is the one tile a donor could act on and be wrong about.
+    $tile = \App\Models\ContentCard::block('tile')->where('title_ar', 'زكاة واجبة')->first();
+
+    expect($tile?->link)->toContain('zakat=1');
+})->group('APP-06');

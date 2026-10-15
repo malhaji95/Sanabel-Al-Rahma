@@ -77,6 +77,11 @@ class HomePageSeeder extends Seeder
         foreach ([
             ['الرئيسية', '/'],
             ['الحالات', '/cases'],
+            // T-98 — the association asked for it beside the campaigns on 15
+            // October. It is the published list narrowed to the files a zakat
+            // payment may be spent on, not a page of its own: one list, one
+            // ranking, one set of masked cards.
+            ['زكاة مستحقة', '/cases?zakat=1'],
             ['الحملات', '/campaigns'],
             ['الأخبار', '/news'],
         ] as $index => [$title, $link]) {
@@ -118,7 +123,10 @@ class HomePageSeeder extends Seeder
             ['تفريج كربة', null, 'hand-heart', $oneTime],
             ['كفالة يتيم', 'images/home/hero-child.webp', 'child', $monthly],
             ['كفالة طالب علم', null, 'book', $monthly],
-            ['زكاة واجبة', null, 'sprout', $oneTime],
+            // T-98 — it used to land on every one-time need, zakat-eligible or
+            // not, which is the one tile on this page a donor could act on and
+            // be wrong about.
+            ['زكاة واجبة', null, 'sprout', $oneTime.'&zakat=1'],
             ['صدقة جارية', null, 'mosque', $oneTime],
             ['رعاية أرملة', null, 'person', $monthly],
         ] as $index => [$title, $image, $icon, $link]) {
@@ -175,6 +183,12 @@ class HomePageSeeder extends Seeder
             ['شروط الاستخدام', 'terms', true],
             ['الأسئلة الشائعة', 'faq', true],
             ['الشفافية المالية', 'financial-transparency', true],
+            // T-98 — asked for on 15 October, and it was missing. The page
+            // opens with the same «بانتظار نصّها» placeholder as its
+            // neighbours: the telephone, the address and the hours are the
+            // association's to write, and inventing them would be worse than
+            // leaving the page waiting.
+            ['تواصل معنا', 'contact', true],
         ] as $index => [$title, $slug, $mayOpen]) {
             // firstOrCreate: a page the association has already written keeps
             // every word of it.
