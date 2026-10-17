@@ -225,6 +225,30 @@ class EditBeneficiary extends EditRecord
             // button asked whether you were the administrator instead of
             // asking the policy, which has always pointed `suspend_graduate`
             // at the executive director.
+            /*
+             | T-106 — the signature under the family's story. Held to
+             | `approve_case` because publishing a paragraph about a
+             | household to the open internet is a decision about that
+             | household, and the association already named who makes those.
+             */
+            Actions\Action::make('approveStory')
+                ->label(__('sanabel.actions.approve_story'))
+                ->icon('heroicon-o-check-badge')
+                ->color('success')
+                ->visible(fn () => filled($this->record->story_ar)
+                    && $this->record->story_approved_at === null
+                    && auth()->user()->can_('approve_case'))
+                ->requiresConfirmation()
+                ->modalDescription(__('sanabel.actions.approve_story_help'))
+                ->action(function () {
+                    $this->record->forceFill([
+                        'story_approved_by' => auth()->id(),
+                        'story_approved_at' => now(),
+                    ])->save();
+
+                    Notification::make()->title(__('sanabel.actions.story_approved'))->success()->send();
+                }),
+
             Actions\Action::make('close')
                 ->label(__('sanabel.actions.close_case'))
                 ->icon('heroicon-o-lock-closed')

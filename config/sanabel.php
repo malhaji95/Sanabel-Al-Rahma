@@ -375,5 +375,21 @@ return [
         'show_health_condition' => true,
         'show_possessions' => true,
         'show_dependents' => true,
+
+        /*
+         | T-106 — «وضروري شرح»، 16 October. A paragraph written for the
+         | donor, which no family has until somebody writes one and somebody
+         | who may approve a file signs it off. The switch closes it again
+         | for every family at once.
+         */
+        'show_story' => true,
+
+        /*
+         | The heading above it. The association offered four wordings on 16
+         | October and chose none, so it is a setting rather than a line of
+         | code: they pick on the settings screen, and change their mind
+         | without a release.
+         */
+        'story_title' => 'hope',
     ],
 ];

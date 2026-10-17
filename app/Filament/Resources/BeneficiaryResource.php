@@ -498,6 +498,34 @@ class BeneficiaryResource extends Resource
                         ->rows(4)
                         ->maxLength(2000)
                         ->columnSpanFull(),
+
+                    /*
+                     | T-106 — the other paragraph, and the only free text on
+                     | this file a stranger ever reads. Beside the internal
+                     | one on purpose: whoever is writing both should see at a
+                     | glance which of the two is which.
+                     |
+                     | It does not reach a donor until an account that may
+                     | approve a file signs it off, and every edit here takes
+                     | that signature away again.
+                     */
+                    Forms\Components\Textarea::make('story_ar')
+                        ->label(__('sanabel.beneficiary.story_ar'))
+                        ->helperText(__('sanabel.beneficiary.story_help'))
+                        ->rows(5)
+                        ->maxLength(1500)
+                        ->columnSpanFull(),
+
+                    Forms\Components\Placeholder::make('story_state')
+                        ->label(__('sanabel.beneficiary.story_state'))
+                        ->content(fn (?Beneficiary $record) => $record?->story_approved_at
+                            ? __('sanabel.beneficiary.story_approved_on', [
+                                'name' => $record->storyApprover?->name ?? '—',
+                                'date' => $record->story_approved_at->translatedFormat('Y-m-d'),
+                            ])
+                            : __('sanabel.beneficiary.story_not_approved'))
+                        ->visible(fn (?Beneficiary $record) => filled($record?->story_ar))
+                        ->columnSpanFull(),
                 ]),
 
                 Forms\Components\Wizard\Step::make(__('sanabel.beneficiary.step_health'))->schema([

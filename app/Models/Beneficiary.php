@@ -55,11 +55,37 @@ class Beneficiary extends Model
         'has_quran_memorizers', 'quran_memorizer_count', 'livelihood_proposal_ar',
         'proposal_skills_ar', 'proposal_cost', 'surveyed_by_ar', 'furnishing_ar',
         // T-100 — the two the survey asks and the file had no room for.
-        'smokes', 'situation_ar', 'urgency_deadline_at', 'documented_debt', 'status', 'last_assessment_at', 'next_assessment_due_at', 'source',
+        'smokes', 'situation_ar',
+        // T-106 — the one paragraph written for the donor rather than for
+        // the committee, and the two columns that say who signed it off.
+        'story_ar', 'story_approved_by', 'story_approved_at',
+        'urgency_deadline_at', 'documented_debt', 'status', 'last_assessment_at', 'next_assessment_due_at', 'source',
         'merged_into_id', 'duplicate_review_flag', 'approved_by', 'approved_at', 'reject_reason_ar',
         'field_verified_by', 'field_verified_at', 'endorsed_by', 'endorsed_at',
         'published_at', 'created_by',
     ];
+
+    /**
+     * The paragraph a donor may be shown, or nothing.
+     *
+     * T-106 — written, then approved, and withdrawn again by any edit. An
+     * anonymised file has no story: the whole point of anonymising is that
+     * the household stops being described.
+     */
+    public function approvedStory(): ?string
+    {
+        if ($this->isAnonymised() || $this->story_approved_at === null) {
+            return null;
+        }
+
+        return filled($this->story_ar) ? $this->story_ar : null;
+    }
+
+    /** Who put their name to the family's story. */
+    public function storyApprover(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'story_approved_by');
+    }
 
     /** The household's own account, which sees this file and no other. */
     public function user(): BelongsTo
@@ -125,6 +151,7 @@ class Beneficiary extends Model
             'birth_date' => 'date',
             'works' => 'boolean',
             'smokes' => 'boolean',
+            'story_approved_at' => 'datetime',
             'has_quran_memorizers' => 'boolean',
             'national_id_encrypted' => 'encrypted',
             'phone_encrypted' => 'encrypted',
@@ -361,6 +388,24 @@ class Beneficiary extends Model
 
         static::creating($decision);
         static::updating($decision);
+
+        /*
+         | T-106 — the story is approved, not merely written.
+         |
+         | Any edit to the paragraph takes the approval off it, so that an
+         | approval always names the words that were read. Without this, a
+         | sentence could be signed off and then rewritten into anything at
+         | all, and the signature would still be sitting under it.
+         |
+         | The approval columns themselves are exempt: setting them is the
+         | act of approving.
+         */
+        static::updating(function (self $case) {
+            if ($case->isDirty('story_ar') && ! $case->isDirty('story_approved_at')) {
+                $case->story_approved_by = null;
+                $case->story_approved_at = null;
+            }
+        });
 
         /*
          | T-74 — consent, by their decision of 13 October: «موافق ولا يوجد لا،

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Role;
 use App\Models\Setting;
 use App\Services\AnonymiseService;
 use Filament\Forms;
@@ -119,11 +120,22 @@ class ManageSettings extends Page implements HasForms
                  | holds it. Empty means nothing is sent, and the helper text
                  | says so rather than leaving it to be discovered.
                  */
+                /*
+                 | T-106 — the heading over the family's story. Four wordings
+                 | the association offered on 16 October and chose none of,
+                 | so the choice is theirs to make and remake here.
+                 */
+                Forms\Components\Select::make('story_title')
+                    ->label(__('sanabel.settings.keys.story_title'))
+                    ->helperText(__('sanabel.settings.help.story_title'))
+                    ->options(__('sanabel.masked.story_titles'))
+                    ->selectablePlaceholder(false),
+
                 Forms\Components\Select::make('security_alert_roles')
                     ->label(__('sanabel.settings.keys.security_alert_roles'))
                     ->helperText(__('sanabel.settings.help.security_alert_roles'))
                     ->multiple()
-                    ->options(fn () => \App\Models\Role::orderBy('id')->pluck('name_ar', 'key'))
+                    ->options(fn () => Role::orderBy('id')->pluck('name_ar', 'key'))
                     ->columnSpanFull(),
             ]))
             ->columns(2)
@@ -158,6 +170,21 @@ class ManageSettings extends Page implements HasForms
                 abort_unless(self::maySwitch($key), 403);
 
                 Setting::put($key, (bool) $value);
+
+                continue;
+            }
+
+            /*
+             | T-106 — a setting that is a word rather than a number. The
+             | loop below used to cast everything that was not a switch to an
+             | integer, which would have stored the story's heading as 0. The
+             | value is held to the list it was offered from, so a hand-made
+             | request cannot write a key that has no translation behind it.
+             */
+            if (is_string($defaults[$key] ?? null)) {
+                $allowed = array_keys(__('sanabel.masked.story_titles'));
+
+                Setting::put($key, in_array($value, $allowed, true) ? $value : $defaults[$key]);
 
                 continue;
             }

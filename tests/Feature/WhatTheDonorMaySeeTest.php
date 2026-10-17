@@ -177,7 +177,8 @@ it('describes a dependant without a name, a birth year or an age in years', func
     expect($girl)->not->toBeNull()
         // The one question they asked about age, and the only one answered.
         ->and($girl['is_under_15'])->toBeTrue()
-        ->and($girl['status_labels'])->toContain('يدرس')
+        // T-106 — «الصفة» is its own key now, out of the survey's own list.
+        ->and($girl['occupation_label'])->toBe(__('sanabel.masked.is_student'))
         // «يتيم اذا كانت ارملة» — and this applicant is a widow.
         ->and($girl['is_orphan'])->toBeTrue();
 })->group('AUTH-03');
@@ -324,4 +325,136 @@ it('labels the family page as more information, not as a second donate button', 
     $home = $this->get(route('home'))->assertOk()->getContent();
 
     expect($home)->toContain(__('sanabel.public.more_info'));
+})->group('AUTH-03');
+
+/*
+ | T-106 — «وضروري شرح»، 16 October, with the reason given beside it: «قدر ما
+ | بكون فيه معلومات كافية وافية للمتبرع، قدر ما بنرغّب المتبرع إنه يدفع».
+ |
+ | One paragraph, written for the donor rather than for the committee, and
+ | the only free text that ever leaves the association. The approval is the
+ | whole of why it may be one, so most of what follows is about the
+ | approval.
+ */
+
+it('shows no story until somebody has signed it off', function () {
+    $case = describedCase($this->region);
+    $case->update(['story_ar' => 'أسرة فقدت معيلها وتسكن بالإيجار.']);
+
+    expect((new MaskedCaseResource($case->refresh()))->toArray(request())['story_ar'])
+        ->toBeNull();
+
+    $case->forceFill([
+        'story_approved_by' => userWithRole('executive_director')->id,
+        'story_approved_at' => now(),
+    ])->save();
+
+    expect((new MaskedCaseResource($case->refresh()))->toArray(request())['story_ar'])
+        ->toBe('أسرة فقدت معيلها وتسكن بالإيجار.');
+})->group('AUTH-03');
+
+it('takes the signature off the moment the words change', function () {
+    $case = describedCase($this->region);
+    $case->update(['story_ar' => 'النص الذي اعتُمد.']);
+    $case->forceFill([
+        'story_approved_by' => userWithRole('executive_director')->id,
+        'story_approved_at' => now(),
+    ])->save();
+
+    // An approval that survived a rewrite would be a signature under words
+    // nobody read.
+    $case->update(['story_ar' => 'نصٌّ آخر تمامًا، كُتب بعد الاعتماد.']);
+
+    expect($case->refresh()->story_approved_at)->toBeNull()
+        ->and($case->story_approved_by)->toBeNull()
+        ->and((new MaskedCaseResource($case))->toArray(request())['story_ar'])->toBeNull();
+})->group('AUTH-03');
+
+it('publishes no story for an anonymised file, approved or not', function () {
+    $case = describedCase($this->region);
+    $case->update(['story_ar' => 'نصٌّ معتمد.']);
+    $case->forceFill([
+        'story_approved_by' => userWithRole('executive_director')->id,
+        'story_approved_at' => now(),
+        'anonymised_at' => now(),
+    ])->save();
+
+    expect($case->refresh()->approvedStory())->toBeNull();
+})->group('AUTH-03');
+
+it('closes every story at once on the association switch, and names the heading they chose', function () {
+    $case = describedCase($this->region);
+    $case->update(['story_ar' => 'نصٌّ معتمد.']);
+    $case->forceFill([
+        'story_approved_by' => userWithRole('executive_director')->id,
+        'story_approved_at' => now(),
+    ])->save();
+
+    Setting::put('story_title', 'brief');
+
+    $payload = (new MaskedCaseResource($case->refresh()))->toArray(request());
+
+    expect($payload['story_title'])->toBe(__('sanabel.masked.story_titles.brief'));
+
+    Setting::put('show_story', false);
+
+    expect((new MaskedCaseResource($case->refresh()))->toArray(request())['story_ar'])->toBeNull();
+})->group('AUTH-03');
+
+it('tells the donor the relation, the standing and the illness of each dependant', function () {
+    $case = describedCase($this->region);
+
+    $case->members()->where('dependent', true)->update([
+        'relation' => 'daughter',
+        'occupation' => 'student',
+        'marital_status' => 'single',
+    ]);
+
+    $row = collect((new MaskedCaseResource($case->refresh()))->toArray(request())['dependents'])->first();
+
+    expect($row['relation_label'])->toBe(__('sanabel.relation.daughter'))
+        ->and($row['occupation_label'])->toBe(__('sanabel.occupation.student'))
+        ->and($row['marital_label'])->toBe(__('sanabel.marital_status_f.single'))
+        // Still no name, no birth year, no age in years.
+        ->and(array_diff(array_keys($row), MaskedCaseResource::DEPENDENT_KEYS))->toBeEmpty();
+})->group('AUTH-03');
+
+it('says a dependant is ill even where the association has not named the illness', function () {
+    $case = describedCase($this->region);
+    $member = $case->members()->where('dependent', true)->first();
+
+    HealthRecord::create([
+        'beneficiary_id' => $case->id,
+        'member_id' => $member->id,
+        'severity_band' => 75,
+        'economic_impact_band' => 25,
+        'care_burden_band' => 25,
+        'monthly_medical_cost' => 0,
+        'currency' => config('sanabel.currency'),
+        // No `condition`: the illness is recorded and not named.
+        'description_ar' => 'وصف داخلي',
+    ]);
+
+    $row = collect((new MaskedCaseResource($case->refresh()))->toArray(request())['dependents'])
+        ->firstWhere('has_condition', true);
+
+    expect($row)->not->toBeNull()
+        ->and($row['conditions'])->toBeEmpty();
+})->group('AUTH-03');
+
+it('draws the story and the debt value on the family page', function () {
+    $case = describedCase($this->region);
+    $case->update(['story_ar' => 'الشرح الذي تكتبه الجمعية.']);
+    $case->forceFill([
+        'story_approved_by' => userWithRole('executive_director')->id,
+        'story_approved_at' => now(),
+    ])->save();
+
+    $body = $this->get(route('opportunity', $case->file_number))->assertOk()->getContent();
+
+    expect($body)->toContain('الشرح الذي تكتبه الجمعية.')
+        ->and($body)->toContain(__('sanabel.masked.story_titles.hope'))
+        // «قيمة الديون» rather than «ديون» once there is a value to name.
+        ->and($body)->toContain(__('sanabel.masked.debt_amount_row'))
+        ->and($body)->toContain(number_format(480_000));
 })->group('AUTH-03');

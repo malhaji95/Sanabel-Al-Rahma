@@ -27,11 +27,16 @@
             : null,
         __('sanabel.masked.home_safety') => $case['home_safety_label'] ?? null,
         __('sanabel.masked.home_services') => $case['home_services_label'] ?? null,
-        __('sanabel.masked.debt') => isset($case['has_debt'])
-            ? ($case['has_debt']
-                ? number_format((int) $case['debt_amount']) . ' ' . config('sanabel.currency')
-                : __('sanabel.no'))
-            : null,
+        // T-106 — «قيمة الديون». The row names the value when there is one
+        // and answers the plain question when there is not, rather than
+        // reading «قيمة الديون: لا».
+        (($case['has_debt'] ?? false)
+            ? __('sanabel.masked.debt_amount_row')
+            : __('sanabel.masked.debt')) => isset($case['has_debt'])
+                ? ($case['has_debt']
+                    ? number_format((int) $case['debt_amount']) . ' ' . config('sanabel.currency')
+                    : __('sanabel.no'))
+                : null,
 
         /*
          | T-102 — the health answers, asked for on 15 October and the only
@@ -74,6 +79,16 @@
     $dependents = $case['dependents'] ?? [];
 @endphp
 
+{{-- T-106 — «وضروري شرح». The association's own paragraph about the
+     family, above the columns rather than buried under them: it is the thing
+     a donor reads first, and the columns are what it is read against. --}}
+@if (filled($case['story_ar'] ?? null))
+    <section class="card mt-5">
+        <h2 class="text-base font-bold">{{ $case['story_title'] }}</h2>
+        <p class="mt-3 leading-loose">{{ $case['story_ar'] }}</p>
+    </section>
+@endif
+
 @if ($rows->isNotEmpty() || $owned->isNotEmpty() || $dependents !== [])
     <section class="card mt-5">
         <h2 class="text-base font-bold">{{ __('sanabel.masked.household') }}</h2>
@@ -100,7 +115,9 @@
                 <ul class="mt-2 space-y-2">
                     @foreach ($dependents as $dependent)
                         <li class="flex flex-wrap items-center gap-1.5 rounded-lg px-3 py-2 text-sm" style="background-color: var(--page);">
-                            @if ($dependent['gender_label'])
+                            @if ($dependent['relation_label'] ?? null)
+                                <span class="font-medium">{{ $dependent['relation_label'] }}</span>
+                            @elseif ($dependent['gender_label'])
                                 <span class="font-medium">{{ $dependent['gender_label'] }}</span>
                             @endif
 
@@ -114,13 +131,26 @@
                                 </span>
                             @endif
 
-                            @foreach ($dependent['status_labels'] as $status)
-                                <span class="badge" style="color: var(--text-muted);">{{ $status }}</span>
+                            {{-- T-106 — «صلة القرابة» and «الصفة»، asked for
+                                 by name on 16 October, beside the marital
+                                 status that was already here. --}}
+                            @foreach ([$dependent['marital_label'] ?? null, $dependent['occupation_label'] ?? null] as $label)
+                                @if ($label)
+                                    <span class="badge" style="color: var(--text-muted);">{{ $label }}</span>
+                                @endif
                             @endforeach
 
-                            @foreach ($dependent['conditions'] as $condition)
-                                <span class="badge bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200">{{ $condition }}</span>
-                            @endforeach
+                            @if (($dependent['conditions'] ?? []) !== [])
+                                @foreach ($dependent['conditions'] as $condition)
+                                    <span class="badge bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200">{{ $condition }}</span>
+                                @endforeach
+                            @elseif ($dependent['has_condition'] ?? false)
+                                {{-- There is one; the association has not opened
+                                     the switch that names it. --}}
+                                <span class="badge bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200">
+                                    {{ __('sanabel.masked.has_condition') }}
+                                </span>
+                            @endif
                         </li>
                     @endforeach
                 </ul>

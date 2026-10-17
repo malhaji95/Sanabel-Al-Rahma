@@ -184,6 +184,16 @@ class SyntheticDataSeeder extends Seeder
             'wallet_encrypted' => $index % 5 === 0 ? '0955'.str_pad((string) $index, 6, '0', STR_PAD_LEFT) : null,
             'documented_debt' => $index % 6 === 0 ? 150_000 : 0,
             'urgency_deadline_at' => $index % 7 === 0 ? now()->addDays(20) : null,
+            /*
+             | T-106 — the paragraph the association writes for the donor.
+             | Two thirds of the demonstration families carry one, and half
+             | of those are approved: the screens have to show a story, a
+             | story waiting for a signature, and no story at all.
+             */
+            'story_ar' => $index % 3 !== 0
+                ? 'أسرة فقدت معيلها وتسكن بالإيجار في غرفتين، وتعيل أطفالًا في سنّ المدرسة. '
+                    .'الدخل لا يغطّي الإيجار والدواء معًا، والجمعية تتابع الحالة ميدانيًا منذ تسجيلها. (بيانات تجريبية)'
+                : null,
             'created_by' => $staff['delegate']->id,
         ]);
 
@@ -213,6 +223,13 @@ class SyntheticDataSeeder extends Seeder
                     'unable_to_earn' => false,
                     // T-101 — what a dependant's own row carries.
                     'marital_status' => $class === 'child' ? null : ($n % 2 === 0 ? 'single' : 'married'),
+                    // T-106 — «الصفة» on the donor's card.
+                    'occupation' => match (true) {
+                        $class === 'child' => 'student',
+                        $class === 'elderly' => 'retired',
+                        $n % 2 === 1 => 'worker',
+                        default => 'housewife',
+                    },
                     'is_student' => $class === 'child',
                     'works' => $class === 'adult' && $n % 2 === 1,
                     'is_orphan' => $class === 'child' && $index % 4 === 0,
@@ -289,6 +306,14 @@ class SyntheticDataSeeder extends Seeder
                 'currency' => config('sanabel.currency'),
                 'is_stable' => false,
             ]);
+        }
+
+        // Half the written stories carry a signature; the rest wait for one.
+        if ($index % 3 !== 0 && $index % 2 === 0) {
+            $case->forceFill([
+                'story_approved_by' => $staff['admin']->id,
+                'story_approved_at' => now()->subDays($index),
+            ])->save();
         }
 
         // Most demo files are approved and published so the donor screens have content.

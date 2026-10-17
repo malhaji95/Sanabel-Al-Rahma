@@ -74,6 +74,8 @@ class MaskedCaseResource extends JsonResource
         'conditions', 'ongoing_treatment',
         'has_vehicle', 'vehicles', 'has_livestock', 'livestock', 'has_property', 'property',
         'dependents',
+        // T-106 — the paragraph, and the heading the association chose for it.
+        'story_ar', 'story_title',
     ];
 
     /**
@@ -86,7 +88,8 @@ class MaskedCaseResource extends JsonResource
      * that is itself allowed.
      */
     public const DEPENDENT_KEYS = [
-        'gender_label', 'is_under_15', 'is_orphan', 'status_labels', 'conditions',
+        'relation_label', 'gender_label', 'is_under_15', 'is_orphan',
+        'marital_label', 'occupation_label', 'has_condition', 'conditions',
     ];
 
     /**
@@ -219,6 +222,17 @@ class MaskedCaseResource extends JsonResource
             'ongoing_treatment' => $this->ongoingTreatment($case),
             ...$this->possessions($case),
             'dependents' => $this->dependents($case, $members),
+
+            /*
+             | T-106 — «وضروري شرح». The only free text a donor ever reads,
+             | and the only one written for them: approved by a person who
+             | may approve a file, and unapproved again by any edit to it.
+             */
+            'story_ar' => $this->story($case),
+            'story_title' => __('sanabel.masked.story_titles.'.Setting::value(
+                'story_title',
+                config('sanabel.setting_defaults.story_title')
+            )),
         ];
     }
 
@@ -420,42 +434,61 @@ class MaskedCaseResource extends JsonResource
 
         return $members
             ->where('dependent', true)
-            ->map(fn ($member) => [
-                'gender_label' => $member->gender ? __('sanabel.gender.'.$member->gender) : null,
-                'is_under_15' => $member->birth_year ? $member->age() < 15 : null,
-                'is_orphan' => $widowed ? (bool) $member->is_orphan : false,
-                'status_labels' => $this->memberStatus($member),
-                'conditions' => $this->conditions($case->healthRecords->where('member_id', $member->id)),
-            ])
+            ->map(function ($member) use ($case, $widowed) {
+                $theirs = $case->healthRecords->where('member_id', $member->id);
+
+                return [
+                    // T-106 — «صلة القرابة: ابن، بنت، أخ، أخت، وغيرهم».
+                    'relation_label' => $member->relation
+                        ? __('sanabel.relation.'.$member->relation)
+                        : null,
+                    'gender_label' => $member->gender ? __('sanabel.gender.'.$member->gender) : null,
+                    'is_under_15' => $member->birth_year ? $member->age() < 15 : null,
+                    'is_orphan' => $widowed ? (bool) $member->is_orphan : false,
+                    'marital_label' => $member->marital_status
+                        ? __('sanabel.'.($member->gender === 'female' ? 'marital_status_f' : 'marital_status').'.'.$member->marital_status)
+                        : null,
+                    'occupation_label' => $this->occupation($member),
+                    // That there is one, which is a different question from
+                    // what it is called: the naming has its own switch.
+                    'has_condition' => $this->switched('show_health_condition')
+                        ? $theirs->where('severity_band', '>', 0)->isNotEmpty()
+                        : null,
+                    'conditions' => $this->conditions($theirs),
+                ];
+            })
             ->values()
             ->all();
     }
 
     /**
-     * What a dependant does, which the association's list mixes with marital
-     * status — «طالبة مطلقه ارمله موظفة غيره». The file keeps the two apart,
-     * so the card puts them back together: a status and, beside it, studying
-     * or working.
+     * «الصفة»: student, retired, employee, and the rest of the list the
+     * survey offers.
      *
-     * @return array<int,string>
+     * T-106 — the association asked for it by name on 16 October. Older rows
+     * answered the same question with two booleans instead, so those are
+     * read when the column itself is empty rather than left blank.
      */
-    private function memberStatus($member): array
+    private function occupation($member): ?string
     {
-        $labels = [];
-
-        if ($member->marital_status) {
-            $labels[] = __('sanabel.'.($member->gender === 'female' ? 'marital_status_f' : 'marital_status').'.'.$member->marital_status);
+        if ($member->occupation) {
+            return __('sanabel.occupation.'.$member->occupation);
         }
 
-        if ($member->is_student) {
-            $labels[] = __('sanabel.masked.is_student');
-        }
+        return match (true) {
+            (bool) $member->is_student => __('sanabel.masked.is_student'),
+            (bool) $member->works => __('sanabel.masked.works'),
+            default => null,
+        };
+    }
 
-        if ($member->works) {
-            $labels[] = __('sanabel.masked.works');
-        }
-
-        return $labels;
+    /**
+     * The paragraph, if the association has written one and signed it off,
+     * and if their switch is open.
+     */
+    private function story(Beneficiary $case): ?string
+    {
+        return $this->switched('show_story') ? $case->approvedStory() : null;
     }
 
     /** Which of the asset kinds is a vehicle, for the association's «آلية». */
