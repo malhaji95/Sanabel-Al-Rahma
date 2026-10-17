@@ -165,22 +165,23 @@ it('stops a provider from reading a referral issued to another provider', functi
 })->group('AUTH-02');
 
 it('stops the creator from being the final approver', function () {
-    $officer = userWithRole('case_officer');
-    $admin = userWithRole('admin');
+    // approve_case is the executive director's, not the case officer's.
+    $officer = userWithRole('executive_director');
+    $second = userWithRole('executive_director');
 
     $case = familyOf($this->region, attributes: ['status' => 'pending_approval']);
-    $case->forceFill(['created_by' => $admin->id])->save();
-
-    // The admin who created the file cannot approve it, even holding the permission.
-    expect($admin->can('approve', $case))->toBeFalse();
-
-    expect(fn () => app(CaseService::class)->approve($case, $admin))
-        ->toThrow(RuntimeException::class, __('sanabel.cases.self_approval_blocked'));
-
     $case->forceFill(['created_by' => $officer->id])->save();
 
-    expect($admin->can('approve', $case->refresh()))->toBeTrue()
-        ->and(app(CaseService::class)->approve($case, $admin)->status)->toBe('approved');
+    // The officer who created the file cannot approve it, holding the
+    // permission and all. It is the person the rule is about, not the role.
+    expect($officer->can('approve', $case))->toBeFalse();
+
+    expect(fn () => app(CaseService::class)->approve($case, $officer))
+        ->toThrow(RuntimeException::class, __('sanabel.cases.self_approval_blocked'));
+
+    // Another officer, who did not create it, can.
+    expect($second->can('approve', $case->refresh()))->toBeTrue()
+        ->and(app(CaseService::class)->approve($case, $second)->status)->toBe('approved');
 })->group('APP-01');
 
 it('scopes a delegate to their own village, and to nothing wider', function () {

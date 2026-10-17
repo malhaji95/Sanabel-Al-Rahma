@@ -50,8 +50,23 @@ class BeneficiaryPolicy
             return false;
         }
 
-        // After approval, edits go through change_requests, not straight writes.
-        if (in_array($case->status, ['approved', 'published'], true) && ! $user->isAdmin()) {
+        /*
+         | After approval, edits go through change_requests, not straight
+         | writes.
+         |
+         | T-105 — the exception here used to be the system administrator,
+         | which made the one account that decides nothing the only account
+         | that could rewrite an approved file without asking anybody. It is
+         | now whoever may approve a change to such a file: the same person
+         | the change request would have gone to, so the exception no longer
+         | routes around the rule, it names its destination.
+         |
+         | The screen itself has to stay open to somebody, because the
+         | anonymisation and the closing of a file both live on it, and both
+         | are only ever done to a file that has already been approved.
+         */
+        if (in_array($case->status, ['approved', 'published'], true)
+            && ! $this->canWrite($user, 'approve_change')) {
             return false;
         }
 
@@ -89,20 +104,30 @@ class BeneficiaryPolicy
         return $this->canWrite($user, 'merge_duplicates');
     }
 
-    public function overrideScore(User $user, Beneficiary $case): bool
-    {
-        return $this->canWrite($user, 'override_score');
-    }
-
     public function recordVisit(User $user, Beneficiary $case): bool
     {
         return $this->canWrite($user, 'record_visit') && $this->inScope($user, $case);
     }
 
-    /** The delegate's field sign-off, inside their own region and nowhere else. */
+    /**
+     * The delegate's field sign-off, inside their own region and nowhere else.
+     *
+     * 16 Oct 2026 — «الجمعيات الخيرية بالأصل ما عندها صلاحية اعتماد بصفة محقق
+     * ميداني. هي صفة شريك بتدخل البيانات، وراح تكون من مسؤولية المندوب
+     * الميداني هو اللي يحقق».
+     *
+     * A partner association enters the file and signs nothing on it. The step
+     * exists so that somebody who went to the house says the file matches
+     * what they saw, and the partner that wrote the file is not that
+     * somebody. Held to the roles that do the visiting rather than to
+     * `recommend` alone, which a partner holds for its own files.
+     */
+    public const FIELD_VERIFIERS = ['delegate', 'area_supervisor', 'deputy_area_supervisor'];
+
     public function verifyInField(User $user, Beneficiary $case): bool
     {
-        return $this->canWrite($user, 'recommend')
+        return in_array($user->role?->key, self::FIELD_VERIFIERS, true)
+            && $this->canWrite($user, 'recommend')
             && $this->inScope($user, $case)
             && in_array($case->status, CaseService::AWAITING_FIELD, true);
     }
@@ -118,7 +143,9 @@ class BeneficiaryPolicy
             && $this->inScope($user, $case)
             && $case->status === 'verified'
             && $case->field_verified_by !== $user->getKey()
-            && ($user->hasRole('area_supervisor', 'case_officer') || $user->isAdmin());
+            // T-105 — the administrator is no longer among them: an
+            // endorsement is a judgement about a family.
+            && $user->hasRole('area_supervisor', 'case_officer');
     }
 
     public function requestChange(User $user, Beneficiary $case): bool

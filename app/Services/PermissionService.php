@@ -19,7 +19,7 @@ class PermissionService
     /** Every write ability in the matrix. `council` is denied all of them. */
     public const WRITE_PERMISSIONS = [
         'create_case', 'edit_draft', 'upload_media', 'record_visit', 'recommend',
-        'approve_case', 'suspend_graduate', 'override_score', 'edit_config',
+        'approve_case', 'suspend_graduate', 'edit_config',
         'request_change', 'approve_change', 'merge_duplicates', 'donate',
         'verify_payment', 'manage_campaigns', 'manage_distribution', 'confirm_delivery',
         'manage_own_offers', 'verify_referral', 'publish_job_profile', 'manage_members',
@@ -34,6 +34,28 @@ class PermissionService
         'request_anonymise', 'execute_anonymise',
     ];
 
+    /**
+     * 16 Oct 2026 — «نحتاج مدير النظام فقط صلاحيات تجهيز النظام فقط وليس له أي
+     * صلاحية اتخاذ قرار او أنشاء ملف او امر صرف او اعتماد».
+     *
+     * The technical account prepares the system: it opens accounts, sets the
+     * roles, and edits the configuration. It decides nothing — not a family,
+     * not a payment, not a word of published content. Held in code rather
+     * than in the pivot for the same reason hard rule 1 is: a restriction the
+     * holder of `manage_users` could grant away by editing a row is not a
+     * restriction on the holder of `manage_users`.
+     *
+     * The two anonymisation keys are on the list because the association put
+     * them there themselves on 12 October, with a switch that is closed by
+     * default and a second person required to carry it out. That decision is
+     * theirs and still stands; this one does not quietly reverse it.
+     */
+    public const SETUP_ONLY_ROLES = ['admin'];
+
+    public const SETUP_PERMISSIONS = [
+        'manage_users', 'edit_config', 'request_anonymise', 'execute_anonymise',
+    ];
+
     public const READ_PERMISSIONS = [
         'view_full_case', 'view_masked_case', 'search_by_national_id', 'browse_job_market', 'view_reports',
     ];
@@ -46,6 +68,14 @@ class PermissionService
 
         // Hard rule 1 — council cannot write anything, whatever the pivot says.
         if ($user->isReadOnly() && in_array($permissionKey, self::WRITE_PERMISSIONS, true)) {
+            return false;
+        }
+
+        // T-105 — the technical account prepares the system and decides
+        // nothing in it, whatever the pivot says.
+        if (in_array($user->role->key, self::SETUP_ONLY_ROLES, true)
+            && in_array($permissionKey, self::WRITE_PERMISSIONS, true)
+            && ! in_array($permissionKey, self::SETUP_PERMISSIONS, true)) {
             return false;
         }
 

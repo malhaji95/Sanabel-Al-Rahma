@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Assessment;
 use App\Models\Beneficiary;
-use App\Models\Override;
 use App\Models\Setting;
 use App\Models\Visit;
 use Carbon\CarbonInterface;
@@ -84,29 +83,6 @@ class AssessmentService
 
             return $assessment->refresh();
         });
-    }
-
-    /**
-     * Admin may change a score. The automatic score is never erased —
-     * it is copied onto the override row before the new one is stored.
-     */
-    public function override(
-        Assessment $assessment,
-        float $newScore,
-        string $reasonAr,
-        int $requestedBy,
-        int $approvedBy,
-        ?CarbonInterface $expiresAt = null,
-    ): Override {
-        return Override::create([
-            'assessment_id' => $assessment->getKey(),
-            'auto_score' => $assessment->base_score,
-            'new_score' => $newScore,
-            'reason_ar' => $reasonAr,
-            'requested_by' => $requestedBy,
-            'approved_by' => $approvedBy,
-            'expires_at' => $expiresAt,
-        ]);
     }
 
     /** stable 180 days · severe or sponsored 90 · emergency or job loss 30 (docs/03-rules.md §10). */

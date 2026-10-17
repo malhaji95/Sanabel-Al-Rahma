@@ -184,7 +184,7 @@ class RankingService
             // October, so they are loaded with it. Without them the page
             // would ask three more questions per family.
             ->with([
-                'assessments.overrides', 'region', 'members', 'housing', 'healthRecords',
+                'assessments', 'region', 'members', 'housing', 'healthRecords',
                 'basketItems.basket', 'association', 'debts', 'assets', 'livestock',
             ])
             ->get()
@@ -250,19 +250,11 @@ class RankingService
                     'current_assessment.monthly_need',
                     'current_assessment.stable_income',
                     'current_assessment.base_score',
-                    'live_override.new_score',
                 ])
                 ->join('assessments as current_assessment', fn ($join) => $join->whereRaw(
                     'current_assessment.id = (select max(a.id) from assessments a'
                     ." where a.beneficiary_id = beneficiaries.id and a.status = 'approved'"
                     .' and a.deleted_at is null)'
-                ))
-                ->leftJoin('overrides as live_override', fn ($join) => $join->whereRaw(
-                    'live_override.id = (select max(o.id) from overrides o'
-                    .' where o.assessment_id = current_assessment.id and o.approved_by is not null'
-                    .' and o.deleted_at is null'
-                    .' and (o.expires_at is null or o.expires_at > ?))',
-                    [now()]
                 ))
                 ->get()
         );
@@ -304,9 +296,10 @@ class RankingService
         $id = (int) $family->id;
         $need = $this->needOf($family);
 
-        // effectiveScore(): the live override if there is one, else the score
-        // the assessment computed.
-        $score = (float) ($family->new_score ?? $family->base_score);
+        // effectiveScore(): the score the assessment computed, and no other.
+        // The hand-set override was removed on 16 October at the
+        // association's instruction.
+        $score = (float) $family->base_score;
         $waiting = $this->waitingBonusSince($this->waitingFrom($family));
 
         foreach ($months as $month) {

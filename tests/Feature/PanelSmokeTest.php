@@ -6,12 +6,12 @@ use App\Filament\Pages\ManageSettings;
 use App\Filament\Provider\Pages\VerifyCard;
 use App\Filament\Provider\Resources\OfferResource;
 use App\Filament\Resources\AdjustmentCatalogResource;
+use App\Filament\Resources\AuditLogResource;
 use App\Filament\Resources\BannerResource;
 use App\Filament\Resources\BeneficiaryResource;
 use App\Filament\Resources\CampaignResource;
 use App\Filament\Resources\ChangeRequestResource;
 use App\Filament\Resources\ComplaintResource;
-use App\Filament\Resources\AuditLogResource;
 use App\Filament\Resources\DisbursementOrderResource;
 use App\Filament\Resources\DisbursementResource;
 use App\Filament\Resources\DistributionResource;
@@ -62,7 +62,9 @@ beforeEach(function () {
 it('loads every admin resource list page', function (string $resource) {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
 
-    $this->actingAs(userWithRole('admin'))
+    // As above: a rendering sweep, run as the account that can open
+    // everything, so that it stays a rendering sweep.
+    $this->actingAs(userWithRole('board_director'))
         ->get($resource::getUrl('index'))
         ->assertSuccessful();
 })->with([
@@ -94,12 +96,25 @@ it('loads every admin resource list page', function (string $resource) {
 it('loads every admin resource create page', function (string $resource) {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
 
-    $this->actingAs(userWithRole('admin'))
+    /*
+     | T-105 — the chairman, not the administrator.
+     |
+     | This sweep asks one question: does every screen render. It used to ask
+     | it as the system administrator, because that account held every key.
+     | Since 16 October it holds the keys that prepare the system and none of
+     | the keys that decide anything, so most of these screens are rightly
+     | shut to it — which would make a rendering test into an authority test
+     | by accident. The account with every key is the chairman's.
+     |
+     | What the administrator may and may not reach is tested directly, in
+     | WhoDecidesTest and in the test below this one.
+     */
+    $this->actingAs(userWithRole('board_director'))
         ->get($resource::getUrl('create'))
         ->assertSuccessful();
 })->with([
     // Not BeneficiaryResource: a family file is opened down the approved chain,
-    // and the system administrator is not on it. Its own test is below.
+    // and neither the chairman nor the administrator is on it.
     DonationResource::class,
     CampaignResource::class,
     SponsorshipResource::class,
@@ -170,7 +185,8 @@ it('keeps the settings page away from roles without edit_config', function () {
 
 it('loads an edit page for each record-bearing resource', function () {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
-    $admin = userWithRole('admin');
+    // The same rendering sweep as the two above, for the same reason.
+    $admin = userWithRole('board_director');
 
     $case = publishedCase($this->region);
     $campaign = Campaign::factory()->create();

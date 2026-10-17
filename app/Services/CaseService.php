@@ -6,6 +6,7 @@ use App\Models\Beneficiary;
 use App\Models\ChangeRequest;
 use App\Models\Delivery;
 use App\Models\User;
+use App\Policies\BeneficiaryPolicy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
@@ -32,6 +33,17 @@ class CaseService
     {
         if (! in_array($case->status, self::AWAITING_FIELD, true)) {
             throw new \RuntimeException(__('sanabel.cases.not_awaiting_field'));
+        }
+
+        /*
+         | 16 Oct 2026 — a partner association enters the file and signs
+         | nothing on it. The step says somebody went to the house, so it
+         | belongs to the people who do the visiting. Checked here as well as
+         | in the policy: the screen asks the policy, and this is what answers
+         | a call that did not come from the screen.
+         */
+        if (! in_array($delegate->role?->key, BeneficiaryPolicy::FIELD_VERIFIERS, true)) {
+            throw new \RuntimeException(__('sanabel.cases.field_verifier_only'));
         }
 
         $case->forceFill([

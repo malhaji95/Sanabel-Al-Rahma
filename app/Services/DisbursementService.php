@@ -210,6 +210,9 @@ class DisbursementService
             throw new \RuntimeException(__('sanabel.disbursement.approve_before_executing'));
         }
 
+        // T-105 — whoever authorised the payment does not also move the money.
+        $this->refuseSameHand($disbursement, $treasurer, ['approved_by']);
+
         $disbursement->forceFill([
             'status' => 'executed',
             'executed_by' => $treasurer->getKey(),
@@ -247,6 +250,10 @@ class DisbursementService
             throw new \RuntimeException(__('sanabel.disbursement.execute_before_reconciling'));
         }
 
+        // T-105 — neither the hand that authorised the payment nor the hand
+        // that moved it certifies that it landed.
+        $this->refuseSameHand($disbursement, $accountant, ['approved_by', 'executed_by']);
+
         $disbursement->forceFill([
             'status' => 'reconciled',
             'reconciled_by' => $accountant->getKey(),
@@ -254,6 +261,30 @@ class DisbursementService
         ])->save();
 
         return $disbursement->refresh();
+    }
+
+    /**
+     * T-105 — «نفس المستخدم لا يستطيع الجمع بين الخطوات المتعارضة للعملية
+     * نفسها، حتى لو كان الدور يملك أكثر من صلاحية», 16 October.
+     *
+     * The four steps of a payment are four people, not four permissions. A
+     * role may legitimately hold two of the keys — the treasurer both gathers
+     * the order and moves the money — and that is exactly why the check is
+     * made against the names already written on this line rather than against
+     * what the actor is allowed to do.
+     *
+     * Raise against approve is checked on the order, where the raiser is
+     * recorded; the two below are checked here, on the line.
+     *
+     * @param  array<int,string>  $columns  the earlier steps this one conflicts with
+     */
+    private function refuseSameHand(Disbursement $disbursement, User $actor, array $columns): void
+    {
+        foreach ($columns as $column) {
+            if ($disbursement->{$column} !== null && (int) $disbursement->{$column} === $actor->getKey()) {
+                throw new \RuntimeException(__('sanabel.disbursement.no_same_hand'));
+            }
+        }
     }
 
     /** How many days the household has to answer. Data, not a figure here. */

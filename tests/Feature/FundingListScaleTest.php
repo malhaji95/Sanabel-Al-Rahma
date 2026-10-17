@@ -107,45 +107,34 @@ it('loads the page it is given and no more', function () {
 
 it('computes the same ranking the families themselves give', function () {
     /*
-     | The safety net under the whole change. The list now reads a family's
-     | score, need and waiting time out of a flat row built by one query,
-     | where it used to ask the model. Both paths end in the same formula,
-     | and this holds that they are fed the same numbers — including the one
-     | case the query has to reproduce by hand: a live override standing in
-     | for the assessment's own score.
+     | The safety net under the whole change. The list reads a family's score,
+     | need and waiting time out of a flat row built by one query, where it
+     | used to ask the model. Both paths end in the same formula, and this
+     | holds that they are fed the same numbers.
+     |
+     | T-106 — it used to hold one more thing: that the query reproduced a
+     | live override by hand, the same way the model did. There is no
+     | override any more. On 16 October the association settled that the
+     | final score is never set by hand — a wrong score is a wrong input, and
+     | the input is what gets corrected. Rows written before that decision
+     | stay in the table as the record of what was done; they move nobody.
      */
-    $admin = userWithRole('admin');
+    $admin = userWithRole('board_director');
 
     $plain = publishedCase($this->region);
 
     $partly = publishedCase($this->region);
     fundNow($partly, intdiv($this->coverage->needAmount($partly), 3), $admin);
 
-    $overridden = publishedCase($this->region);
+    // A family carrying an override from before the decision. It ranks on
+    // the score the assessment computed, exactly like the family beside it.
+    $wasOverridden = publishedCase($this->region);
     Override::create([
-        'assessment_id' => $overridden->currentAssessment()->id,
-        'auto_score' => $overridden->currentAssessment()->base_score,
+        'assessment_id' => $wasOverridden->currentAssessment()->id,
+        'auto_score' => $wasOverridden->currentAssessment()->base_score,
         'new_score' => 91.5,
-        'reason_ar' => 'قرار لجنة',
+        'reason_ar' => 'قرار لجنة سابق',
         'approved_by' => $admin->id,
-    ]);
-
-    $expired = publishedCase($this->region);
-    Override::create([
-        'assessment_id' => $expired->currentAssessment()->id,
-        'auto_score' => $expired->currentAssessment()->base_score,
-        'new_score' => 10.0,
-        'reason_ar' => 'قرار انتهى',
-        'approved_by' => $admin->id,
-        'expires_at' => now()->subDay(),
-    ]);
-
-    $unapproved = publishedCase($this->region);
-    Override::create([
-        'assessment_id' => $unapproved->currentAssessment()->id,
-        'auto_score' => $unapproved->currentAssessment()->base_score,
-        'new_score' => 5.0,
-        'reason_ar' => 'بانتظار الاعتماد',
     ]);
 
     $overdue = publishedCase($this->region);
@@ -153,10 +142,10 @@ it('computes the same ranking the families themselves give', function () {
 
     $rows = $this->ranking->fundingList('monthly', withCovered: true);
 
-    expect($rows)->toHaveCount(6);
+    expect($rows)->toHaveCount(4);
 
     foreach ($rows as $row) {
-        $family = Beneficiary::with('assessments.overrides')->find($row['beneficiary_id']);
+        $family = Beneficiary::with('assessments')->find($row['beneficiary_id']);
 
         expect($row['ranking'])->toBe(
             $this->ranking->rank($family, $row['confirmed']),
@@ -166,13 +155,11 @@ it('computes the same ranking the families themselves give', function () {
         expect($row['need'])->toBe($this->coverage->needAmount($family));
     }
 
-    // The live override decided one of them, and the two dead ones decided
-    // nothing — which is the join doing its work rather than the test's hope.
     $scores = $rows->mapWithKeys(fn (array $r) => [$r['file_number'] => $r['ranking']['current_score']]);
 
-    expect($scores[$overridden->file_number])->toBe(91.5)
-        ->and($scores[$expired->file_number])->toBe($scores[$plain->file_number])
-        ->and($scores[$unapproved->file_number])->toBe($scores[$plain->file_number]);
+    // The number somebody typed decides nothing, in either path.
+    expect($scores[$wasOverridden->file_number])->not->toBe(91.5)
+        ->and($scores[$wasOverridden->file_number])->toBe($scores[$plain->file_number]);
 });
 
 it('counts the covered families on the home page without loading them', function () {

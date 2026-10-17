@@ -47,25 +47,30 @@ class Assessment extends Model
     }
 
     /** The score actually used for ranking: an approved, unexpired override wins. */
+    /**
+     * The score, which is the computed one and no other.
+     *
+     * 16 Oct 2026 — «بدنا نتأكد انه ما في تعديل للدرجة النهائية يدوي. اذا كان
+     * احد المؤثرات فيه خطأ يتم تعديل البيانات او العامل المؤثر، ولكن الدرجة لا
+     * تتعدل يدوي».
+     *
+     * There used to be a live override here: a number a person could set,
+     * which then stood in for everything the assessment worked out. It is
+     * gone. A score that can be typed over is not a ranking, it is a ranking
+     * plus an opinion, and the family below the one that was moved up has no
+     * way to know which of the two they lost to.
+     *
+     * The correction for a wrong score is the wrong input: the income, the
+     * rent, the health band, the weight. Those are recorded, audited, and
+     * carried on the assessment's own snapshot (rule 8), so the number can
+     * always be explained by what it was computed from.
+     *
+     * The table and its rows are kept — nothing is ever hard-deleted, and the
+     * overrides taken before this decision stay readable as the record of
+     * what was done. They no longer move anybody.
+     */
     public function effectiveScore(): float
     {
-        $live = fn ($override) => $override->approved_by !== null
-            && ($override->expires_at === null || $override->expires_at->isFuture());
-
-        // As in Beneficiary::currentAssessment(), use the relation when a list
-        // has already loaded it rather than querying once per assessment.
-        if ($this->relationLoaded('overrides')) {
-            $override = $this->overrides->filter($live)->sortByDesc('id')->first();
-
-            return (float) ($override?->new_score ?? $this->base_score);
-        }
-
-        $override = $this->overrides()
-            ->whereNotNull('approved_by')
-            ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-            ->latest('id')
-            ->first();
-
-        return (float) ($override?->new_score ?? $this->base_score);
+        return (float) $this->base_score;
     }
 }

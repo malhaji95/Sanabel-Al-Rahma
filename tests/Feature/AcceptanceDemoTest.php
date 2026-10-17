@@ -1,12 +1,17 @@
 <?php
 
+use App\Models\Beneficiary;
 use App\Models\Housing;
 use App\Models\Income;
 use App\Models\RegionRate;
+use App\Models\User;
 use App\Services\AssessmentService;
 use App\Services\CaseService;
 use App\Services\CoverageService;
 use App\Services\NeedEngine;
+use Database\Seeders\RegionSeeder;
+use Database\Seeders\SyntheticDataSeeder;
+use Database\Seeders\TrainingStageSeeder;
 
 /**
  * The six scenarios the association asked to see before accepting the phase,
@@ -92,7 +97,9 @@ it('٤ — the person who created a case cannot approve it', function () {
         ->and(fn () => app(CaseService::class)->approve($case, $officer))
         ->toThrow(RuntimeException::class);
 
-    $other = userWithRole('admin');
+    // T-105 — the approver is the executive director. The administrator was
+    // taken off every decision on 16 October, this one among them.
+    $other = userWithRole('executive_director');
 
     expect($other->can('approve', $case))->toBeTrue()
         ->and(app(CaseService::class)->approve($case, $other)->status)->toBe('approved');
@@ -173,9 +180,9 @@ it('opens every account and stage the training guides walk through, on the demo 
     expect(file_get_contents(base_path('Dockerfile')))->not->toContain('SEED_DEMO_TOTP');
 
     seedCore();
-    (new Database\Seeders\RegionSeeder)->run();
-    (new Database\Seeders\SyntheticDataSeeder)->run();
-    (new Database\Seeders\TrainingStageSeeder)->run();
+    (new RegionSeeder)->run();
+    (new SyntheticDataSeeder)->run();
+    (new TrainingStageSeeder)->run();
 
     $guides = require resource_path('training/guides.php');
 
@@ -184,13 +191,13 @@ it('opens every account and stage the training guides walk through, on the demo 
             continue;
         }
 
-        expect(App\Models\User::where('email', $guide['account'])->exists())
+        expect(User::where('email', $guide['account'])->exists())
             ->toBeTrue($guide['account'].' is in the '.$role.' guide and not on the demo');
     }
 
     // The three queues the guides photograph, each with a file in it.
     foreach (['pending_visit', 'verified', 'pending_approval'] as $stage) {
-        expect(App\Models\Beneficiary::where('status', $stage)->exists())
+        expect(Beneficiary::where('status', $stage)->exists())
             ->toBeTrue('no file is standing at '.$stage.', so that screen is empty in the guide');
     }
 })->group('OPS-01');

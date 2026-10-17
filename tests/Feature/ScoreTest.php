@@ -3,6 +3,7 @@
 use App\Models\HealthRecord;
 use App\Services\AssessmentService;
 use App\Services\DependencyRules;
+use App\Services\PermissionService;
 use App\Services\ScoreService;
 
 beforeEach(function () {
@@ -44,41 +45,47 @@ it('marks a full-time student aged 20 with no income as dependent but able to ea
         ->and(DependencyRules::isDependent(age: 20, isStudent: false, hasOwnIncome: false))->toBeFalse();
 });
 
-it('stores the automatic score, the new score, the reason and the approver on an override', function () {
-    $region = regionWithRates();
-    $family = familyOf($region);
-    $assessment = app(AssessmentService::class)->create($family, status: 'approved');
-    $auto = $assessment->base_score;
-
-    $requester = userWithRole('case_officer');
-    $approver = userWithRole('admin');
-
-    $override = app(AssessmentService::class)->override(
-        $assessment, 88.5, 'ظروف استثنائية موثقة', $requester->id, $approver->id
-    );
-
-    expect($override->auto_score)->toBe($auto)
-        ->and($override->new_score)->toBe(88.5)
-        ->and($override->reason_ar)->toBe('ظروف استثنائية موثقة')
-        ->and($override->requested_by)->toBe($requester->id)
-        ->and($override->approved_by)->toBe($approver->id)
-        // The automatic score is never erased.
-        ->and($assessment->fresh()->base_score)->toBe($auto)
-        ->and($assessment->fresh()->effectiveScore())->toBe(88.5);
-});
-
-it('refuses to overwrite the automatic score on an existing override', function () {
+it('gives back the score it computed, and offers no way to type over it', function () {
+    /*
+     | 16 Oct 2026 — «بدنا نتأكد انه ما في تعديل للدرجة النهائية يدوي. اذا كان
+     | احد المؤثرات فيه خطأ يتم تعديل البيانات او العامل المؤثر، ولكن الدرجة لا
+     | تتعدل يدوي».
+     |
+     | There used to be an override: a number a person could set, which then
+     | stood in for everything the assessment worked out. Two tests here
+     | described it. They describe its absence now, because a score that can
+     | be typed over is a ranking plus an opinion, and the family below the
+     | one that was moved up cannot tell which of the two they lost to.
+     */
     $region = regionWithRates();
     $family = familyOf($region);
     $assessment = app(AssessmentService::class)->create($family, status: 'approved');
 
-    $override = app(AssessmentService::class)->override(
-        $assessment, 70.0, 'سبب', userWithRole('case_officer')->id, userWithRole('admin')->id
-    );
+    expect($assessment->effectiveScore())->toBe((float) $assessment->base_score);
 
-    expect(fn () => $override->update(['auto_score' => 1]))
-        ->toThrow(RuntimeException::class, 'auto_score is immutable');
-});
+    // Not a permission that is merely unheld: a key that no longer exists.
+    expect(PermissionService::WRITE_PERMISSIONS)->not->toContain('override_score')
+        ->and(method_exists(AssessmentService::class, 'override'))->toBeFalse();
+})->group('APP-01');
+
+it('moves a family by correcting the input, which is the way left to move one', function () {
+    // The association's own instruction for a wrong score: fix the factor,
+    // not the number. This is that path, end to end.
+    $region = regionWithRates();
+    $family = familyOf($region, adults: 2, children: 3);
+
+    $before = app(AssessmentService::class)->create($family, status: 'approved')->effectiveScore();
+
+    HealthRecord::factory()->create([
+        'beneficiary_id' => $family->id,
+        'severity_band' => 100, 'economic_impact_band' => 100,
+        'care_burden_band' => 100, 'monthly_medical_cost' => 5_000,
+    ]);
+
+    $after = app(AssessmentService::class)->create($family->refresh(), status: 'approved')->effectiveScore();
+
+    expect($after)->toBeGreaterThan($before);
+})->group('APP-01');
 
 it('computes the health factor from the worst band and the summed medical cost', function () {
     $region = regionWithRates();

@@ -155,7 +155,9 @@ it('refuses to let an editor approve or publish their own piece', function () {
 });
 
 it('records who approved a piece when it goes out', function () {
-    $approver = userWithRole('admin');
+    // approve_content is the executive director's. T-105 took it off the
+    // administrator with every other decision on 16 October.
+    $approver = userWithRole('executive_director');
 
     $post = Post::create([
         'slug' => 'approved-piece',
@@ -175,7 +177,9 @@ it('records who approved a piece when it goes out', function () {
 });
 
 it('sends a published piece back to review when an editor changes its text or picture', function () {
-    $approver = userWithRole('admin');
+    // approve_content is the executive director's. T-105 took it off the
+    // administrator with every other decision on 16 October.
+    $approver = userWithRole('executive_director');
     $editor = userWithRole('content_manager');
 
     foreach (['title_ar' => 'عنوان جديد', 'excerpt_ar' => 'وصف جديد', 'body_ar' => '<p>نص آخر</p>', 'image' => 'news/new.jpg'] as $field => $value) {
@@ -224,7 +228,9 @@ it('keeps a piece live when the approver is the one amending it', function () {
         'status' => 'published',
     ]);
 
-    $approver = userWithRole('admin');
+    // approve_content is the executive director's. T-105 took it off the
+    // administrator with every other decision on 16 October.
+    $approver = userWithRole('executive_director');
     $this->actingAs($approver);
     $post->update(['body_ar' => '<p>نص مصحَّح</p>']);
 

@@ -53,13 +53,23 @@ it('walks a case from creation to approval across four accounts', function () {
     $case = app(CaseService::class)->endorse($case, $this->supervisor);
     expect($case->status)->toBe('pending_approval');
 
-    // 5. Only then does the admin, who did not create it, approve.
-    expect($this->admin->can('approve', $case))->toBeTrue();
+    /*
+     | 5. Only then does the case officer, who did not create it, approve.
+     |
+     | T-105 — this step used to be the administrator's, and the association
+     | corrected that on 16 October: the technical account prepares the
+     | system and decides nothing inside it. It cannot approve a file now,
+     | and the line below is the test of that as much as of the walkthrough.
+     */
+    $director = userWithRole('executive_director');
 
-    $approved = app(CaseService::class)->approve($case, $this->admin);
+    expect($this->admin->can('approve', $case))->toBeFalse()
+        ->and($director->can('approve', $case))->toBeTrue();
+
+    $approved = app(CaseService::class)->approve($case, $director);
 
     expect($approved->status)->toBe('approved')
-        ->and($approved->approved_by)->toBe($this->admin->id);
+        ->and($approved->approved_by)->toBe($director->id);
 })->group('AUTH-01');
 
 it('keeps the creator out of the approval, whichever role created it', function () {

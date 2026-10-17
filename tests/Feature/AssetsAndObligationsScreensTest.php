@@ -18,7 +18,14 @@ use function Pest\Livewire\livewire;
 beforeEach(function () {
     seedCore();
     $this->region = regionWithRates();
-    $this->admin = userWithRole('admin', ['region_id' => $this->region->id]);
+    /*
+     | T-105 — the editor here used to be the system administrator, on the
+     | convenience that it held every key. It no longer holds the key to a
+     | family file: on 16 October the association confined that account to
+     | preparing the system. The screens under test are the case officer's,
+     | and that is who opens them now.
+     */
+    $this->admin = userWithRole('case_officer', ['region_id' => $this->region->id]);
     passTwoFactor();
     $this->actingAs($this->admin);
     $this->case = familyOf($this->region, adults: 1, children: 1);

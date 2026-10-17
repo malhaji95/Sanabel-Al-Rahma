@@ -62,7 +62,30 @@ class RoleAndPermissionSeeder extends Seeder
             'manage_own_offers' => 'own', 'verify_referral' => 'own', 'confirm_delivery' => 'own',
             'file_complaint' => 'own', 'view_reports' => 'own',
         ],
-        'admin' => 'all',
+        /*
+         | 16 Oct 2026 — «نحتاج مدير النظام فقط صلاحيات تجهيز النظام فقط».
+         |
+         | It used to hold every key in the matrix, on the reading that a
+         | technical account needs to be able to unstick anything. The
+         | association corrected that: preparing the system and deciding
+         | inside it are two different jobs, and the account that can grant
+         | itself a permission must not be an account whose permissions
+         | decide anything.
+         |
+         | So the row is written out, and PermissionService refuses the rest
+         | in code as well — because the one key this role does keep is the
+         | key that edits rows like this one.
+         |
+         | The two anonymisation keys stay by their own decision of 12
+         | October: a switch that is closed by default, and a second person
+         | to carry it out.
+         */
+        'admin' => [
+            'manage_users' => 'all', 'edit_config' => 'all',
+            'request_anonymise' => 'all', 'execute_anonymise' => 'all',
+            'view_full_case' => 'all', 'view_masked_case' => 'all',
+            'search_by_national_id' => 'all', 'browse_job_market' => 'all', 'view_reports' => 'all',
+        ],
         // Money only. Verifying a transfer needs the file number and the
         // amount, never the family behind it, so this role reads the masked
         // case and never the full one.
@@ -110,6 +133,20 @@ class RoleAndPermissionSeeder extends Seeder
             'view_full_case' => 'all', 'view_masked_case' => 'all', 'search_by_national_id' => 'all',
             'handle_complaint' => 'all', 'manage_campaigns' => 'all', 'approve_content' => 'all',
             'approve_disbursement' => 'all',
+            /*
+             | T-105 — mass distributions and the allocation of general money
+             | to families. Both were the administrator's screens, and both
+             | are decisions about who gets paid what, so the instruction of
+             | 16 October took them off that account. Nobody held the key but
+             | the chairman, which would have left two working screens with
+             | one person in the building able to open them.
+             |
+             | Placed here because every other operational approval already
+             | is: the file, the change, the campaign, the payment. If the
+             | association would rather the treasurer ran the distributions,
+             | it is this line that moves.
+             */
+            'manage_distribution' => 'all',
             'file_complaint' => 'own', 'view_reports' => 'all',
             // 12 Oct 2026 — anonymisation is theirs and the chairman's, nobody
             // else's. The chairman holds every key, so this is the other half
@@ -138,7 +175,7 @@ class RoleAndPermissionSeeder extends Seeder
             'approve_case' => 'all', 'approve_change' => 'all', 'suspend_graduate' => 'all',
             'view_full_case' => 'all', 'view_masked_case' => 'all', 'search_by_national_id' => 'all',
             'handle_complaint' => 'all', 'manage_campaigns' => 'all', 'approve_content' => 'all',
-            'approve_disbursement' => 'all',
+            'approve_disbursement' => 'all', 'manage_distribution' => 'all',
             'file_complaint' => 'own', 'view_reports' => 'all',
             // 13 Oct 2026 — the authorised became four: both directors and
             // both deputies.

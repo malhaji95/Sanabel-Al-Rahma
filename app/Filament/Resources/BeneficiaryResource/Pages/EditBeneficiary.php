@@ -221,10 +221,14 @@ class EditBeneficiary extends EditRecord
                     Notification::make()->title(__('sanabel.anonymise.done'))->success()->send();
                 }),
 
+            // T-105 — closing a file is a decision about a family, and the
+            // button asked whether you were the administrator instead of
+            // asking the policy, which has always pointed `suspend_graduate`
+            // at the executive director.
             Actions\Action::make('close')
                 ->label(__('sanabel.actions.close_case'))
                 ->icon('heroicon-o-lock-closed')
-                ->visible(fn () => auth()->user()->isAdmin())
+                ->visible(fn () => auth()->user()->can('suspend', $this->record))
                 ->requiresConfirmation()
                 ->action(function () {
                     try {
