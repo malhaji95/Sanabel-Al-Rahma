@@ -48,23 +48,33 @@
                         <img
                             src="{{ $banner->imageUrl() }}"
                             alt=""
-                            class="h-[260px] w-full object-cover sm:h-[360px]"
+                            {{-- T-107 — «البنارات يكون أحجامهم صغيرة … مشان
+                                 لما نفتح الموقع على الجوال يكون كل شي واضح»،
+                                 16 October. A phone screen is about 650px
+                                 tall, and a 260px banner took forty per cent
+                                 of it before a reader saw anything else. The
+                                 desktop heights are the ones the association's
+                                 own asset pack asks for, 300 to 450. --}}
+                            class="h-[180px] w-full object-cover sm:h-[300px] lg:h-[380px]"
                             @if ($index === 0) fetchpriority="high" @else loading="lazy" @endif
                         >
                     @else
-                        <div class="h-[260px] w-full sm:h-[360px]" style="background-color: var(--accent);"></div>
+                        <div class="h-[180px] w-full sm:h-[300px] lg:h-[380px]" style="background-color: var(--accent);"></div>
                     @endif
 
                     {{-- The text sits on the picture, so it carries its own
                          scrim: a photograph cannot be relied on for contrast. --}}
                     <div
-                        class="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6 text-center"
+                        class="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4 text-center sm:gap-4 sm:p-6"
                         style="background: linear-gradient(to left, rgb(0 0 0 / 0.55), rgb(0 0 0 / 0.25));"
                     >
-                        <h1 class="text-2xl font-bold text-white drop-shadow sm:text-4xl">{{ $banner->title_ar }}</h1>
+                        <h1 class="text-xl font-bold text-white drop-shadow sm:text-3xl lg:text-4xl">{{ $banner->title_ar }}</h1>
 
+                        {{-- Hidden on a phone rather than wrapped to four
+                             lines over the picture: the headline and the
+                             button are what the slide is for. --}}
                         @if ($banner->body_ar)
-                            <p class="max-w-2xl text-sm text-white/90 drop-shadow sm:text-lg">{{ $banner->body_ar }}</p>
+                            <p class="hidden max-w-2xl text-white/90 drop-shadow sm:block sm:text-lg">{{ $banner->body_ar }}</p>
                         @endif
 
                         <a href="{{ $banner->destination() ?: route('cases.browse') }}"

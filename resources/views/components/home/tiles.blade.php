@@ -6,11 +6,14 @@
 @props(['tiles'])
 
 @if ($tiles->isNotEmpty())
-    <div {{ $attributes->merge(['class' => 'grid gap-4 sm:grid-cols-2 lg:grid-cols-4']) }}>
+    {{-- T-107 — two to a row on a phone rather than one. Eight ways to give,
+         each a full-width card with a 128px photograph, made the page a very
+         long scroll before a visitor reached anything else. --}}
+    <div {{ $attributes->merge(['class' => 'grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4']) }}>
         @foreach ($tiles as $tile)
             <article class="card-interactive flex flex-col overflow-hidden !p-0">
                 @if ($tile->imageUrl())
-                    <img src="{{ $tile->imageUrl() }}" alt="" class="h-32 w-full object-cover" loading="lazy">
+                    <img src="{{ $tile->imageUrl() }}" alt="" class="h-24 w-full object-cover sm:h-32" loading="lazy">
                 @else
                     {{-- T-104 — the frame a card draws until the association
                          uploads its picture. It used to be a 12% tint, which
@@ -19,17 +22,17 @@
                          failed to load. It is a deliberate panel now, and
                          `launch:check` lists which cards are still waiting on
                          artwork. --}}
-                    <div class="flex h-32 w-full items-center justify-center"
+                    <div class="flex h-24 w-full items-center justify-center sm:h-32"
                          style="background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 38%, var(--card)), color-mix(in srgb, var(--brand-gold) 16%, var(--page))); color: var(--accent);">
                         <x-brand.icon :name="$tile->icon ?: 'heart'" class="h-14 w-14 opacity-90" />
                     </div>
                 @endif
 
-                <div class="flex flex-1 flex-col gap-2 p-4">
+                <div class="flex flex-1 flex-col gap-2 p-3 sm:p-4">
                     {{-- The icon sits beside the name only when a picture
                          filled the frame above; without one it is already
                          drawn there, and twice is once too many. --}}
-                    <h3 class="inline-flex items-center gap-2 text-base">
+                    <h3 class="inline-flex items-center gap-2 text-sm sm:text-base">
                         @if ($tile->icon && $tile->imageUrl())
                             <x-brand.icon :name="$tile->icon" class="h-5 w-5" style="color: var(--accent);" />
                         @endif

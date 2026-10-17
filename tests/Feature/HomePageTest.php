@@ -379,3 +379,21 @@ it('puts كفالات and زكاة on the bar, and still refuses a heading that 
         // cannot do what it says is worse than its absence.
         ->and($nav)->not->toHaveKey('هدية');
 })->group('APP-06');
+
+it('keeps the banner off most of a phone screen, and within the pack sizes above it', function () {
+    /*
+     | T-107 — «البنارات يكون أحجامهم صغيرة … مشان لما نفتح الموقع على الجوال
+     | يكون كل شي واضح»، 16 October.
+     |
+     | A phone viewport is about 650 CSS pixels tall. The banner was 260 of
+     | them before a visitor saw anything else, and the eight ways to give
+     | below it were one to a row. The desktop heights are the ones the
+     | association's own asset pack asks for: «البنر: ارتفاع 300–450px».
+     */
+    $body = $this->get(route('home'))->assertOk()->getContent();
+
+    expect($body)->toContain('h-[180px] w-full object-cover sm:h-[300px] lg:h-[380px]')
+        ->and($body)->not->toContain('h-[260px]')
+        // Two tiles to a row on a phone.
+        ->and($body)->toContain('grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4');
+});
