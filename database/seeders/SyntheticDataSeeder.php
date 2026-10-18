@@ -282,7 +282,7 @@ class SyntheticDataSeeder extends Seeder
         }
 
         /*
-         | T-101 — «هل تمتلك آلية / مواشي / ممتلكات». A few families own
+         | T-101 — «هل تمتلك مركبة / مواشي / ممتلكات». A few families own
          | something, because a card that answers «لا» for every family on the
          | list is not a demonstration of the question.
          */
