@@ -147,7 +147,7 @@ class HomePageSeeder extends Seeder
          | And the card promised an act and delivered a list: it now lands on
          | the act, with no file to pick.
          */
-        $this->card('feature', 'تبرع عام', [
+        $this->card('feature', 'تبرع سريع', [
             'body_ar' => 'ساهم الآن ونحن نوصلها لأكثر الحالات حاجة',
             'image' => 'images/home/direct-donation.webp',
             'icon' => 'hand-heart',

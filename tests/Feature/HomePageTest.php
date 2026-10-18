@@ -49,7 +49,7 @@ it('draws every band of the page from rows the association edits', function () {
         // «الدفع المباشر» read as though the money went to the household
         // outside the association's books, which is the one thing it never
         // does.
-        ->assertSee('تبرع عام')
+        ->assertSee('تبرع سريع')
         ->assertDontSee('الدفع المباشر')
         ->assertSee('هدية')
         // the ways to give

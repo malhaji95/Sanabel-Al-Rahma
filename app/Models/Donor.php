@@ -15,11 +15,23 @@ class Donor extends Model
     use Auditable, HasFactory, SoftDeletes, TracksCreator;
 
     protected $fillable = [
-        'user_id', 'name_ar', 'phone_encrypted', 'email', 'wallet_encrypted',
+        'user_id', 'name_ar', 'phone_encrypted', 'phone_hash', 'email', 'wallet_encrypted',
         'donations_count', 'badge', 'created_by',
     ];
 
     protected $hidden = ['phone_encrypted', 'wallet_encrypted'];
+
+    /**
+     * T-108 — the lookup beside the encrypted number, so a guest who gives
+     * again is the same donor. Keyed with the application key, exactly as
+     * Beneficiary::hashNationalId is: it matches, and it gives nothing back.
+     */
+    public static function hashPhone(string $phone): string
+    {
+        $normalised = preg_replace('/\D+/', '', $phone) ?: $phone;
+
+        return hash_hmac('sha256', $normalised, (string) config('app.key'));
+    }
 
     protected function casts(): array
     {

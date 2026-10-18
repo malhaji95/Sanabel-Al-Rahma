@@ -2,35 +2,52 @@
 
 namespace App\Livewire;
 
+use App\Models\Donor;
 use App\Payments\DuplicateTransactionRef;
 use App\Payments\PaymentGateway;
 use App\Services\TransferRouting;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Component;
 
 /**
- * T-103 — giving without choosing a family.
+ * T-103 — giving without picking a family.
+ * T-108 — and without signing in either.
  *
- * Asked for on 15 October: «لما يضغط على دفع مباشرة ياخذ مباشرة على دفع
- * مباشرة، ما يحتاج يحط رقم ملف أو ما يحتاج يدخل أي شيء». Until now the only
- * way to give was to pick a file, put it in a basket, reserve it and then
- * record the transfer — four screens between a donor and the thing they came
- * to do, and the first of them asks a question many donors have no answer to.
+ * Asked for on 15 October («ما يحتاج يحط رقم ملف») and again on 17 October
+ * («تبرع سريع … ما يحتاج يدخل ايميل وكلمة مرور، مباشرة ندخل على صفحة
+ * التبرع»). Until now the only way to give was to pick a file, put it in a
+ * basket, reserve it, sign in and then record the transfer — five things
+ * between a donor and the one thing they came to do.
  *
  * Nothing new happens to the money. The domain has had two kinds of donation
- * since the beginning and admits no third: money earmarked for the files in a
- * basket, and general money the association spends at its discretion. This
- * screen is the second kind, which had no door. It reaches the same wallet as
- * every other donation, because a donor never pays a household directly.
+ * since the beginning and admits no third: money earmarked for the files in
+ * a basket, and general money the association spends at its discretion. This
+ * is the second kind, and it reaches the same wallet as every other
+ * donation, because a donor never pays a household directly.
  *
- * The amount and the transfer reference are still asked for, and always will
- * be: a human moves the money outside the platform and the system records
- * what they say they moved. What is not asked for is a file number.
+ * What an account was never doing:
+ *
+ *   The transfer happens at the donor's own bank and the system only records
+ *   what they say they sent. The reference is what identifies it, and the
+ *   finance desk matches that reference against the statement before a
+ *   single figure moves (rule 5). So a signed-out record is a line in a
+ *   queue awaiting verification, exactly like a signed-in one.
+ *
+ * What an account is still for: coming back to read your own history. A
+ * guest therefore still gets a donor record — the association has somebody
+ * to thank, and the same name giving twice is the same row — it simply has
+ * no login attached to it.
  */
 class GeneralDonation extends Component
 {
     public ?int $amount = null;
 
     public string $transactionRef = '';
+
+    /** Asked of a guest only; a signed-in donor already has both on file. */
+    public string $name = '';
+
+    public string $phone = '';
 
     public ?string $notice = null;
 
@@ -44,21 +61,35 @@ class GeneralDonation extends Component
         $this->error = $this->notice = null;
         $this->thanks = false;
 
-        $this->validate([
+        $signedIn = auth()->user()?->donor;
+
+        $this->validate(array_filter([
             'amount' => ['required', 'integer', 'min:1'],
             'transactionRef' => ['required', 'string', 'max:191'],
-        ], attributes: [
+            'name' => $signedIn ? null : ['required', 'string', 'min:3', 'max:191'],
+            'phone' => $signedIn ? null : ['nullable', 'string', 'max:40'],
+        ]), attributes: [
             'amount' => __('sanabel.donation.amount'),
             'transactionRef' => __('sanabel.donation.transaction_ref'),
+            'name' => __('sanabel.donation.donor'),
+            'phone' => __('sanabel.donor.phone'),
         ]);
 
-        $donor = auth()->user()?->donor;
-
-        if (! $donor) {
-            $this->error = __('sanabel.donation.no_donor_account');
+        /*
+         | The page is open to anybody, so the one thing worth limiting is how
+         | fast the queue can be filled. Not a security control — the
+         | verification is — but a verifier reading a hundred invented
+         | references is a verifier not reading the real ones.
+         */
+        if (RateLimiter::tooManyAttempts($key = 'donate:'.request()->ip(), 10)) {
+            $this->error = __('sanabel.donation.too_many');
 
             return;
         }
+
+        RateLimiter::hit($key, 3600);
+
+        $donor = $signedIn ?: $this->guestDonor();
 
         try {
             // No basket, so the service marks it general on its own. Passing
@@ -82,11 +113,35 @@ class GeneralDonation extends Component
         $this->thanks = true;
     }
 
+    /**
+     * The donor record behind a signed-out gift.
+     *
+     * Matched on the telephone number where one is given, so a donor who
+     * gives every month is one row rather than twelve. Without a number
+     * there is nothing to match on and a new row is the honest answer: two
+     * people are called أبو محمد.
+     */
+    private function guestDonor(): Donor
+    {
+        $phone = trim($this->phone);
+
+        if ($phone === '') {
+            return Donor::create(['name_ar' => trim($this->name)]);
+        }
+
+        $hash = Donor::hashPhone($phone);
+
+        return Donor::firstOrCreate(
+            ['phone_hash' => $hash],
+            ['name_ar' => trim($this->name), 'phone_encrypted' => $phone],
+        );
+    }
+
     public function render()
     {
         return view('livewire.general-donation', [
             'transferWallet' => app(TransferRouting::class)->wallet(),
-            'hasDonorAccount' => (bool) auth()->user()?->donor,
+            'signedIn' => (bool) auth()->user()?->donor,
         ])->layout('layouts.app');
     }
 }

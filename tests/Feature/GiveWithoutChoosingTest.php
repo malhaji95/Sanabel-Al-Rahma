@@ -79,8 +79,77 @@ it('shows the association wallet and never a household account', function () {
         ->assertDontSee($case->wallet_encrypted);
 })->group('AUTH-03');
 
-it('keeps the screen behind the door, like every other way of giving', function () {
-    $this->get(route('donate.general'))->assertRedirect(route('login'));
+it('opens the screen to somebody who has never signed in', function () {
+    /*
+     | T-108 — «تبرع سريع … ما يحتاج يدخل ايميل وكلمة مرور، مباشرة ندخل على
+     | صفحة التبرع», 17 October. It used to sit behind auth.
+     |
+     | What an account was never doing: the transfer happens at the donor's
+     | own bank, and the reference of that transfer is what identifies it.
+     | Nothing counts until the finance desk matches it against the
+     | statement, so a signed-out record is a line in a queue exactly like a
+     | signed-in one.
+     */
+    $this->get(route('donate.general'))
+        ->assertOk()
+        ->assertSee(__('sanabel.donation.donor'))
+        ->assertSee(__('sanabel.public.general_donation'));
+});
+
+it('records a gift from a guest, and keeps a donor record to thank', function () {
+    Setting::put('platform_wallet', ['number' => '0999111222', 'holder' => 'سنابل الرحمة']);
+
+    Livewire::test(GeneralDonation::class)
+        ->set('name', 'أبو محمد')
+        ->set('phone', '0944111222')
+        ->set('amount', 25_000)
+        ->set('transactionRef', 'GUEST-0001')
+        ->call('record')
+        ->assertHasNoErrors();
+
+    $donation = Donation::where('transaction_ref', 'GUEST-0001')->first();
+
+    expect($donation)->not->toBeNull()
+        ->and($donation->designation)->toBe('general')
+        ->and($donation->status)->toBe('pending')
+        ->and($donation->donor->name_ar)->toBe('أبو محمد')
+        // A donor record with nobody to log in as.
+        ->and($donation->donor->user_id)->toBeNull();
+})->group('AUTH-03');
+
+it('refuses a guest gift with no name on it', function () {
+    Livewire::test(GeneralDonation::class)
+        ->set('amount', 25_000)
+        ->set('transactionRef', 'GUEST-0002')
+        ->call('record')
+        ->assertHasErrors(['name']);
+
+    expect(Donation::count())->toBe(0);
+});
+
+it('treats the same number giving twice as the same donor', function () {
+    Setting::put('platform_wallet', ['number' => '0999111222', 'holder' => 'سنابل الرحمة']);
+
+    foreach (['GUEST-A', 'GUEST-B'] as $ref) {
+        Livewire::test(GeneralDonation::class)
+            ->set('name', 'أبو محمد')
+            ->set('phone', '0944111222')
+            ->set('amount', 10_000)
+            ->set('transactionRef', $ref)
+            ->call('record')
+            ->assertHasNoErrors();
+    }
+
+    // The number is encrypted on the row, so the match is made on the keyed
+    // hash beside it — the same answer as a family's national ID.
+    expect(Donor::whereNull('user_id')->count())->toBe(1)
+        ->and(Donation::count())->toBe(2);
+});
+
+it('does not ask a signed-in donor for a name it already has', function () {
+    Livewire::actingAs(donorWithAccount())
+        ->test(GeneralDonation::class)
+        ->assertDontSee(__('sanabel.donation.phone_help'));
 });
 
 it('says plainly that the money reaches the association and not the family', function () {
@@ -115,11 +184,21 @@ it('offers the donate button once the page has been scrolled, and not on the pag
     expect($home)->toContain(route('donate.general'))
         ->and($home)->toContain(__('sanabel.public.donate_sticky'));
 
-    // Not drawn on its own destination: a button that reloads the page the
-    // visitor is already reading is noise.
+    /*
+     | Not drawn on its own destination: a button that reloads the page the
+     | visitor is already reading is noise.
+     |
+     | Measured on the floating wrapper rather than on its words, because
+     | T-108 renamed the button to «تبرع سريع» — which is also the heading of
+     | the page it leads to, so counting the words would count the heading.
+     */
+    $floating = 'fixed bottom-5 end-5';
+
+    expect($home)->toContain($floating);
+
     $donate = $this->actingAs(donorWithAccount())->get(route('donate.general'))->assertOk()->getContent();
 
-    expect(substr_count($donate, __('sanabel.public.donate_sticky')))->toBe(0);
+    expect($donate)->not->toContain($floating);
 });
 
 it('puts the whole-list link under the cases rather than above them', function () {

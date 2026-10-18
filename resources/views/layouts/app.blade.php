@@ -100,7 +100,9 @@
         </nav>
     </header>
 
-    <main id="main" class="mx-auto max-w-6xl px-4 py-8">
+    {{-- T-108 — room at the foot for the floating donate button, so it never
+         comes to rest on top of the last card on the page. --}}
+    <main id="main" class="mx-auto max-w-6xl px-4 pb-24 pt-8 sm:pb-8">
         @if (session('status'))
             <div class="alert-success mb-6" role="status">{{ session('status') }}</div>
         @endif
@@ -162,8 +164,8 @@
             class="fixed bottom-5 end-5 z-40 print:hidden"
         >
             <a href="{{ route('donate.general') }}"
-               class="btn-primary inline-flex items-center gap-2 !rounded-full shadow-lg no-underline">
-                <x-brand.icon name="hand-heart" class="h-5 w-5" />
+               class="btn-primary inline-flex items-center gap-2 !rounded-full text-sm shadow-lg no-underline sm:text-base">
+                <x-brand.icon name="hand-heart" class="h-4 w-4 sm:h-5 sm:w-5" />
                 {{ __('sanabel.public.donate_sticky') }}
             </a>
         </div>

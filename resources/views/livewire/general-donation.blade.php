@@ -32,11 +32,6 @@
         <p class="mt-4 text-sm text-red-600 dark:text-red-400">{{ $error }}</p>
     @endif
 
-    @unless ($hasDonorAccount)
-        <p class="card mt-5 text-sm" style="color: var(--text-muted);">
-            {{ __('sanabel.donation.no_donor_account') }}
-        </p>
-    @else
         <div class="card mt-5">
             {{-- No automatic transfers exist: a human moves the money, the
                  system records it (rule 7). --}}
@@ -58,6 +53,33 @@
                 @else
                     <p class="text-sm" style="color: var(--text-muted);">{{ __('sanabel.transfer.none') }}</p>
                 @endif
+
+                {{-- T-108 — asked of a guest only. A signed-in donor already
+                     has a name and a number on file, and asking again would
+                     be the sign-in this page exists to avoid. --}}
+                @unless ($signedIn)
+                    <div>
+                        <label class="field-label" for="general-name">{{ __('sanabel.donation.donor') }}</label>
+                        <input id="general-name" type="text" wire:model="name" class="field">
+                        @error('name')
+                            <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label class="field-label" for="general-phone">
+                            {{ __('sanabel.donor.phone') }}
+                            <span class="font-normal" style="color: var(--text-muted);">{{ __('sanabel.optional') }}</span>
+                        </label>
+                        <input id="general-phone" type="tel" wire:model="phone" class="field tabular" dir="ltr">
+                        <p class="mt-1.5 text-xs" style="color: var(--text-muted);">
+                            {{ __('sanabel.donation.phone_help') }}
+                        </p>
+                        @error('phone')
+                            <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                        @enderror
+                    </div>
+                @endunless
 
                 <div>
                     <label class="field-label" for="general-amount">{{ __('sanabel.donation.amount') }}</label>
@@ -88,7 +110,13 @@
                 </button>
             </form>
         </div>
-    @endunless
+
+        @guest
+            <p class="mt-4 text-center text-sm" style="color: var(--text-muted);">
+                {{ __('sanabel.donation.account_note') }}
+                <a href="{{ route('login') }}" style="color: var(--accent);">{{ __('sanabel.public.login') }}</a>
+            </p>
+        @endguest
 
     <p class="mt-5 text-center text-sm">
         <a href="{{ route('cases.browse') }}" style="color: var(--accent);">

@@ -31,6 +31,20 @@ Route::get('/cases', BrowseCases::class)->name('cases.browse');
 // same masked card the list serves — nothing here that the list does not show.
 Route::get('/cases/{fileNumber}', [PublicController::class, 'case'])->name('opportunity');
 
+/*
+ | T-103 — giving without picking a family, and T-108 — without signing in
+ | either. «تبرع سريع … يدخل ما يحتاج يدخل ايميل وكلمة مرور، مباشرة ندخل على
+ | صفحة التبرع», 17 October.
+ |
+ | It is not behind auth because the thing it records is a transfer somebody
+ | has already made with their own bank, and the reference of that transfer
+ | is what identifies it. An account is what lets a donor come back and read
+ | their own history; it was never what made the money real. Nothing counts
+ | until the finance desk matches the reference against the statement, so an
+ | invented record is noise in a queue rather than money in a figure.
+ */
+Route::get('/donate', GeneralDonation::class)->name('donate.general');
+
 Route::get('/login', [LoginController::class, 'show'])->name('login')->middleware('guest');
 
 // T-57 — the public login form had no limit at all, while the panels carried
@@ -44,15 +58,6 @@ Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 Route::middleware('auth')->group(function () {
     Route::get('/portal', DonorPortal::class)->name('donor.portal');
     Route::get('/portal/basket', DonorBasket::class)->name('donor.basket');
-
-    /*
-     | T-103 — giving without picking a family. The association asked that the
-     | offer on the front page land on the act itself rather than on a list to
-     | choose from, and the domain has always had a general donation; it had
-     | no door. Behind auth like every other way of giving, because a donation
-     | is recorded against a donor.
-     */
-    Route::get('/donate', GeneralDonation::class)->name('donate.general');
 
     // The household's own page: their file, and the one question only they
     // may answer — did the money arrive.

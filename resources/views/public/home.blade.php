@@ -220,18 +220,19 @@
             {{ __('sanabel.public.needs_you_today') }}
         </h2>
 
-        {{-- The open campaigns first — they are written and published by the
-             association, so they carry a title and a picture — then the masked
-             families fill the row. A family's card never carries a photograph
-             (rule 2), which is why the two look different on purpose. --}}
-        @php($open = $campaigns->take(2))
+        {{--
+            T-109 — the families, and only the families.
 
+            The campaigns used to take the first two places in this row, on
+            the reasoning that they are written and published so they carry a
+            title and a picture while a family's card cannot (rule 2). The
+            association corrected that on 17 October: «هذه ليست حالات فقراء،
+            هذه الحملات. في البداية المفروض يكون حالات الفقراء، والحملات تكون
+            تحت». A roof repair is a project; the heading above this row
+            promises households.
+        --}}
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            @foreach ($open as $campaign)
-                <x-campaign-card :campaign="$campaign" :monthly="$monthlyFunding[$campaign->id] ?? null" />
-            @endforeach
-
-            @foreach ($cases->take(max(0, 3 - $open->count())) as $case)
+            @foreach ($cases->take(3) as $case)
                 <x-masked-case-card :case="$case">
                     <a href="{{ route('opportunity', $case['file_number']) }}"
                        class="btn-primary w-full justify-center gap-1 no-underline">
@@ -249,6 +250,29 @@
             </a>
         </div>
     </section>
+
+    {{-- ---------- the campaigns, under the families ----------------------- --}}
+    @if ($campaigns->isNotEmpty())
+        <section class="mt-10">
+            <h2 class="mb-4 inline-flex items-center gap-2 text-xl">
+                <x-brand.icon name="hand-heart" class="h-5 w-5" style="color: var(--brand-gold);" />
+                {{ __('sanabel.public.open_campaigns') }}
+            </h2>
+
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                @foreach ($campaigns->take(3) as $campaign)
+                    <x-campaign-card :campaign="$campaign" :monthly="$monthlyFunding[$campaign->id] ?? null" />
+                @endforeach
+            </div>
+
+            <div class="mt-5 text-center">
+                <a href="{{ route('campaigns.public') }}" class="btn-secondary inline-flex items-center gap-1 no-underline">
+                    {{ __('sanabel.public.all_campaigns') }}
+                    <x-brand.icon name="chevron-left" class="h-4 w-4" />
+                </a>
+            </div>
+        </section>
+    @endif
 
     {{-- ---------- ways to give, first half -------------------------------- --}}
     <x-home.tiles :tiles="$tiles->take(4)" class="mt-6" />
