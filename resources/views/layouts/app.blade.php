@@ -54,8 +54,11 @@
                  the name over the line), so in a bar it is given height rather
                  than width: 48px keeps the name legible without making the
                  sticky header a third of a phone screen. A horizontal lockup,
-                 if the designer supplies one, is one path change here. --}}
-            <x-brand.logo-plate variant="full" :height="48" :href="route('home')" class="shrink-0" />
+                 if the designer supplies one, is one path change here.
+
+                 T-112 — larger from a laptop upwards, where the bar has the
+                 room and the association asked for it. The phone keeps 48. --}}
+            <x-brand.logo-plate variant="full" :height="48" :large-height="68" :href="route('home')" class="shrink-0" />
 
             <nav class="ms-auto flex items-center gap-1 text-sm" aria-label="{{ __('sanabel.public.main_nav') }}">
                 {{-- T-89 — the bar is rows the association edits, so adding a

@@ -22,6 +22,9 @@
 @props([
     'variant' => 'full',
     'height' => 64,
+    // T-112 — what it is drawn at from a laptop upwards, where there is room
+    // for it. Null keeps one height on every screen.
+    'largeHeight' => null,
     'href' => null,
     'alt' => null,
 ])
@@ -41,15 +44,16 @@
 
 <{{ $tag }}
     @if ($href) href="{{ $href }}" @endif
-    {{ $attributes->class(['inline-flex items-center justify-center']) }}
-    style="padding: {{ $clearSpace }}em; font-size: {{ $height }}px;"
+    {{ $attributes->class(['logo-box inline-flex items-center justify-center']) }}
+    {{-- The clear space is a fraction of the rendered height, so it grows
+         with the logo: the guide's safe space, not a fixed margin. --}}
+    style="--logo-h: {{ $height }}px;@if ($largeHeight) --logo-h-lg: {{ $largeHeight }}px;@endif padding: {{ $clearSpace }}em;"
 >
     <img
         src="{{ $src }}"
         alt="{{ $label }}"
-        height="{{ $height }}"
-        style="height: {{ $height }}px; width: auto;"
-        @class(['block max-w-full', 'dark:hidden' => (bool) $onDark])
+        height="{{ $largeHeight ?: $height }}"
+        @class(['logo-img block max-w-full', 'dark:hidden' => (bool) $onDark])
         decoding="async"
     >
 
@@ -58,9 +62,8 @@
             src="{{ $onDark }}"
             alt=""
             aria-hidden="true"
-            height="{{ $height }}"
-            style="height: {{ $height }}px; width: auto;"
-            class="hidden max-w-full dark:block"
+            height="{{ $largeHeight ?: $height }}"
+            class="logo-img hidden max-w-full dark:block"
             decoding="async"
         >
     @endif

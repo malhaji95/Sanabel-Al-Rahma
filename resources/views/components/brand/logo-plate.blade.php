@@ -12,8 +12,8 @@
     surface needs a field again — a logo over a photograph, say — this is
     where that would go.
 --}}
-@props(['variant' => 'full', 'height' => 64, 'href' => null])
+@props(['variant' => 'full', 'height' => 64, 'largeHeight' => null, 'href' => null])
 
 <span {{ $attributes->class(['inline-flex items-center justify-center']) }}>
-    <x-brand.logo :variant="$variant" :height="$height" :href="$href" />
+    <x-brand.logo :variant="$variant" :height="$height" :large-height="$largeHeight" :href="$href" />
 </span>

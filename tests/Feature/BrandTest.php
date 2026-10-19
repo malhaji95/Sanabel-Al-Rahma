@@ -273,3 +273,32 @@ it('keeps no hardcoded brand colour outside the brand config and stylesheet', fu
 
     expect($offenders)->toBeEmpty();
 });
+
+it('draws the logo larger on a laptop than on a phone, without losing its proportions', function () {
+    /*
+     | T-112 — «تقدر تخلي اللوغو بالهيدر اكبر شوي على الديسكتوب واللابتوب»,
+     | 19 October.
+     |
+     | The height used to be an inline style, which is one number for every
+     | screen. It is two custom properties now, read by two static rules in
+     | the stylesheet — static because a class name a Blade component builds
+     | at run time is a class name Tailwind never sees and never emits, and
+     | the logo would simply have had no height at all.
+     |
+     | The width is never given: it follows the artwork, so neither size can
+     | squash it.
+     */
+    $header = $this->get(route('home'))->assertOk()->getContent();
+
+    expect($header)->toContain('--logo-h: 48px')
+        ->and($header)->toContain('--logo-h-lg: 68px');
+
+    $css = file_get_contents(resource_path('css/app.css'));
+
+    expect($css)->toContain('height: var(--logo-h);')
+        ->and($css)->toContain('height: var(--logo-h-lg, var(--logo-h));')
+        // The clear space is a fraction of the rendered height, so it grows
+        // with the logo rather than being a fixed margin around a bigger one.
+        ->and(file_get_contents(resource_path('views/components/brand/logo.blade.php')))
+        ->toContain('padding: {{ $clearSpace }}em');
+});

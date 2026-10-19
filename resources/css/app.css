@@ -100,6 +100,34 @@
 }
 
 @layer components {
+    /*
+     | T-112 — the logo's rendered height, so it can differ between a phone
+     | and a desktop without the component writing a Tailwind class name it
+     | builds at run time, which the compiler cannot see and so never emits.
+     |
+     | The sizes come in as custom properties on the element; these two rules
+     | are static and read them. A caller that sets only --logo-h gets the
+     | same height everywhere.
+     */
+    .logo-box {
+        font-size: var(--logo-h);
+    }
+
+    .logo-img {
+        height: var(--logo-h);
+        width: auto;
+    }
+
+    @media (min-width: 1024px) {
+        .logo-box {
+            font-size: var(--logo-h-lg, var(--logo-h));
+        }
+
+        .logo-img {
+            height: var(--logo-h-lg, var(--logo-h));
+        }
+    }
+
     /* ---- surfaces ---- */
 
     .card {
