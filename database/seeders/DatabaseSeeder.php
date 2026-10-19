@@ -18,6 +18,8 @@ class DatabaseSeeder extends Seeder
             // T-89 — the home page and the bars around it, as rows the
             // association edits. Idempotent, so it never overwrites an edit.
             HomePageSeeder::class,
+            // T-113 — after the pages themselves exist, because it fills one.
+            HowWeWorkSeeder::class,
             AdminUserSeeder::class,
         ]);
     }

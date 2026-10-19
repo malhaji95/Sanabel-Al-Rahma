@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\PageResource\Pages;
+use App\Filament\Resources\PageResource\RelationManagers;
 use App\Models\Page;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -52,9 +53,22 @@ class PageResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                // T-113 — «إرسال رابط مباشر نقدر نختبره من الجوال»: the page
+                // as a visitor sees it, one click from the row that edits it.
+                Tables\Actions\Action::make('preview')
+                    ->label(__('sanabel.page_section.preview'))
+                    ->icon('heroicon-o-arrow-top-right-on-square')
+                    ->url(fn (Page $record) => url('/'.$record->slug))
+                    ->openUrlInNewTab(),
             ])
             ->defaultSort('id', 'desc')
             ->paginated([25, 50, 100]);
+    }
+
+    public static function getRelations(): array
+    {
+        // T-113 — the page's sections, where the three levels are edited.
+        return [RelationManagers\SectionsRelationManager::class];
     }
 
     public static function getPages(): array

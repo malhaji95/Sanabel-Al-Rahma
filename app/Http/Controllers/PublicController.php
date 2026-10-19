@@ -129,8 +129,13 @@ class PublicController extends Controller
 
     public function page(string $slug): View
     {
+        $page = Page::where('slug', $slug)->where('is_published', true)->firstOrFail();
+
         return view('public.page', [
-            'page' => Page::where('slug', $slug)->where('is_published', true)->firstOrFail(),
+            'page' => $page,
+            // T-113 — loaded here rather than from the template, so the page
+            // costs one more query however many sections it carries.
+            'sections' => $page->publishedSections()->get(),
         ]);
     }
 
