@@ -124,14 +124,100 @@ it('uses the approved lockup itself, in the bar and in the footer', function () 
         ->and($html)->not->toContain(config('brand.logo.wordmark'));
 });
 
-it('never recolours the artwork onto a dark field while the white version is missing', function () {
-    // Rule 6 needs an approved white logo. Until brand.logo.on_dark is supplied,
-    // the logo keeps a light field rather than being recoloured to sit on green.
-    expect(config('brand.logo.on_dark'))->toBeNull();
+it('gives the dark scheme a readable lockup instead of a white box behind it', function () {
+    /*
+     | This test used to hold the opposite: that `on_dark` stayed null and the
+     | logo kept a light plate under it on the dark scheme, rather than the
+     | artwork being recoloured. The reasoning was sound — the supplied name
+     | and tagline read at 1.7:1 on that page, which is invisible — and the
+     | association looked at the result on 18 October and asked for the white
+     | box gone.
+     |
+     | So the answer moved rather than disappeared. The medallion is still the
+     | artwork exactly as supplied; only the text beneath it is lifted, and
+     | only for the dark scheme. What this test holds now is that the lifting
+     | actually made the words readable, and that the light scheme was left
+     | alone.
+     */
+    $dark = public_path(ltrim(config('brand.logo.on_dark.full'), '/'));
+
+    expect($dark)->toBeReadableFile('the dark lockup is missing');
+
+    [$lightW, $lightH] = getimagesize(public_path('brand/logo-full.png'));
+    [$darkW, $darkH] = getimagesize($dark);
+
+    // The same artwork at the same size: lifted, never redrawn or reframed.
+    expect([$darkW, $darkH])->toBe([$lightW, $lightH]);
 
     $plate = file_get_contents(resource_path('views/components/brand/logo-plate.blade.php'));
+    $logo = file_get_contents(resource_path('views/components/brand/logo.blade.php'));
 
-    expect($plate)->toContain('dark:bg-[--logo-field]');
+    expect($plate)->not->toContain('dark:bg-')
+        // Both files in the markup, because the site carries its own
+        // light-and-dark switch and cannot leave this to the browser.
+        ->and($logo)->toContain('dark:hidden')
+        ->and($logo)->toContain('dark:block');
+});
+
+it('makes the name legible on the dark page, which is why the plate could go', function () {
+    /*
+     | The measurement the change rests on. WCAG asks 3:1 of a graphic that
+     | carries meaning; the supplied green gives 1.73 against #101613, and a
+     | reader simply does not see the association's name.
+     */
+    $page = [0x10, 0x16, 0x13];
+
+    $luminance = function (array $rgb): float {
+        $channels = array_map(function ($v) {
+            $v /= 255;
+
+            return $v <= 0.03928 ? $v / 12.92 : (($v + 0.055) / 1.055) ** 2.4;
+        }, $rgb);
+
+        return 0.2126 * $channels[0] + 0.7152 * $channels[1] + 0.0722 * $channels[2];
+    };
+
+    $contrast = function (array $a, array $b) use ($luminance): float {
+        $high = max($luminance($a), $luminance($b));
+        $low = min($luminance($a), $luminance($b));
+
+        return ($high + 0.05) / ($low + 0.05);
+    };
+
+    $inkOf = function (string $path): array {
+        $image = imagecreatefrompng($path);
+        $width = imagesx($image);
+        $height = imagesy($image);
+
+        // The band the name sits in, and only the strokes themselves.
+        $samples = [];
+
+        for ($y = (int) ($height * 0.66); $y < (int) ($height * 0.88); $y++) {
+            for ($x = 0; $x < $width; $x += 2) {
+                $rgba = imagecolorat($image, $x, $y);
+
+                if ((($rgba >> 24) & 0x7F) > 20) {
+                    continue;
+                }
+
+                $samples[] = [($rgba >> 16) & 0xFF, ($rgba >> 8) & 0xFF, $rgba & 0xFF];
+            }
+        }
+
+        // The median channel, so one gold dot does not speak for the name.
+        return array_map(function (int $channel) use ($samples) {
+            $values = array_column($samples, $channel);
+            sort($values);
+
+            return $values[intdiv(count($values), 2)];
+        }, [0, 1, 2]);
+    };
+
+    $supplied = $contrast($inkOf(public_path('brand/logo-full.png')), $page);
+    $lifted = $contrast($inkOf(public_path(ltrim(config('brand.logo.on_dark.full'), '/'))), $page);
+
+    expect($supplied)->toBeLessThan(3.0)
+        ->and($lifted)->toBeGreaterThan(7.0);
 });
 
 it('gives the field app a manifest with brand colours and the symbol as its icon', function () {

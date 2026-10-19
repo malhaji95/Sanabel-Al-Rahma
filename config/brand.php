@@ -30,15 +30,28 @@ return [
      |   wordmark — the name alone, for tight horizontal space.
      |   symbol   — the mark alone. Favicon and app icons only.
      |
-     | `on_dark` is null until the approved white version is supplied. While it
-     | is null the application keeps the logo on light surfaces, rather than
-     | recolouring the artwork to sit on green.
+     | `on_dark` carries the variants for the dark scheme. The artwork's name
+     | and tagline are drawn in a very deep green that reads at 1.7:1 against
+     | that scheme's page — invisible — so until 18 October the logo kept a
+     | light plate behind it there. The association asked for the plate to go.
+     |
+     | These files are the stand-in for the white version of the lockup that
+     | the brand package was meant to contain and does not: the medallion
+     | exactly as supplied, and the text beneath it lifted to the identity's
+     | own light surface. Produced by scripts/brand-derive.php, which explains
+     | what it does and what it leaves alone. When the association supplies
+     | their own white version, the files change and nothing else does.
+     |
+     | A variant with no entry here keeps the light file on both schemes.
      */
     'logo' => [
         'full' => '/brand/logo-full.png',
         'wordmark' => '/brand/logo-wordmark.png',
         'symbol' => '/brand/logo-symbol.png',
-        'on_dark' => null,
+        'on_dark' => [
+            'full' => '/brand/logo-full-on-dark.png',
+            'wordmark' => '/brand/logo-wordmark-on-dark.png',
+        ],
     ],
 
     'icons' => [

@@ -117,16 +117,32 @@ $pad = 12;
 
 $bands = [
     // The complete lockup: mark, name, rule and tagline.
-    'logo-full' => [0, 150, $w, 1080],
+    'logo-full' => [123, 82, 1011, 1090],
     // The name on its own, for tight horizontal space.
-    'logo-wordmark' => [80, 858, 990, 204],
+    'logo-wordmark' => [123, 808, 1011, 203],
     // The symbol on its own, for the favicon and app icons.
-    'logo-symbol' => [276, 150, 584, 664],
+    'logo-symbol' => [278, 82, 698, 702],
 ];
+
+/*
+ | Where the text starts, measured on the source: everything above this row is
+ | the medallion and everything below it is the name, the rule and the
+ | tagline. Used by the dark variant, which lifts the text and leaves the
+ | medallion alone.
+ */
+$textFromY = 800;
 
 echo "Deriving brand assets from the approved artwork\n";
 
 $variants = [];
+
+/*
+ | What each variant is drawn at, at most. A logo loads on every page of the
+ | site, including the one a delegate opens on a phone in the field, and the
+ | source is a photograph-sized file: the lockup is 120px tall in the footer
+ | and 48 in the bar, so 480 is already four times what any screen asks for.
+ */
+$heights = ['logo-full' => 480, 'logo-wordmark' => 120, 'logo-symbol' => 320];
 
 foreach ($bands as $name => [$x, $y, $bw, $bh]) {
     $x = max(0, $x - $pad);
@@ -135,8 +151,90 @@ foreach ($bands as $name => [$x, $y, $bw, $bh]) {
     $bh = min($h - $y, $bh + $pad * 2);
 
     $image = liftBackdrop($src, $x, $y, $bw, $bh);
+
+    // Proportionally, so the artwork can never be squashed: the longest side
+    // is scaled to keep the variant's height at the figure above.
+    $image = resize($image, (int) round(max($bw, $bh) * $heights[$name] / $bh));
+
     save($image, "{$outDir}/{$name}.png");
     $variants[$name] = $image;
+}
+
+/*
+ | THE DARK VARIANT, and the one place this script departs from «nothing is
+ | recoloured».
+ |
+ | The artwork's name and tagline are drawn in a very deep green, which
+ | carries 1.7:1 against the dark scheme's page — unreadable. Until now the
+ | answer was a light plate behind the logo, which is correct and which the
+ | association looked at on 18 October and asked to be rid of.
+ |
+ | So the medallion is left exactly as supplied — it carries between 2.7:1
+ | and 6.3:1 on that page and needs nothing — and the text below it is lifted
+ | to the identity's own light surface, keeping each stroke's own shading so
+ | the edges stay smooth. The gold rule and the gold inside the letters keep
+ | their colour: gold already carries 8:1 there.
+ |
+ | This is a recolour, and it stands in for the white version of the lockup
+ | that the brand package was meant to contain and does not. When the
+ | association supplies theirs, drop it in as logo-full-on-dark.png and this
+ | block can go.
+ */
+function liftTextForDark($image, int $textFromY, int $cropY)
+{
+    $w = imagesx($image);
+    $h = imagesy($image);
+
+    $out = imagecreatetruecolor($w, $h);
+    imagealphablending($out, false);
+    imagesavealpha($out, true);
+
+    // The identity's light surface, the same colour the plate used to be.
+    [$lr, $lg, $lb] = [0xF7, 0xF9, 0xF4];
+
+    // The first row of text, expressed in this crop's own coordinates.
+    $from = max(0, $textFromY - $cropY);
+
+    for ($y = 0; $y < $h; $y++) {
+        for ($x = 0; $x < $w; $x++) {
+            $rgba = imagecolorat($image, $x, $y);
+            $a = ($rgba >> 24) & 0x7F;
+            $r = ($rgba >> 16) & 0xFF;
+            $g = ($rgba >> 8) & 0xFF;
+            $b = $rgba & 0xFF;
+
+            // Gold keeps its own colour; so does anything above the text.
+            $isGold = $r > $g + 20 && $r > 110;
+
+            if ($y >= $from && $a < 127 && ! $isGold) {
+                // Deepest ink becomes the light surface; lighter ink a shade
+                // under it, so the anti-aliasing is not flattened.
+                $t = min(1.0, (0.299 * $r + 0.587 * $g + 0.114 * $b) / 140.0);
+                $scale = 1 - 0.18 * $t;
+
+                $r = (int) round($lr * $scale);
+                $g = (int) round($lg * $scale);
+                $b = (int) round($lb * $scale);
+            }
+
+            imagesetpixel($out, $x, $y, imagecolorallocatealpha($out, $r, $g, $b, $a));
+        }
+    }
+
+    return $out;
+}
+
+foreach (['logo-full', 'logo-wordmark'] as $name) {
+    [, $by, , $bh] = $bands[$name];
+    $cropY = max(0, $by - $pad);
+    // The crop was scaled after it was cut, so the row the text starts on
+    // moved with it.
+    $scale = imagesy($variants[$name]) / ($bh + $pad * 2);
+
+    save(
+        liftTextForDark($variants[$name], (int) round(($textFromY - $cropY) * $scale), 0),
+        "{$outDir}/{$name}-on-dark.png"
+    );
 }
 
 /*
