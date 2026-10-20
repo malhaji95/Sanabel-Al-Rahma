@@ -133,6 +133,23 @@ if [ "${DEMO_SEED:-false}" = "true" ]; then
     say "seeding the training stages"
     php /app/artisan db:seed --class=TrainingStageSeeder --force \
         || echo "the training stages could not be seeded; some guided screens will be empty" >&2
+
+    # T-114 — and now make the stated passwords true.
+    #
+    # Every seeder above uses firstOrCreate, which is right: a deploy must not
+    # overwrite what is already there. The consequence is that an account's
+    # password is hashed once, when the row is first written, and no later
+    # deploy touches it. So SEED_ADMIN_PASSWORD and SEED_DEMO_PASSWORD only
+    # ever described the accounts created on the deploy that first set them —
+    # change either afterwards and the environment says one thing while the
+    # database says another, which is what the association met on 20 October.
+    #
+    # This sets them on every deploy, which is the behaviour a demonstration
+    # wants: the password written in the guides is the password that works.
+    # It refuses outside DEMO_SEED and touches no account that is not seeded.
+    say "setting the demonstration passwords"
+    php /app/artisan demo:passwords \
+        || echo "the demonstration passwords could not be set" >&2
 fi
 
 # ---- caches ------------------------------------------------------------------

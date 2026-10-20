@@ -171,3 +171,68 @@ function passTwoFactor(): void
 {
     session([RequireTwoFactor::SESSION_KEY => now()->toIso8601String()]);
 }
+
+/**
+ * T-114 — runs a closure with environment variables set, and puts the
+ * environment back afterwards.
+ *
+ * `env()` reads the process environment rather than the config, which is the
+ * whole point of the variables being tested here: they are read at the moment
+ * a seeder or a command runs, not from a cached config file. So the test has
+ * to set them the same way a deployment does. A null value removes one.
+ *
+ * @param  array<string,string|null>  $variables
+ */
+function withEnv(array $variables, callable $body): mixed
+{
+    $previous = [];
+
+    foreach ($variables as $key => $value) {
+        $previous[$key] = getenv($key) === false ? null : getenv($key);
+
+        if ($value === null) {
+            putenv($key);
+            unset($_ENV[$key], $_SERVER[$key]);
+
+            continue;
+        }
+
+        putenv("{$key}={$value}");
+        $_ENV[$key] = $_SERVER[$key] = $value;
+    }
+
+    try {
+        return $body();
+    } finally {
+        foreach ($previous as $key => $value) {
+            if ($value === null) {
+                putenv($key);
+                unset($_ENV[$key], $_SERVER[$key]);
+
+                continue;
+            }
+
+            putenv("{$key}={$value}");
+            $_ENV[$key] = $_SERVER[$key] = $value;
+        }
+    }
+}
+
+/**
+ * T-114 — runs a console command now, rather than whenever PHP gets round to
+ * it.
+ *
+ * `$this->artisan()` returns a PendingCommand that executes in its
+ * destructor, so a command written inside a closure can run after the
+ * closure has returned. Paired with withEnv() above, that means the command
+ * executes once the environment has already been put back — and a test of
+ * what a command reads from the environment silently tests nothing.
+ */
+function runArtisan(string $command, array $arguments = [], bool $failing = false): int
+{
+    $pending = test()->artisan($command, $arguments);
+
+    $failing ? $pending->assertFailed() : $pending->assertSuccessful();
+
+    return $pending->run();
+}
