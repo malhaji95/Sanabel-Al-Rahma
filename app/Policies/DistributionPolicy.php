@@ -12,7 +12,7 @@ class DistributionPolicy
 
     public function viewAny(User $user): bool
     {
-        return $this->canRead($user, 'view_reports') || $user->isAdmin() || $user->hasRole('council');
+        return $this->opensScreen($user, 'manage_distribution');
     }
 
     public function view(User $user, Distribution $model): bool

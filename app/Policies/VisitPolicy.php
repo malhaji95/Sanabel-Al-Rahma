@@ -12,7 +12,7 @@ class VisitPolicy
 
     public function viewAny(User $user): bool
     {
-        return $this->canRead($user, 'view_reports') || $user->isAdmin() || $user->hasRole('council');
+        return $this->opensScreen($user, 'record_visit', 'view_full_case');
     }
 
     public function view(User $user, Visit $model): bool

@@ -24,7 +24,10 @@ class DisbursementPolicy
             }
         }
 
-        return $this->canRead($user, 'view_reports') || $user->isAdmin() || $user->hasRole('council');
+        // T-115 — the five steps above are the whole answer. This used to
+        // read `view_reports` as well, which every role holds, so the loop
+        // decided nothing and the money screens were open to the building.
+        return $this->oversees($user);
     }
 
     public function view(User $user, Disbursement $model): bool

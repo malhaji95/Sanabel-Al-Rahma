@@ -14,9 +14,7 @@ class BannerPolicy
     {
         // manage_cms is what the content manager holds; without it here the
         // role could create a post but not open the list it lives in.
-        return $this->canWrite($user, 'manage_cms')
-            || $this->canRead($user, 'view_reports')
-            || $user->isAdmin() || $user->hasRole('council');
+        return $this->opensScreen($user, 'manage_cms');
     }
 
     public function view(User $user, Banner $model): bool

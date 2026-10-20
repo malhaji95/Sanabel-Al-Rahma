@@ -12,7 +12,7 @@ class ReferralPolicy
 
     public function viewAny(User $user): bool
     {
-        return $this->canRead($user, 'view_reports') || $user->isAdmin() || $user->hasRole('council');
+        return $this->opensScreen($user, 'verify_referral');
     }
 
     public function view(User $user, Referral $model): bool

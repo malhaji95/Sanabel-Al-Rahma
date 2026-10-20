@@ -12,7 +12,7 @@ class CampaignPolicy
 
     public function viewAny(User $user): bool
     {
-        return $this->canRead($user, 'view_reports') || $user->isAdmin() || $user->hasRole('council');
+        return $this->opensScreen($user, 'manage_campaigns');
     }
 
     public function view(User $user, Campaign $model): bool

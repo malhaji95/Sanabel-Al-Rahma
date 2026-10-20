@@ -12,7 +12,7 @@ class SponsorshipPolicy
 
     public function viewAny(User $user): bool
     {
-        return $this->canRead($user, 'view_reports') || $user->isAdmin() || $user->hasRole('council');
+        return $this->opensScreen($user, 'donate', 'verify_payment');
     }
 
     public function view(User $user, Sponsorship $model): bool

@@ -12,7 +12,7 @@ class MemberPolicy
 
     public function viewAny(User $user): bool
     {
-        return $this->canRead($user, 'view_reports') || $user->isAdmin() || $user->hasRole('council');
+        return $this->opensScreen($user, 'manage_members');
     }
 
     public function view(User $user, Member $model): bool

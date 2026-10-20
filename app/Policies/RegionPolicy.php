@@ -12,7 +12,7 @@ class RegionPolicy
 
     public function viewAny(User $user): bool
     {
-        return $this->canRead($user, 'view_reports') || $user->isAdmin() || $user->hasRole('council');
+        return $this->opensScreen($user, 'edit_config');
     }
 
     public function view(User $user, Region $model): bool

@@ -12,7 +12,7 @@ class AssessmentPolicy
 
     public function viewAny(User $user): bool
     {
-        return $this->canRead($user, 'view_reports') || $user->isAdmin() || $user->hasRole('council');
+        return $this->opensScreen($user, 'approve_case', 'recommend');
     }
 
     public function view(User $user, Assessment $model): bool

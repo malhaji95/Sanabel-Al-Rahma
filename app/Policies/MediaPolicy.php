@@ -12,7 +12,7 @@ class MediaPolicy
 
     public function viewAny(User $user): bool
     {
-        return $this->canRead($user, 'view_reports') || $user->isAdmin() || $user->hasRole('council');
+        return $this->opensScreen($user, 'upload_media', 'view_full_case');
     }
 
     public function view(User $user, Media $model): bool

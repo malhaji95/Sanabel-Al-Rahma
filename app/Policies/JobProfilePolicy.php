@@ -12,7 +12,7 @@ class JobProfilePolicy
 
     public function viewAny(User $user): bool
     {
-        return $this->canRead($user, 'view_reports') || $user->isAdmin() || $user->hasRole('council');
+        return $this->opensScreen($user, 'publish_job_profile', 'browse_job_market');
     }
 
     public function view(User $user, JobProfile $model): bool

@@ -13,9 +13,7 @@ class ContentCardPolicy
 
     public function viewAny(User $user): bool
     {
-        return $this->canWrite($user, 'manage_cms')
-            || $this->canRead($user, 'view_reports')
-            || $user->isAdmin() || $user->hasRole('council');
+        return $this->opensScreen($user, 'manage_cms');
     }
 
     public function view(User $user, ContentCard $model): bool
