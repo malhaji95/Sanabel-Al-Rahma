@@ -80,7 +80,7 @@ serving the site unstyled.
 Database credentials are in Application → **Access Details**.
 
 ```dotenv
-APP_NAME="سنابل الرحمة"
+APP_NAME="سنابل الوفاء"
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://your-domain.org

@@ -84,7 +84,7 @@
                 {{-- No automatic transfers exist: a human moves the money, the system records it. --}}
                 <form wire:submit="recordTransfer" class="space-y-4">
                     {{-- One destination for everything in the basket: Sanabel
-                         Al-Rahma's own wallet. A family's account is never here. --}}
+                         Al-Wafa's own wallet. A family's account is never here. --}}
                     @if ($transferWallet)
                         <div class="space-y-3">
                             <p class="text-sm font-medium">{{ __('sanabel.transfer.single') }}</p>

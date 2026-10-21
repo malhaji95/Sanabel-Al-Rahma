@@ -5,9 +5,9 @@ namespace App\Services;
 use App\Models\Setting;
 
 /**
- * One destination, settled on 29 Sep 2026: Sanabel Al-Rahma's own Sham Cash
+ * One destination, settled on 29 Sep 2026: Sanabel Al-Wafa's own Sham Cash
  * wallet. Every transfer lands there — the donor either names the file the
- * money answers for, or leaves it general — and Sanabel Al-Rahma moves it on
+ * money answers for, or leaves it general — and Sanabel Al-Wafa moves it on
  * to the family, the hospital, the creditor, or wherever the need is.
  *
  * There is nothing per family and nothing per partner to resolve, so this is

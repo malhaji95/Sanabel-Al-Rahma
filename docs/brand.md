@@ -1,6 +1,6 @@
 # Visual identity
 
-The official identity of سنابل الرحمة, as it is applied in this codebase.
+The official identity of سنابل الوفاء, as it is applied in this codebase.
 
 Everything lives behind [`config/brand.php`](../config/brand.php). Nothing in the
 application refers to a logo by filename or to a colour by hex, so replacing the

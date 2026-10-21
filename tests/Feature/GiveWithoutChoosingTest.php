@@ -38,7 +38,7 @@ function donorWithAccount(): User
 }
 
 it('records a donation that names no family, without asking for a file number', function () {
-    Setting::put('platform_wallet', ['number' => '0999111222', 'holder' => 'سنابل الرحمة']);
+    Setting::put('platform_wallet', ['number' => '0999111222', 'holder' => 'سنابل الوفاء']);
 
     Livewire::actingAs(donorWithAccount())
         ->test(GeneralDonation::class)
@@ -69,7 +69,7 @@ it('refuses a transfer with no amount or no reference, rather than storing half 
 });
 
 it('shows the association wallet and never a household account', function () {
-    Setting::put('platform_wallet', ['number' => '0999111222', 'holder' => 'سنابل الرحمة']);
+    Setting::put('platform_wallet', ['number' => '0999111222', 'holder' => 'سنابل الوفاء']);
 
     $case = publishedCase($this->region, attributes: ['wallet_encrypted' => '0912345678']);
 
@@ -97,7 +97,7 @@ it('opens the screen to somebody who has never signed in', function () {
 });
 
 it('records a gift from a guest, and keeps a donor record to thank', function () {
-    Setting::put('platform_wallet', ['number' => '0999111222', 'holder' => 'سنابل الرحمة']);
+    Setting::put('platform_wallet', ['number' => '0999111222', 'holder' => 'سنابل الوفاء']);
 
     Livewire::test(GeneralDonation::class)
         ->set('name', 'أبو محمد')
@@ -128,7 +128,7 @@ it('refuses a guest gift with no name on it', function () {
 });
 
 it('treats the same number giving twice as the same donor', function () {
-    Setting::put('platform_wallet', ['number' => '0999111222', 'holder' => 'سنابل الرحمة']);
+    Setting::put('platform_wallet', ['number' => '0999111222', 'holder' => 'سنابل الوفاء']);
 
     foreach (['GUEST-A', 'GUEST-B'] as $ref) {
         Livewire::test(GeneralDonation::class)

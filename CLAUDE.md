@@ -1,4 +1,4 @@
-# CLAUDE.md — Sanabel Al-Rahma
+# CLAUDE.md — Sanabel Al-Wafa
 
 ## 1. Stack
 

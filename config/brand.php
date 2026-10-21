@@ -1,7 +1,7 @@
 <?php
 
 /*
- | The visual identity of سنابل الرحمة, in one place.
+ | The visual identity of سنابل الوفاء, in one place.
  |
  | The colours below are the official identity palette supplied with the brand
  | guide. Note that the logo artwork itself is drawn in a deeper green

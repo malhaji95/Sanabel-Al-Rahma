@@ -231,7 +231,7 @@ it('writes a bill of materials naming every component of this release', function
 
         expect($document['bomFormat'])->toBe('CycloneDX')
             ->and($document['specVersion'])->toBe('1.5')
-            ->and($document['metadata']['component']['name'])->toBe('sanabel-al-rahma');
+            ->and($document['metadata']['component']['name'])->toBe('sanabel-al-wafa');
 
         $components = collect($document['components']);
 

@@ -1,4 +1,4 @@
-# Sanabel Al-Rahma — Build Pack (Simplified)
+# Sanabel Al-Wafa — Build Pack (Simplified)
 
 Phase 1 spec for Claude Code. By **Takteek Agency**.
 

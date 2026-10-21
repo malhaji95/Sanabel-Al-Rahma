@@ -152,7 +152,7 @@ class SyntheticDataSeeder extends Seeder
         // One wallet for every transfer, earmarked or general.
         Setting::put('platform_wallet', [
             'number' => '0933000111',
-            'holder' => 'جمعية سنابل الرحمة',
+            'holder' => 'جمعية سنابل الوفاء',
         ]);
 
         return $staff;

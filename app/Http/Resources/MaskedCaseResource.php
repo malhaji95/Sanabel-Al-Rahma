@@ -30,7 +30,7 @@ use Illuminate\Support\Collection;
  *              particulars are all the researcher writing to the committee,
  *              and not one of them is a list or a band.
  *
- * The wallet a donor pays into is Sanabel Al-Rahma's own and the same for
+ * The wallet a donor pays into is Sanabel Al-Wafa's own and the same for
  * every family, so it is a setting shown where payment happens. Of a
  * household's own account only the last four digits appear, by the
  * association's decision of 13 October, and only so a donor can tell that the

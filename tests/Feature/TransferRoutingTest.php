@@ -11,8 +11,8 @@ use App\Services\DonationService;
 use App\Services\TransferRouting;
 
 /*
- | Settled on 29 Sep 2026. One wallet — Sanabel Al-Rahma's own — receives every
- | transfer, and Sanabel Al-Rahma moves the money on. What a donor chooses is
+ | Settled on 29 Sep 2026. One wallet — Sanabel Al-Wafa's own — receives every
+ | transfer, and Sanabel Al-Wafa moves the money on. What a donor chooses is
  | not where it goes but what it is for: named files, or the association's
  | discretion.
  */
@@ -22,12 +22,12 @@ beforeEach(function () {
     $this->region = regionWithRates();
     $this->routing = app(TransferRouting::class);
 
-    Setting::put('platform_wallet', ['number' => '0900000000', 'holder' => 'جمعية سنابل الرحمة']);
+    Setting::put('platform_wallet', ['number' => '0900000000', 'holder' => 'جمعية سنابل الوفاء']);
 });
 
 it('sends every donor to the one wallet', function () {
     expect($this->routing->wallet())
-        ->toBe(['wallet' => '0900000000', 'holder' => 'جمعية سنابل الرحمة']);
+        ->toBe(['wallet' => '0900000000', 'holder' => 'جمعية سنابل الوفاء']);
 });
 
 it('says nothing rather than showing a blank when no wallet was entered', function () {

@@ -193,7 +193,7 @@ class HomePageSeeder extends Seeder
         }
     }
 
-    /** «ما يميز سنابل الرحمة» — the association's own words. */
+    /** «ما يميز سنابل الوفاء» — the association's own words. */
     private function advantages(): void
     {
         foreach ([

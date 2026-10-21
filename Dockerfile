@@ -128,7 +128,7 @@ RUN mkdir -p storage/framework/cache/data storage/framework/sessions \
 #                        connection died. php-fpm was unaffected only because
 #                        clear_env wipes HOME for its workers.
 ENV HOME=/app \
-    APP_NAME="سنابل الرحمة" \
+    APP_NAME="سنابل الوفاء" \
     APP_ENV=production \
     APP_DEBUG=false \
     APP_LOCALE=ar \

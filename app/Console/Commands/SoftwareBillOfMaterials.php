@@ -51,13 +51,13 @@ class SoftwareBillOfMaterials extends Command
             'metadata' => [
                 'timestamp' => now()->toIso8601String(),
                 'tools' => [[
-                    'vendor' => 'Sanabel Al-Rahma',
+                    'vendor' => 'Sanabel Al-Wafa',
                     'name' => 'artisan sbom',
                     'version' => $commit,
                 ]],
                 'component' => [
                     'type' => 'application',
-                    'name' => 'sanabel-al-rahma',
+                    'name' => 'sanabel-al-wafa',
                     'version' => $commit,
                     'description' => config('brand.tagline_ar'),
                 ],

@@ -117,11 +117,11 @@ $pad = 12;
 
 $bands = [
     // The complete lockup: mark, name, rule and tagline.
-    'logo-full' => [123, 82, 1011, 1090],
+    'logo-full' => [123, 69, 1012, 1089],
     // The name on its own, for tight horizontal space.
-    'logo-wordmark' => [123, 808, 1011, 203],
+    'logo-wordmark' => [123, 795, 1012, 203],
     // The symbol on its own, for the favicon and app icons.
-    'logo-symbol' => [278, 82, 698, 702],
+    'logo-symbol' => [275, 69, 702, 700],
 ];
 
 /*
@@ -130,7 +130,7 @@ $bands = [
  | tagline. Used by the dark variant, which lifts the text and leaves the
  | medallion alone.
  */
-$textFromY = 800;
+$textFromY = 785;
 
 echo "Deriving brand assets from the approved artwork\n";
 

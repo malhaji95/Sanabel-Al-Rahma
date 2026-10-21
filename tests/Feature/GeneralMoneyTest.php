@@ -7,7 +7,7 @@ use App\Services\DonationService;
 use App\Services\GeneralMoneyService;
 
 /*
- | General money reaches Sanabel Al-Rahma with no family named. This is how it
+ | General money reaches Sanabel Al-Wafa with no family named. This is how it
  | is placed afterwards, and what it refuses.
  */
 

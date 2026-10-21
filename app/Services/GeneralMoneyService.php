@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * General money arrives with no family named: the donor left it to Sanabel
- * Al-Rahma to spend where the need is. This is how it is spent — one
+ * Al-Wafa to spend where the need is. This is how it is spent — one
  * allocation at a time, against a balance that cannot be overdrawn.
  *
  * Earmarked money never passes through here; it is split across the basket's

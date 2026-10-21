@@ -246,10 +246,15 @@ return [
      | a family is agreeing to. They move together: a new version is a new file
      | and a changed number, so «which text did this family agree to» always has
      | an answer, and a typo fixed in the CMS does not become a new version.
+     |
+     | T-116 — 1.1 is 1.0 with the association's new name and nothing else.
+     | The rename is still a new version rather than an edit of 1.0, because
+     | the families who consented agreed to that text as it stood, and the
+     | file they agreed to has to stay on disk to say so.
      */
     'privacy_policy' => [
-        'version' => '1.0',
-        'adopted_on' => '2026-10-13',
+        'version' => '1.1',
+        'adopted_on' => '2026-10-21',
         // Their legal adviser may revise it; until then this is what is in force.
         'pending_legal_review' => true,
     ],

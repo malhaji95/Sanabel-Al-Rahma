@@ -5,9 +5,9 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * There is one destination, not one per partner: Sanabel Al-Rahma's own Sham
+ * There is one destination, not one per partner: Sanabel Al-Wafa's own Sham
  * Cash wallet. A donor either names the file the money is for, or leaves it
- * general — but either way it lands in the same account, and Sanabel Al-Rahma
+ * general — but either way it lands in the same account, and Sanabel Al-Wafa
  * moves it on.
  *
  * So the wallet added to `users` on 27 Sep goes. It existed only to route

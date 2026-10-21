@@ -106,7 +106,8 @@ it('republishes the same text without making a second page', function () {
 it('says plainly that the legal review has not happened yet', function () {
     // The association adopted it as it stands so the phase is not held up, and
     // said their adviser may revise it. The system should not pretend that
-    // review has happened.
+    // review has happened. T-116 renamed the association, which made 1.1 and
+    // moved the adoption date with it; the review still has not happened.
     expect(config('sanabel.privacy_policy.pending_legal_review'))->toBeTrue()
-        ->and(config('sanabel.privacy_policy.adopted_on'))->toBe('2026-10-13');
+        ->and(config('sanabel.privacy_policy.adopted_on'))->toBe('2026-10-21');
 });

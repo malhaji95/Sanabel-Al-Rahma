@@ -2,7 +2,10 @@
  | Caches the field app shell so a delegate can open the form with no network.
  | Visit data itself lives in IndexedDB, not here.
  */
-const CACHE = 'sanabel-field-v2'
+// T-116 — bumped with the new identity: the shell below is cached by
+// URL, and the logo files changed underneath the same URLs, so an
+// installed field app would keep drawing the old one until the key moves.
+const CACHE = 'sanabel-field-v3'
 const SHELL = [
     '/field',
     '/field/manifest.webmanifest',

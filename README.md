@@ -1,6 +1,6 @@
-# سنابل الرحمة — Sanabel Al-Rahma
+# سنابل الوفاء — Sanabel Al-Wafa
 
-Phase 1 of the Sanabel Al-Rahma platform, built to the spec in [`docs/`](docs/).
+Phase 1 of the Sanabel Al-Wafa platform, built to the spec in [`docs/`](docs/).
 By **Takteek Agency**.
 
 The whole journey works end to end:
