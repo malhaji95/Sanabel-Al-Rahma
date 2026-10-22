@@ -179,6 +179,44 @@
                     </aside>
                     @break
 
+                @case('person')
+                    {{--
+                        T-118 — a committee member. Inline-block rather than a
+                        grid: the sections are one flat ordered list, so a row
+                        of people is however many of these the association put
+                        next to each other, and the page needs no second kind
+                        to open and close the row.
+
+                        The frame is always the same size, whether it holds a
+                        photograph or the mark, so a member who did not want
+                        their picture published is not the odd one out.
+                    --}}
+                    <div @if ($anchor) id="{{ $anchor }}" @endif
+                         class="mt-3 ms-0 me-3 inline-block w-36 scroll-mt-24 align-top text-center sm:w-40">
+                        <div class="mx-auto grid h-28 w-28 place-items-center overflow-hidden rounded-2xl"
+                             style="background-color: var(--page); border: 1px solid var(--border);">
+                            @if ($section->imageUrl())
+                                <img src="{{ $section->imageUrl() }}"
+                                     alt="{{ $section->title_ar }}"
+                                     class="h-full w-full object-cover"
+                                     loading="lazy" decoding="async">
+                            @else
+                                <x-brand.logo variant="symbol" :height="64" />
+                            @endif
+                        </div>
+
+                        @if ($section->title_ar)
+                            <p class="mt-2 text-sm font-bold leading-snug">{{ $section->title_ar }}</p>
+                        @endif
+
+                        @if ($section->body_ar)
+                            <p class="mt-0.5 text-xs leading-relaxed" style="color: var(--text-muted);">
+                                {{ $section->body_ar }}
+                            </p>
+                        @endif
+                    </div>
+                    @break
+
                 @case('funding')
                     <x-page.funding-example :section="$section" />
                     @break

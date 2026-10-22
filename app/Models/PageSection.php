@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * T-113 — one piece of a page, and the shape it is drawn in.
@@ -33,22 +34,49 @@ class PageSection extends Model
      * funding   — the staged-funding example, which is a component and not
      *             words: the association asked for it by name and it reads
      *             the association's own figures rather than invented ones.
+     * person    — T-118. A member of a committee: a face, a name and what
+     *             they do. The one kind that carries a picture.
      */
     public const KINDS = [
         'heading', 'group', 'card', 'accordion', 'reference', 'document',
-        'statement', 'note', 'funding',
+        'statement', 'note', 'funding', 'person',
     ];
 
     protected $guarded = ['id'];
 
     protected $casts = [
         'is_published' => 'boolean',
+        'show_image' => 'boolean',
         'sort_order' => 'integer',
     ];
 
     public function page(): BelongsTo
     {
         return $this->belongsTo(Page::class);
+    }
+
+    /**
+     * The picture to draw, or null when there is none to draw.
+     *
+     * T-118 — null is also the answer when the association has turned the
+     * switch off, and that is the whole of the feature they asked for: a
+     * member who does not want their photograph published is drawn as the
+     * mark instead, and is still named. The page asks this one question
+     * rather than reading the column, so the switch cannot be honoured in
+     * one place and forgotten in another.
+     *
+     * A path under `images/` ships with the application; anything else was
+     * uploaded and lives on the public disk, the same as a home page card.
+     */
+    public function imageUrl(): ?string
+    {
+        if (! $this->image || ! $this->show_image) {
+            return null;
+        }
+
+        return str_starts_with($this->image, 'images/')
+            ? asset($this->image)
+            : Storage::disk('public')->url($this->image);
     }
 
     /**

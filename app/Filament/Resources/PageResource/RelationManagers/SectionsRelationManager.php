@@ -38,7 +38,10 @@ class SectionsRelationManager extends RelationManager
 
     private const WITH_LINK = ['accordion', 'reference', 'document', 'card'];
 
-    private const WITH_TITLE = ['heading', 'group', 'card', 'accordion', 'reference', 'document', 'note', 'funding'];
+    private const WITH_TITLE = ['heading', 'group', 'card', 'accordion', 'reference', 'document', 'note', 'funding', 'person'];
+
+    /** T-118 — the one kind that carries a face. */
+    private const WITH_IMAGE = ['person'];
 
     public function form(Form $form): Form
     {
@@ -62,6 +65,28 @@ class SectionsRelationManager extends RelationManager
                 ->label(__('sanabel.page_section.body'))
                 ->helperText(__('sanabel.page_section.body_help'))
                 ->rows(5)
+                ->columnSpanFull(),
+
+            /*
+             | T-118 — a committee member's photograph, and the switch that
+             | says whether it is published. «ممكن نقدر نخفي الصورة الي مابدو
+             | ياه تظهر وتكون لوغو بدالها», 22 October.
+             */
+            Forms\Components\FileUpload::make('image')
+                ->label(__('sanabel.page_section.image'))
+                ->helperText(__('sanabel.page_section.image_help'))
+                ->image()
+                ->disk('public')
+                ->directory('people')
+                ->maxSize(4096)
+                ->visible(fn (Forms\Get $get) => in_array($get('kind'), self::WITH_IMAGE, true))
+                ->columnSpanFull(),
+
+            Forms\Components\Toggle::make('show_image')
+                ->label(__('sanabel.page_section.show_image'))
+                ->helperText(__('sanabel.page_section.show_image_help'))
+                ->default(true)
+                ->visible(fn (Forms\Get $get) => in_array($get('kind'), self::WITH_IMAGE, true))
                 ->columnSpanFull(),
 
             Forms\Components\TextInput::make('rule_ar')
