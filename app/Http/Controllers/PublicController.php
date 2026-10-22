@@ -220,6 +220,32 @@ class PublicController extends Controller
     }
 
     /**
+     * One campaign, with room for the whole of what the association wrote.
+     *
+     * T-117 — the card clamps the text to three lines, because a card must.
+     * So the story had nowhere to be read: the association could type it and
+     * no donor could reach past the third line of it. The page draws the same
+     * card with the clamp off, which is why a figure on it can never disagree
+     * with the figure on the list.
+     *
+     * An unpublished campaign is not here. A closed one is: a link that has
+     * been shared should say what happened rather than stop answering.
+     */
+    public function campaign(Campaign $campaign): View
+    {
+        abort_unless($campaign->is_published, 404);
+
+        $campaign->load('beneficiary');
+
+        return view('public.campaign', [
+            'campaign' => $campaign,
+            // An Eloquent collection, not a plain one: the block below
+            // eager-loads the family it reads, and only Eloquent can.
+            'monthly' => $this->monthlyFunding($campaign->newCollection([$campaign]))[$campaign->id] ?? null,
+        ]);
+    }
+
+    /**
      * T-83 — the family's monthly funding to show beside its own campaign,
      * keyed by campaign, and empty when the association has closed the switch.
      *

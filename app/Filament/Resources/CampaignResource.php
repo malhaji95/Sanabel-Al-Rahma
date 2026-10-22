@@ -35,7 +35,11 @@ class CampaignResource extends Resource
     {
         return $form->schema([
             Forms\Components\TextInput::make('title_ar')->label(__('sanabel.campaign.title'))->required(),
-            Forms\Components\Textarea::make('body_ar')->label(__('sanabel.campaign.body'))->columnSpanFull(),
+            Forms\Components\Textarea::make('body_ar')
+                ->label(__('sanabel.campaign.body'))
+                ->helperText(__('sanabel.campaign.body_help'))
+                ->rows(8)
+                ->columnSpanFull(),
             Forms\Components\TextInput::make('goal_amount')->label(__('sanabel.campaign.goal'))->numeric()->minValue(0)->required()->suffix(config('sanabel.currency')),
             Forms\Components\Select::make('beneficiary_id')->label(__('sanabel.campaign.case'))->relationship('beneficiary', 'file_number')->searchable(),
             Forms\Components\DatePicker::make('starts_on')

@@ -5,7 +5,13 @@
     switch. Rule 2 admits no second route to a donor's screen, and a campaign
     page is a donor's screen.
 --}}
-@props(['campaign', 'monthly' => null])
+{{--
+    T-117 — `full` is the campaign on its own page rather than in the list:
+    the same card, with the three-line clamp off and the title no longer a
+    link to where the reader already is. One component for both, so a figure
+    on the page can never disagree with the figure on the list.
+--}}
+@props(['campaign', 'monthly' => null, 'full' => false])
 
 @php
     $collected = $campaign->collectedAmount();
@@ -15,13 +21,38 @@
     $outstanding = max(0, $campaign->goal_amount - $collected);
 @endphp
 
-<article id="campaign-{{ $campaign->id }}" class="card-interactive flex h-full flex-col scroll-mt-24">
-    <h3 class="text-base">{{ $campaign->title_ar }}</h3>
+<article id="campaign-{{ $campaign->id }}" @class([
+    'flex h-full flex-col scroll-mt-24',
+    'card-interactive' => ! $full,
+    'card' => $full,
+])>
+    @if ($full)
+        <h1 class="text-2xl leading-snug">{{ $campaign->title_ar }}</h1>
+    @else
+        <h3 class="text-base">
+            <a href="{{ route('campaign.public', $campaign) }}" class="no-underline hover:underline">
+                {{ $campaign->title_ar }}
+            </a>
+        </h3>
+    @endif
 
     @if ($campaign->body_ar)
-        <p class="mt-2 line-clamp-3 text-sm leading-relaxed" style="color: var(--text-muted);">
+        <p @class([
+            'mt-2 text-sm leading-relaxed',
+            'line-clamp-3' => ! $full,
+            // The association types the story in a box; the line breaks they
+            // put in it are part of what they wrote.
+            'whitespace-pre-line leading-loose' => $full,
+        ]) style="color: var(--text-muted);">
             {{ $campaign->body_ar }}
         </p>
+
+        @unless ($full)
+            <a href="{{ route('campaign.public', $campaign) }}"
+               class="mt-1.5 text-sm" style="color: var(--accent);">
+                {{ __('sanabel.public.open_campaign') }}
+            </a>
+        @endunless
     @endif
 
     {{--
@@ -145,8 +176,9 @@
     @endif
 
     <div class="mt-3">
+        {{-- T-117 — the campaign's own address, not the list it sits in. --}}
         <x-share-button
-            :url="route('campaigns.public')"
+            :url="route('campaign.public', $campaign)"
             :title="$campaign->title_ar" />
     </div>
 </article>

@@ -25,6 +25,13 @@ Route::middleware('auth')
     ->get('/news/{slug}/preview', [PublicController::class, 'previewPost'])
     ->name('post.preview');
 Route::get('/campaigns', [PublicController::class, 'campaigns'])->name('campaigns.public');
+
+/*
+ | T-117 — one address per campaign, so its story can be read and sent on.
+ | The list clamps the text to three lines, which is a card and not a story;
+ | «عندنا موضوع القصة او المعلومات اكثر, نقدر نضيفها بي الحملات», 22 October.
+ */
+Route::get('/campaigns/{campaign}', [PublicController::class, 'campaign'])->name('campaign.public');
 Route::get('/cases', BrowseCases::class)->name('cases.browse');
 
 // One address per family file, so an opportunity can be sent on. It serves the
