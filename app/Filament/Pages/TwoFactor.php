@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Http\Middleware\RequireTwoFactor;
+use App\Services\QrCode;
 use App\Services\Totp;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -106,5 +107,19 @@ class TwoFactor extends Page implements HasForms
             auth()->user()->email,
             (string) config('app.name'),
         );
+    }
+
+    /**
+     * T-119 — the same URI as a code to photograph.
+     *
+     * Drawn here rather than fetched: the URI carries the second factor's
+     * secret, so it is never handed to anything outside this application,
+     * and the page it is drawn on is already behind the login.
+     */
+    public function qrSvg(): ?string
+    {
+        $uri = $this->provisioningUri();
+
+        return $uri ? app(QrCode::class)->svg($uri, moduleSize: 5) : null;
     }
 }
