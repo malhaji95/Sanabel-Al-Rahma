@@ -16,6 +16,7 @@ use App\Models\Sponsorship;
 use App\Models\SponsorshipInstallment;
 use App\Models\User;
 use App\Services\CaseService;
+use App\Services\Money;
 use App\Services\PermissionService;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -253,7 +254,7 @@ class OverviewStats extends BaseWidget
             // association still has to decide about. One total hid the second.
             Stat::make(__('sanabel.dashboard.earmarked_this_month'),
                 number_format($thisMonth('earmarked')))
-                ->description(config('sanabel.currency'))
+                ->description(Money::short())
                 ->color('success')
                 ->url($this->donations('verified')),
 

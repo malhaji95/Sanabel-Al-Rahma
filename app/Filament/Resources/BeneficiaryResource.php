@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\CoverageService;
 use App\Services\DependencyRules;
 use App\Services\IdentityFormat;
+use App\Services\Money;
 use App\Services\RankingService;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -671,7 +672,7 @@ class BeneficiaryResource extends Resource
                                 ->label(__('sanabel.household_member.pension_income'))
                                 ->helperText(__('sanabel.household_member.pension_help'))
                                 ->numeric()->minValue(0)
-                                ->suffix(config('sanabel.currency'))
+                                ->suffix(Money::short())
                                 ->visible(fn (Forms\Get $get) => $get('occupation') === 'retired'),
 
                             /*
@@ -769,7 +770,7 @@ class BeneficiaryResource extends Resource
                             Forms\Components\TextInput::make('amount')
                                 ->label(__('sanabel.income.amount'))
                                 ->numeric()->minValue(0)->required()
-                                ->suffix(config('sanabel.currency')),
+                                ->suffix(Money::short()),
                             Forms\Components\Toggle::make('is_stable')
                                 ->label(__('sanabel.income.is_stable'))
                                 ->helperText(__('sanabel.income.stable_help'))
@@ -819,7 +820,7 @@ class BeneficiaryResource extends Resource
                             Forms\Components\TextInput::make('monthly_rent')
                                 ->label(__('sanabel.housing.rent'))
                                 ->numeric()->minValue(0)->default(0)
-                                ->suffix(config('sanabel.currency'))
+                                ->suffix(Money::short())
                                 ->visible(fn (Forms\Get $get) => $get('housing_type') === 'rent'),
 
                             Forms\Components\Select::make('rent_period')
@@ -949,7 +950,7 @@ class BeneficiaryResource extends Resource
                                 ->label(__('sanabel.health.monthly_cost'))
                                 ->helperText(__('sanabel.health.cost_help'))
                                 ->numeric()->minValue(0)->default(0)
-                                ->suffix(config('sanabel.currency')),
+                                ->suffix(Money::short()),
                             Forms\Components\Toggle::make('ongoing_treatment')
                                 ->label(__('sanabel.health.ongoing_treatment'))
                                 ->live(),
@@ -1029,7 +1030,7 @@ class BeneficiaryResource extends Resource
                             Forms\Components\TextInput::make('estimated_value')
                                 ->label(__('sanabel.asset.estimated_value'))
                                 ->numeric()->minValue(0)
-                                ->suffix(config('sanabel.currency')),
+                                ->suffix(Money::short()),
 
                             // T-64 — the two questions a number could not
                             // answer, asked of the researcher on the visit.
@@ -1059,7 +1060,7 @@ class BeneficiaryResource extends Resource
                         ->helperText(__('sanabel.asset.surplus_total_help'))
                         ->content(fn (?Beneficiary $record) => $record
                             ? number_format(app(RankingService::class)->surplusAssetValue($record))
-                                .' '.config('sanabel.currency')
+                                .' '.Money::short()
                             : '—'),
 
                     Forms\Components\Repeater::make('livestock')
@@ -1095,7 +1096,7 @@ class BeneficiaryResource extends Resource
                                 ->label(__('sanabel.livestock.monthly_income'))
                                 ->helperText(__('sanabel.livestock.monthly_income_help'))
                                 ->numeric()->minValue(0)
-                                ->suffix(config('sanabel.currency'))
+                                ->suffix(Money::short())
                                 ->visible(fn (Forms\Get $get) => in_array(
                                     $get('income_kind'),
                                     ['partial_income', 'main_income'],
@@ -1137,7 +1138,7 @@ class BeneficiaryResource extends Resource
                                 ->label(__('sanabel.debt.amount'))
                                 ->helperText(__('sanabel.debt.engine_help'))
                                 ->numeric()->minValue(0)->required()
-                                ->suffix(config('sanabel.currency')),
+                                ->suffix(Money::short()),
 
                             Forms\Components\TextInput::make('creditor_address_ar')
                                 ->label(__('sanabel.debt.creditor_address_ar')),
@@ -1199,7 +1200,7 @@ class BeneficiaryResource extends Resource
                             Forms\Components\TextInput::make('amount')
                                 ->label(__('sanabel.support_source.amount'))
                                 ->numeric()->minValue(0)
-                                ->suffix(config('sanabel.currency')),
+                                ->suffix(Money::short()),
 
                             // The month this payment answers, and only this
                             // month: it comes off that month's remaining need
@@ -1254,7 +1255,7 @@ class BeneficiaryResource extends Resource
                             Forms\Components\TextInput::make('monthly_support')
                                 ->label(__('sanabel.caregiver.monthly_support'))
                                 ->numeric()->minValue(0)
-                                ->suffix(config('sanabel.currency')),
+                                ->suffix(Money::short()),
 
                             Forms\Components\Toggle::make('smokes')
                                 ->label(__('sanabel.caregiver.smokes')),
@@ -1266,7 +1267,7 @@ class BeneficiaryResource extends Resource
                             Forms\Components\TextInput::make('neighbours_support')
                                 ->label(__('sanabel.caregiver.neighbours_support'))
                                 ->numeric()->minValue(0)
-                                ->suffix(config('sanabel.currency'))
+                                ->suffix(Money::short())
                                 ->visible(fn (Forms\Get $get) => (bool) $get('neighbours_help')),
 
                             Forms\Components\TextInput::make('neighbours_relation')
@@ -1297,7 +1298,7 @@ class BeneficiaryResource extends Resource
                     Forms\Components\TextInput::make('proposal_cost')
                         ->label(__('sanabel.beneficiary.proposal_cost'))
                         ->numeric()->minValue(0)
-                        ->suffix(config('sanabel.currency')),
+                        ->suffix(Money::short()),
 
                     Forms\Components\TextInput::make('surveyed_by_ar')
                         ->label(__('sanabel.beneficiary.surveyed_by_ar')),
@@ -1445,13 +1446,13 @@ class BeneficiaryResource extends Resource
                         ->label(__('sanabel.beneficiary.declared_monthly_income'))
                         ->helperText(__('sanabel.beneficiary.declared_income_help'))
                         ->numeric()->minValue(0)
-                        ->suffix(config('sanabel.currency')),
+                        ->suffix(Money::short()),
 
                     Forms\Components\TextInput::make('documented_debt')
                         ->label(__('sanabel.beneficiary.documented_debt'))
                         ->helperText(__('sanabel.beneficiary.debt_help'))
                         ->numeric()->minValue(0)->default(0)
-                        ->suffix(config('sanabel.currency')),
+                        ->suffix(Money::short()),
 
                     // Read-only. The engine computes these; the form never accepts them.
                     Forms\Components\Placeholder::make('computed_need')

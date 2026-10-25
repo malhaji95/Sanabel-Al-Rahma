@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\RegionRentReferenceResource\Pages;
 use App\Models\RegionRentReference;
+use App\Services\Money;
 use App\Services\ReferenceImporter;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -43,7 +44,7 @@ class RegionRentReferenceResource extends Resource
                 ->label(__('sanabel.rent_reference.amount'))
                 ->helperText(__('sanabel.reference.not_approved_help'))
                 ->numeric()->minValue(0)
-                ->suffix(config('sanabel.currency')),
+                ->suffix(Money::short()),
             Forms\Components\DatePicker::make('effective_from')->label(__('sanabel.reference.effective_from'))->required(),
             Forms\Components\TextInput::make('version')->label(__('sanabel.reference.version'))->numeric()->minValue(0)->required(),
         ])->columns(2);

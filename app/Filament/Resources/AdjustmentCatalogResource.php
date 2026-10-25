@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\AdjustmentCatalogResource\Pages;
 use App\Models\AdjustmentCatalog;
+use App\Services\Money;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -36,7 +37,7 @@ class AdjustmentCatalogResource extends Resource
         return $form->schema([
             Forms\Components\TextInput::make('key')->label(__('sanabel.adjustment.key'))->required(),
             Forms\Components\TextInput::make('name_ar')->label(__('sanabel.adjustment.name'))->required(),
-            Forms\Components\TextInput::make('amount')->label(__('sanabel.adjustment.amount'))->numeric()->minValue(0)->required()->suffix(config('sanabel.currency')),
+            Forms\Components\TextInput::make('amount')->label(__('sanabel.adjustment.amount'))->numeric()->minValue(0)->required()->suffix(Money::short()),
             Forms\Components\Select::make('region_id')->label(__('sanabel.beneficiary.region'))->relationship('region', 'name_ar')->searchable(),
             Forms\Components\DatePicker::make('effective_from')->label(__('sanabel.reference.effective_from'))->required(),
             Forms\Components\TextInput::make('version')->label(__('sanabel.reference.version'))->numeric()->minValue(0)->required(),

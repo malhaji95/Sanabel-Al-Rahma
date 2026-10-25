@@ -199,7 +199,7 @@
                         <p class="tabular text-2xl font-bold" style="color: {{ $colour }};">
                             {{ number_format($value) }}
                             @if ($isMoney)
-                                <span class="text-xs font-normal" style="color: var(--text-muted);">{{ config('sanabel.currency') }}</span>
+                                <span class="text-xs font-normal" style="color: var(--text-muted);">{{ \App\Services\Money::label() }}</span>
                             @endif
                         </p>
                         <p class="mt-1 text-xs" style="color: var(--text-muted);">{{ $label }}</p>

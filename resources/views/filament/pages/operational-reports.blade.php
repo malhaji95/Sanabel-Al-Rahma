@@ -44,7 +44,7 @@
                             {{ number_format($report[$group][$key] ?? 0) }}
                             @if ($section['money'])
                                 <span class="text-xs font-normal" style="color: var(--gray-500);">
-                                    {{ config('sanabel.currency') }}
+                                    {{ \App\Services\Money::short() }}
                                 </span>
                             @endif
                         </dd>
@@ -59,7 +59,7 @@
                         <dd class="mt-1 text-xl font-bold tabular-nums">
                             {{ number_format($report['campaigns']['goal']) }}
                             <span class="text-xs font-normal" style="color: var(--gray-500);">
-                                {{ config('sanabel.currency') }}
+                                {{ \App\Services\Money::short() }}
                             </span>
                         </dd>
                     </div>

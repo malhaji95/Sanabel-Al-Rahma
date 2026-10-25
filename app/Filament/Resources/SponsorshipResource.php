@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\SponsorshipResource\Pages;
 use App\Models\Sponsorship;
+use App\Services\Money;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -46,7 +47,7 @@ class SponsorshipResource extends Resource
             Forms\Components\TextInput::make('amount')
                 ->label(__('sanabel.sponsorship.amount'))
                 ->numeric()->minValue(1)->required()
-                ->suffix(config('sanabel.currency')),
+                ->suffix(Money::short()),
 
             // Both dates are required — the installments are generated from them.
             Forms\Components\DatePicker::make('start_date')->label(__('sanabel.sponsorship.start'))->required(),

@@ -167,7 +167,7 @@
             @else
                 <span style="color: var(--text-muted);">{{ __('sanabel.public.remaining') }}:</span>
                 <span class="tabular font-bold">{{ number_format($case['remaining_amount']) }}</span>
-                <span style="color: var(--text-muted);">{{ $case['currency'] }}</span>
+                <span style="color: var(--text-muted);">{{ \App\Services\Money::label($case['currency']) }}</span>
             @endif
         </p>
 
@@ -175,7 +175,7 @@
             <p class="mt-1.5 text-sm">
                 <span style="color: var(--text-muted);">{{ __('sanabel.funding.target_remaining') }}:</span>
                 <span class="tabular font-bold">{{ number_format($case['target_remaining']) }}</span>
-                <span style="color: var(--text-muted);">{{ $case['currency'] }}</span>
+                <span style="color: var(--text-muted);">{{ \App\Services\Money::label($case['currency']) }}</span>
 
                 @if ($case['target_complete'] ?? false)
                     <span class="badge bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
@@ -190,7 +190,8 @@
             <p class="mt-2 text-xs" style="color: var(--text-muted);">
                 {{ __('sanabel.funding.sufficiency_note', [
                     'need' => number_format($case['need_amount']),
-                    'currency' => $case['currency'],
+                    // T-136 — the words, not the stored code.
+                    'currency' => \App\Services\Money::label($case['currency']),
                     'percent' => $targetPercent,
                 ]) }}
             </p>

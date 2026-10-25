@@ -20,7 +20,7 @@
             <div class="card">
                 <p class="text-sm" style="color: var(--text-muted);">{{ __('sanabel.portal.monthly_need') }}</p>
                 <p class="tabular text-2xl font-bold">{{ number_format($need) }}
-                    <span class="text-sm font-normal">{{ config('sanabel.currency') }}</span></p>
+                    <span class="text-sm font-normal">{{ \App\Services\Money::label() }}</span></p>
             </div>
 
             <div class="card">
@@ -52,7 +52,7 @@
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div>
                                 <p class="tabular text-lg font-bold">{{ number_format($payment->amount) }}
-                                    <span class="text-sm font-normal">{{ config('sanabel.currency') }}</span></p>
+                                    <span class="text-sm font-normal">{{ \App\Services\Money::label() }}</span></p>
                                 <p class="mt-1 text-sm" style="color: var(--text-muted);">
                                     {{ __('sanabel.disbursement.transfer_ref') }}:
                                     <span class="tabular" dir="ltr">{{ $payment->transfer_ref ?? '—' }}</span>

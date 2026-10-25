@@ -6,6 +6,7 @@ use App\Models\Beneficiary;
 use App\Models\Donation;
 use App\Services\CoverageService;
 use App\Services\GeneralMoneyService;
+use App\Services\Money;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -83,7 +84,7 @@ class AllocateGeneralMoney extends Page implements HasForms
                     ->label(__('sanabel.general.amount'))
                     ->numeric()
                     ->minValue(1)
-                    ->suffix(config('sanabel.currency'))
+                    ->suffix(Money::short())
                     ->required(),
             ])
             ->columns(3)

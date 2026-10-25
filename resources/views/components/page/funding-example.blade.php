@@ -55,7 +55,7 @@
     >
         <p class="tabular text-2xl font-bold">{{ number_format($need) }}
             <span class="text-sm font-normal" style="color: var(--text-muted);">
-                {{ config('sanabel.currency') }} — {{ __('sanabel.funding.real_need') }}
+                {{ \App\Services\Money::label() }} — {{ __('sanabel.funding.real_need') }}
             </span>
         </p>
 
@@ -69,7 +69,7 @@
                        value="{{ $percent }}" x-model.number="percent" class="w-full">
                 <p class="tabular mt-1 text-sm">
                     <span x-text="money(goal)">{{ number_format($goal) }}</span>
-                    <span style="color: var(--text-muted);">{{ config('sanabel.currency') }}</span>
+                    <span style="color: var(--text-muted);">{{ \App\Services\Money::label() }}</span>
                 </p>
             </div>
 
@@ -82,7 +82,7 @@
                        value="{{ $collected }}" x-model.number="collected" class="w-full">
                 <p class="tabular mt-1 text-sm">
                     <span x-text="money(paid)">{{ number_format($paid) }}</span>
-                    <span style="color: var(--text-muted);">{{ config('sanabel.currency') }}</span>
+                    <span style="color: var(--text-muted);">{{ \App\Services\Money::label() }}</span>
                 </p>
             </div>
         </div>
@@ -108,7 +108,7 @@
         <p class="mt-4 text-sm">
             <span style="color: var(--text-muted);">{{ __('sanabel.public.remaining') }}:</span>
             <span class="tabular font-bold" x-text="money(need - paid)">{{ number_format($need - $paid) }}</span>
-            <span style="color: var(--text-muted);">{{ config('sanabel.currency') }}</span>
+            <span style="color: var(--text-muted);">{{ \App\Services\Money::label() }}</span>
         </p>
     </div>
 </section>

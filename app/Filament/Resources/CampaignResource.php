@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\CampaignResource\Pages;
 use App\Models\Campaign;
+use App\Services\Money;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -50,7 +51,7 @@ class CampaignResource extends Resource
                 ->directory('campaigns')
                 ->maxSize(4096)
                 ->columnSpanFull(),
-            Forms\Components\TextInput::make('goal_amount')->label(__('sanabel.campaign.goal'))->numeric()->minValue(0)->required()->suffix(config('sanabel.currency')),
+            Forms\Components\TextInput::make('goal_amount')->label(__('sanabel.campaign.goal'))->numeric()->minValue(0)->required()->suffix(Money::short()),
             Forms\Components\Select::make('beneficiary_id')->label(__('sanabel.campaign.case'))->relationship('beneficiary', 'file_number')->searchable(),
             Forms\Components\DatePicker::make('starts_on')
                 ->label(__('sanabel.campaigns.starts_on'))

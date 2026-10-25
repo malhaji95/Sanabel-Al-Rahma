@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ProviderResource\Pages;
 use App\Models\Provider;
+use App\Services\Money;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -61,7 +62,7 @@ class ProviderResource extends Resource
                 ->label(__('sanabel.provider.case_value'))
                 ->helperText(__('sanabel.provider.case_value_help'))
                 ->numeric()->minValue(0)
-                ->suffix(config('sanabel.currency')),
+                ->suffix(Money::short()),
         ])->columns(2);
     }
 

@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\RegionRateResource\Pages;
 use App\Models\RegionRate;
+use App\Services\Money;
 use App\Services\ReferenceImporter;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -54,7 +55,7 @@ class RegionRateResource extends Resource
                 ->label(__('sanabel.rate.amount'))
                 ->helperText(__('sanabel.reference.not_approved_help'))
                 ->numeric()->minValue(0)
-                ->suffix(config('sanabel.currency')),
+                ->suffix(Money::short()),
 
             Forms\Components\DatePicker::make('effective_from')
                 ->label(__('sanabel.reference.effective_from'))

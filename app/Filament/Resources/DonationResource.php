@@ -8,6 +8,7 @@ use App\Models\Fund;
 use App\Payments\PaymentGateway;
 use App\Services\DonationService;
 use App\Services\MediaService;
+use App\Services\Money;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -59,7 +60,7 @@ class DonationResource extends Resource
             Forms\Components\TextInput::make('amount')
                 ->label(__('sanabel.donation.amount'))
                 ->numeric()->minValue(1)->required()
-                ->suffix(config('sanabel.currency')),
+                ->suffix(Money::short()),
 
             Forms\Components\TextInput::make('transaction_ref')
                 ->label(__('sanabel.donation.transaction_ref'))

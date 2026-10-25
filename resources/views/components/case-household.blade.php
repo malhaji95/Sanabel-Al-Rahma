@@ -34,7 +34,7 @@
             ? __('sanabel.masked.debt_amount_row')
             : __('sanabel.masked.debt')) => isset($case['has_debt'])
                 ? ($case['has_debt']
-                    ? number_format((int) $case['debt_amount']) . ' ' . config('sanabel.currency')
+                    ? number_format((int) $case['debt_amount']) . ' ' . \App\Services\Money::label()
                     : __('sanabel.no'))
                 : null,
 

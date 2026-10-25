@@ -52,7 +52,7 @@
                     <div class="flex items-center justify-between gap-2">
                         <span class="tabular font-semibold">
                             {{ number_format($item['amount']) }}
-                            <span class="text-xs font-normal" style="color: var(--text-muted);">{{ config('sanabel.currency') }}</span>
+                            <span class="text-xs font-normal" style="color: var(--text-muted);">{{ \App\Services\Money::label() }}</span>
                         </span>
                         <button
                             type="button"
@@ -69,7 +69,7 @@
                 <span class="text-lg font-medium">{{ __('sanabel.public.total') }}</span>
                 <span class="tabular text-2xl font-bold" style="color: var(--accent);">
                     {{ number_format($total) }}
-                    <span class="text-sm font-normal" style="color: var(--text-muted);">{{ config('sanabel.currency') }}</span>
+                    <span class="text-sm font-normal" style="color: var(--text-muted);">{{ \App\Services\Money::label() }}</span>
                 </span>
             </div>
 

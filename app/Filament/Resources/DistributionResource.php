@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\DistributionResource\Pages;
 use App\Models\Distribution;
 use App\Services\DistributionService;
+use App\Services\Money;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -46,7 +47,7 @@ class DistributionResource extends Resource
             Forms\Components\TextInput::make('per_family_amount')
                 ->label(__('sanabel.distribution.per_family'))
                 ->numeric()->minValue(1)->required()
-                ->suffix(config('sanabel.currency')),
+                ->suffix(Money::short()),
 
             Forms\Components\Select::make('criteria_json.support_type')
                 ->label(__('sanabel.beneficiary.support_type'))

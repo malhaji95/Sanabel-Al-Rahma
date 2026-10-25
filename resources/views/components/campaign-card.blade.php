@@ -113,7 +113,7 @@
             @endforeach
         </dl>
 
-        <p class="mt-1.5 text-center text-xs" style="color: var(--text-muted);">{{ $campaign->currency }}</p>
+        <p class="mt-1.5 text-center text-xs" style="color: var(--text-muted);">{{ \App\Services\Money::label($campaign->currency) }}</p>
     </div>
 
     @if ($monthly)
@@ -136,7 +136,7 @@
                     <span class="tabular font-bold">{{ number_format($monthly['remaining_amount']) }}</span>
                     <span style="color: var(--text-muted);">
                         {{ __('sanabel.public.of_total', ['total' => number_format($monthly['need_amount'])]) }}
-                        {{ $monthly['currency'] }}
+                        {{ \App\Services\Money::label($monthly['currency']) }}
                     </span>
                 @endif
             </p>

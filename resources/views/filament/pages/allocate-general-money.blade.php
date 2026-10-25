@@ -3,7 +3,7 @@
         <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('sanabel.general.balance') }}</p>
         <p class="mt-1 text-3xl font-bold text-primary-600 dark:text-primary-400">
             {{ number_format($balance) }}
-            <span class="text-sm font-normal text-gray-500">{{ config('sanabel.currency') }}</span>
+            <span class="text-sm font-normal text-gray-500">{{ \App\Services\Money::short() }}</span>
         </p>
         <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ __('sanabel.general.help') }}</p>
     </div>
