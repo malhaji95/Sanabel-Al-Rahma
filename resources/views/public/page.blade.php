@@ -31,9 +31,17 @@
             @if ($levels->count() > 1)
                 <nav class="mt-5 flex flex-wrap gap-2" aria-label="{{ __('sanabel.page.levels') }}">
                     @foreach ($levels as $level)
+                        {{-- T-122 — «١. المختصر» names a level and «01» names
+                             nothing, so a chip whose badge carries no letters
+                             is read by its title instead. The association's
+                             own navigation does the same on both pages. --}}
+                        @php($label = preg_match('/\p{L}/u', (string) $level->badge_ar)
+                            ? $level->badge_ar
+                            : ($level->title_ar ?: $level->badge_ar))
+
                         <a href="#{{ $level->anchorId() }}"
                            class="btn-secondary inline-flex items-center gap-1 text-sm no-underline">
-                            {{ $level->badge_ar ?: $level->title_ar }}
+                            {{ $label }}
                         </a>
                     @endforeach
                 </nav>
@@ -100,6 +108,14 @@
                          switched off and a browser can find text inside it. --}}
                     <details @if ($anchor) id="{{ $anchor }}" @endif class="card mt-3 scroll-mt-24 !p-0">
                         <summary class="cursor-pointer list-none px-5 py-4 font-bold">
+                            {{-- T-122 — the association numbers these in their
+                                 own design, and the number is how they refer
+                                 to one in writing. --}}
+                            @if ($section->badge_ar)
+                                <span class="me-2 text-sm" style="color: var(--text-muted);">
+                                    {{ $section->badge_ar }}
+                                </span>
+                            @endif
                             {{ $section->title_ar }}
                         </summary>
 

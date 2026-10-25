@@ -6,7 +6,7 @@ use App\Models\Page;
 use App\Models\PageSection;
 use App\Models\Setting;
 use Database\Seeders\HomePageSeeder;
-use Database\Seeders\HowWeWorkSeeder;
+use Database\Seeders\PageContentSeeder;
 use Filament\Facades\Filament;
 
 /*
@@ -14,9 +14,14 @@ use Filament\Facades\Filament;
  | on a page, editable from the panel, inside the platform rather than as a
  | separate HTML file.
  |
- | The thing being tested is the structure, not that one page's words: they
- | said the other six pages follow the same way, so a page is a flat ordered
- | list of typed sections and «كيف نعمل» is the first one filled in.
+ | T-122 — and the other four, sent on 25 October with «المطلوب تعبئة
+ | محتواهم»: شروط الاستخدام، الأسئلة الشائعة، الشفافية المالية، الرقابة
+ | والتفتيش، and «كيف نعمل» rewritten.
+ |
+ | The thing being tested is the structure, not one page's words: the words
+ | are now data, one file per page, and what has to hold is that any of them
+ | draws, is editable, and costs the same few queries whether it carries
+ | twenty-five sections or sixty.
  */
 
 beforeEach(function () {
@@ -24,27 +29,26 @@ beforeEach(function () {
     (new HomePageSeeder)->run();
 });
 
-it('draws the three levels, the panels and the controls the association designed', function () {
-    (new HowWeWorkSeeder)->run();
+it('draws the levels, the panels and the controls the association designed', function () {
+    (new PageContentSeeder)->run();
 
     $body = $this->get('/how-we-work')->assertOk()->getContent();
 
-    expect($body)->toContain('المستوى الأول')
-        ->and($body)->toContain('المستوى الثاني')
-        ->and($body)->toContain('المستوى الثالث')
+    expect($body)->toContain('١. المختصر')
+        ->and($body)->toContain('٢. التفاصيل')
+        ->and($body)->toContain('٣. الأدلة')
         // The control line under a step, which is the point of their design.
-        ->and($body)->toContain('ضابط العدالة')
-        ->and($body)->toContain('مسار العائلة')
-        ->and($body)->toContain('مسار التبرع')
+        ->and($body)->toContain('من سجّل لا يعتمد تحقق نفسه.')
+        ->and($body)->toContain('الوصول إلى العائلة والتسجيل')
         // A panel is a disclosure element, so it opens with no script at all.
         ->and($body)->toContain('<details')
-        // And an anchor can send a reader to one.
-        ->and($body)->toContain('id="family1"')
-        ->and($body)->toContain('id="doc-privacy"');
+        // And an anchor can send a reader to a level.
+        ->and($body)->toContain('id="detail"')
+        ->and($body)->toContain('id="evidence"');
 });
 
 it('is the page the platform draws, not an HTML file dropped beside it', function () {
-    (new HowWeWorkSeeder)->run();
+    (new PageContentSeeder)->run();
 
     $body = $this->get('/how-we-work')->assertOk()->getContent();
 
@@ -59,8 +63,41 @@ it('is the page the platform draws, not an HTML file dropped beside it', functio
         ->and($body)->not->toContain('Tahoma');
 });
 
+it('fills every page the association sent, and none that they did not', function () {
+    (new PageContentSeeder)->run();
+
+    foreach ([
+        '/how-we-work' => 'المنهجية والإجراءات الكاملة',
+        '/terms' => 'الشروط بالتفصيل',
+        '/faq' => 'التعريف بالمنصة',
+        '/financial-transparency' => 'كيف تتحقق من وضوح الأرقام؟',
+        '/internal-oversight' => 'ماذا تراجع الرقابة؟ وكيف؟',
+    ] as $url => $heading) {
+        expect($this->get($url)->assertOk()->getContent())->toContain($heading);
+    }
+
+    // The two they have not written yet still say so rather than inventing
+    // words for them.
+    expect($this->get('/about')->assertOk()->getContent())
+        ->toContain('بانتظار نصّها من الجمعية');
+});
+
+it('carries all fifty questions, each with its own address', function () {
+    (new PageContentSeeder)->run();
+
+    $page = Page::firstWhere('slug', 'faq');
+
+    expect($page->sections()->where('kind', 'accordion')->count())->toBe(50)
+        ->and($page->sections()->where('kind', 'heading')->count())->toBe(10);
+
+    $body = $this->get('/faq')->assertOk()->getContent();
+
+    expect($body)->toContain('ما هي سنابل الوفاء؟')
+        ->and($body)->toContain('id="answer-50"');
+});
+
 it('lets the association edit every level from the panel', function () {
-    (new HowWeWorkSeeder)->run();
+    (new PageContentSeeder)->run();
 
     Filament::setCurrentPanel(Filament::getPanel('admin'));
     passTwoFactor();
@@ -75,29 +112,29 @@ it('lets the association edit every level from the panel', function () {
         ])
         ->assertSuccessful()
         // The rows themselves, by the title the editor reads in the list.
-        ->assertSee('نعرف الحاجة قبل الحكم عليها');
+        ->assertSee('الفكرة في أقل من دقيقة');
 
     // And an edit reaches the public page without a release.
-    $section = $page->sections()->where('kind', 'statement')->first();
+    $section = $page->sections()->where('kind', 'accordion')->first();
     $section->update(['body_ar' => 'عبارة كتبتها الجمعية بنفسها.']);
 
     expect($this->get('/how-we-work')->getContent())->toContain('عبارة كتبتها الجمعية بنفسها.');
 })->group('AUTH-01');
 
 it('hides a section the association unpublishes, and keeps the rest', function () {
-    (new HowWeWorkSeeder)->run();
+    (new PageContentSeeder)->run();
 
     $page = Page::firstWhere('slug', 'how-we-work');
-    $page->sections()->where('anchor', 'family1')->update(['is_published' => false]);
+    $page->sections()->where('title_ar', 'التحقق الميداني المنفصل')->update(['is_published' => false]);
 
     $body = $this->get('/how-we-work')->assertOk()->getContent();
 
-    expect($body)->not->toContain('التسجيل الميداني')
-        ->and($body)->toContain('التحقق المستقل');
+    expect($body)->not->toContain('من سجّل لا يعتمد تحقق نفسه.')
+        ->and($body)->toContain('الوصول إلى العائلة والتسجيل');
 });
 
 it('reads the association own funding share into the example, not a number typed on a page', function () {
-    (new HowWeWorkSeeder)->run();
+    (new PageContentSeeder)->run();
 
     Setting::put('funding_target_percent', 40);
 
@@ -111,7 +148,7 @@ it('reads the association own funding share into the example, not a number typed
 });
 
 it('works with the script switched off, which is what the package asked for', function () {
-    (new HowWeWorkSeeder)->run();
+    (new PageContentSeeder)->run();
 
     $body = $this->get('/how-we-work')->assertOk()->getContent();
 
@@ -122,12 +159,12 @@ it('works with the script switched off, which is what the package asked for', fu
      | before Alpine sees them.
      */
     expect($body)->toContain('<summary')
-        ->and($body)->toContain('href="#short"')
+        ->and($body)->toContain('href="#detail"')
         ->and($body)->toContain('style="width: 50%"');
 });
 
 it('refuses to put a content editor id straight into the markup', function () {
-    $page = Page::firstWhere('slug', 'how-we-work');
+    $page = Page::firstOrCreate(['slug' => 'how-we-work'], ['title_ar' => 'كيف نعمل', 'is_published' => true]);
 
     $section = PageSection::create([
         'page_id' => $page->id,
@@ -145,28 +182,39 @@ it('refuses to put a content editor id straight into the markup', function () {
 })->group('APP-02');
 
 it('serves a page and its sections without asking a question per section', function () {
-    (new HowWeWorkSeeder)->run();
+    (new PageContentSeeder)->run();
 
     DB::enableQueryLog();
-    $this->get('/how-we-work')->assertOk();
+    $this->get('/faq')->assertOk();
     $queries = count(DB::getQueryLog());
     DB::disableQueryLog();
 
-    // Thirty-seven sections, and the page is still a handful of queries: the
-    // sections come back in one, as they must before six more pages follow.
-    expect(PageSection::count())->toBeGreaterThan(30)
+    // Sixty-one sections, and the page is still a handful of queries: they
+    // come back in one, which is what let the other four pages follow.
+    expect(Page::firstWhere('slug', 'faq')->sections()->count())->toBeGreaterThan(60)
         ->and($queries)->toBeLessThan(12);
 });
 
 it('leaves a page the association has already edited alone', function () {
-    (new HowWeWorkSeeder)->run();
+    (new PageContentSeeder)->run();
 
-    $page = Page::firstWhere('slug', 'how-we-work');
+    $page = Page::firstWhere('slug', 'terms');
     $page->sections()->where('kind', 'card')->delete();
     $before = $page->sections()->count();
 
     // Running the seeder again on a filled page would overwrite their work.
-    (new HowWeWorkSeeder)->run();
+    (new PageContentSeeder)->run();
 
     expect($page->sections()->count())->toBe($before);
+});
+
+it('keeps a line the association wrote over the placeholder', function () {
+    // The page exists with the placeholder, somebody replaces the lead, and
+    // the seeder must not put the mock-up's own words back over it.
+    $page = Page::firstWhere('slug', 'terms');
+    $page->update(['body_ar' => 'نصّ كتبته الجمعية بدل العبارة المؤقتة.']);
+
+    (new PageContentSeeder)->run();
+
+    expect($page->refresh()->body_ar)->toBe('نصّ كتبته الجمعية بدل العبارة المؤقتة.');
 });
