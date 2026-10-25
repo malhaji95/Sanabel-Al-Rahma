@@ -2,17 +2,18 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Basket;
-use App\Models\Beneficiary;
-use App\Models\Donation;
-use App\Models\DistributionItem;
-use App\Models\Setting;
-use App\Models\Sponsorship;
-use App\Models\SponsorshipInstallment;
+use App\Filament\Pages\ApprovalFollowUp;
 use App\Filament\Resources\BeneficiaryResource;
 use App\Filament\Resources\DistributionResource;
 use App\Filament\Resources\DonationResource;
 use App\Filament\Resources\SponsorshipResource;
+use App\Models\Basket;
+use App\Models\Beneficiary;
+use App\Models\DistributionItem;
+use App\Models\Donation;
+use App\Models\Setting;
+use App\Models\Sponsorship;
+use App\Models\SponsorshipInstallment;
 use App\Services\CaseService;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -77,15 +78,19 @@ class OverviewStats extends BaseWidget
                 Beneficiary::whereIn('status', CaseService::AWAITING_FIELD)->count())
                 ->description(__('sanabel.dashboard.awaiting_delegate_help'))
                 ->color('info')
-                // Three statuses wait on the delegate; the list opens on the
-                // one a file sits in longest.
-                ->url($this->cases('pending_visit')),
+                /*
+                 | T-125 — the figure said how many and not whose. It opens
+                 | the follow-up screen, where the same queue is broken down
+                 | by the account that opened each file and by how long it
+                 | has waited.
+                 */
+                ->url(ApprovalFollowUp::getUrl()),
 
             Stat::make(__('sanabel.dashboard.awaiting_supervisor'),
                 Beneficiary::where('status', 'verified')->count())
                 ->description(__('sanabel.dashboard.awaiting_supervisor_help'))
                 ->color('info')
-                ->url($this->cases('verified')),
+                ->url(ApprovalFollowUp::getUrl()),
 
             Stat::make(__('sanabel.dashboard.pending_approval'),
                 Beneficiary::where('status', 'pending_approval')->count())

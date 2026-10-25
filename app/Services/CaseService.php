@@ -136,6 +136,49 @@ class CaseService
         return $case->refresh();
     }
 
+    /**
+     * T-125 — the file goes back to the field, with the note that sent it.
+     *
+     * «المشرف دخل وعطاه ملاحظات بعد المندوب, كيف بترجع الحالة للمندوب؟»,
+     * 26 October. There was no answer: a supervisor could endorse a file or
+     * leave it sitting, and rejection is the director's word and means the
+     * family was refused — not that a page of the form is missing.
+     *
+     * So this is the third thing that can happen to a file in review. It
+     * goes back to «بانتظار الزيارة», which is where the delegate's own
+     * queue reads from, and the note is written where the next person to
+     * open the file will read it. Nothing about the family is decided by it.
+     */
+    public function returnToField(Beneficiary $case, User $reviewer, string $noteAr): Beneficiary
+    {
+        if (blank($noteAr)) {
+            throw new \RuntimeException(__('sanabel.cases.return_note_required'));
+        }
+
+        if (! in_array($case->status, ['verified', 'pending_approval'], true)) {
+            throw new \RuntimeException(__('sanabel.cases.not_returnable'));
+        }
+
+        return DB::transaction(function () use ($case, $noteAr) {
+            $case->forceFill([
+                'status' => 'pending_visit',
+                'reject_reason_ar' => $noteAr,
+                // The sign-offs below this step are given back: whoever
+                // picks the file up next signs it themselves.
+                'field_verified_by' => null,
+                'field_verified_at' => null,
+                'endorsed_by' => null,
+                'endorsed_at' => null,
+            ])->save();
+
+            $this->notifications->send($case->created_by, 'case_returned', [
+                'file_number' => $case->file_number,
+            ]);
+
+            return $case->refresh();
+        });
+    }
+
     public function publish(Beneficiary $case): Beneficiary
     {
         if ($case->status !== 'approved') {

@@ -148,6 +148,21 @@ class BeneficiaryPolicy
             && $user->hasRole('area_supervisor', 'case_officer');
     }
 
+    /**
+     * T-125 — sending a file back to the field for completion.
+     *
+     * The people who read it before it is approved: the supervisor who would
+     * endorse it, the case officer, and the accounts that approve. It is not
+     * a judgement about the family — that is `reject` and it belongs to the
+     * approvers alone — so it sits with whoever is holding the file up.
+     */
+    public function returnToField(User $user, Beneficiary $case): bool
+    {
+        return in_array($case->status, ['verified', 'pending_approval'], true)
+            && $this->inScope($user, $case)
+            && ($this->canWrite($user, 'recommend') || $this->canWrite($user, 'approve_case'));
+    }
+
     public function requestChange(User $user, Beneficiary $case): bool
     {
         return $this->canWrite($user, 'request_change') && $this->inScope($user, $case);

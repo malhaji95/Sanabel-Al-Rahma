@@ -9,6 +9,7 @@ use App\Services\AssessmentService;
 use App\Services\CaseService;
 use Filament\Actions;
 use Filament\Forms;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 
@@ -75,7 +76,7 @@ class EditBeneficiary extends EditRecord
                     Forms\Components\TextInput::make('wallet_encrypted')
                         ->label(__('sanabel.beneficiary.wallet'))
                         ->required(),
-                    Forms\Components\Textarea::make('reason_ar')
+                    Textarea::make('reason_ar')
                         ->label(__('sanabel.actions.reason'))
                         ->required(),
                 ])
@@ -124,6 +125,30 @@ class EditBeneficiary extends EditRecord
                     Notification::make()->title(__('sanabel.actions.endorsed'))->success()->send();
                 }),
 
+            /*
+             | T-125 — «المشرف دخل وعطاه ملاحظات بعد المندوب, كيف بترجع
+             | الحالة للمندوب؟», 26 October. This is how: the file goes back
+             | to the visit queue carrying the note that sent it, and the
+             | account that opened it is told.
+             */
+            Actions\Action::make('returnToField')
+                ->label(__('sanabel.actions.return_to_field'))
+                ->icon('heroicon-o-arrow-uturn-right')
+                ->color('warning')
+                ->visible(fn () => auth()->user()->can('returnToField', $this->record))
+                ->modalDescription(__('sanabel.actions.return_to_field_help'))
+                ->form([
+                    Textarea::make('note')
+                        ->label(__('sanabel.actions.return_note'))
+                        ->helperText(__('sanabel.actions.return_note_help'))
+                        ->required(),
+                ])
+                ->action(function (array $data) {
+                    app(CaseService::class)->returnToField($this->record, auth()->user(), $data['note']);
+
+                    Notification::make()->title(__('sanabel.actions.returned_to_field'))->warning()->send();
+                }),
+
             Actions\Action::make('approve')
                 ->label(__('sanabel.actions.approve'))
                 ->icon('heroicon-o-check-badge')
@@ -144,7 +169,7 @@ class EditBeneficiary extends EditRecord
                 ->color('danger')
                 ->visible(fn () => auth()->user()->can('reject', $this->record))
                 ->form([
-                    Forms\Components\Textarea::make('reason_ar')
+                    Textarea::make('reason_ar')
                         ->label(__('sanabel.actions.reason'))
                         ->required(),
                 ])
@@ -182,7 +207,7 @@ class EditBeneficiary extends EditRecord
                     && ! $this->record->anonymise_requested_by)
                 ->modalDescription(__('sanabel.anonymise.request_help'))
                 ->form([
-                    Forms\Components\Textarea::make('reason_ar')
+                    Textarea::make('reason_ar')
                         ->label(__('sanabel.anonymise.reason'))
                         ->required()
                         ->rows(3),
