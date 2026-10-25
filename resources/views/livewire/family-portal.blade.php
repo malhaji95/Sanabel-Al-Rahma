@@ -117,5 +117,90 @@
                 @endforeach
             </div>
         @endif
+
+        {{-- T-145 — المسار الصحي: تقديم الأسرة، وجواب الجمعية عليه. --}}
+        <div class="card">
+            <h2 class="text-lg font-semibold">{{ __('sanabel.health_path.apply_title') }}</h2>
+            <p class="mt-1 text-sm leading-relaxed" style="color: var(--text-muted);">
+                {{ __('sanabel.health_path.apply_body') }}
+            </p>
+
+            <form wire:submit="applyForHealthPath" class="mt-4 grid gap-3 sm:grid-cols-2">
+                <label class="block text-sm">
+                    <span class="field-label">{{ __('sanabel.health_path.provider_type') }}</span>
+                    <select wire:model="healthType" class="field mt-1">
+                        <option value="">—</option>
+                        @foreach ($healthTypes as $value => $label)
+                            <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    @error('healthType')
+                        <span class="mt-1 block text-xs text-red-700">{{ $message }}</span>
+                    @enderror
+                </label>
+
+                <label class="block text-sm">
+                    <span class="field-label">{{ __('sanabel.health_path.specialty') }}</span>
+                    <input type="text" wire:model="healthSpecialty" class="field mt-1">
+                </label>
+
+                <label class="block text-sm sm:col-span-2">
+                    <span class="field-label">{{ __('sanabel.health_path.note') }}</span>
+                    <textarea wire:model="healthNote" rows="3" class="field mt-1"></textarea>
+                    <span class="mt-1 block text-xs" style="color: var(--text-muted);">
+                        {{ __('sanabel.health_path.note_help') }}
+                    </span>
+                </label>
+
+                <div class="sm:col-span-2">
+                    <button type="submit" class="btn-primary">
+                        <span wire:loading.remove wire:target="applyForHealthPath">
+                            {{ __('sanabel.health_path.apply') }}
+                        </span>
+                        <span wire:loading wire:target="applyForHealthPath">…</span>
+                    </button>
+                </div>
+            </form>
+
+            @if ($healthRequests->isNotEmpty())
+                <h3 class="mt-6 text-sm font-semibold">{{ __('sanabel.health_path.my_requests') }}</h3>
+
+                <ul class="mt-2 space-y-3">
+                    @foreach ($healthRequests as $request)
+                        <li class="rounded-xl border p-3 text-sm" style="border-color: var(--border);">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <span class="font-medium">
+                                    {{ __('sanabel.provider_type.' . $request->provider_type) }}
+                                    @if ($request->specialty_ar)
+                                        — {{ $request->specialty_ar }}
+                                    @endif
+                                </span>
+
+                                <span class="badge">
+                                    {{ __('sanabel.health_path.statuses.' . $request->status) }}
+                                </span>
+                            </div>
+
+                            @if ($request->status === 'issued' && $request->referral)
+                                <p class="mt-2">
+                                    <span style="color: var(--text-muted);">{{ __('sanabel.health_path.card_code') }}:</span>
+                                    <span class="tabular font-bold" dir="ltr">{{ $request->referral->code }}</span>
+                                </p>
+                                <p class="mt-1 text-xs" style="color: var(--text-muted);">
+                                    {{ __('sanabel.health_path.card_expires') }}:
+                                    {{ $request->referral->expires_at?->format('Y-m-d') }}
+                                    — {{ __('sanabel.health_path.card_help') }}
+                                </p>
+                            @endif
+
+                            @if ($request->status === 'declined' && $request->decline_reason_ar)
+                                <p class="mt-2 text-sm">{{ $request->decline_reason_ar }}</p>
+                            @endif
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+        </div>
     @endif
+
 </div>

@@ -42,6 +42,8 @@ class RoleAndPermissionSeeder extends Seeder
             'create_case' => 'all', 'edit_draft' => 'all', 'upload_media' => 'all',
             'recommend' => 'all', 'view_full_case' => 'all', 'search_by_national_id' => 'all',
             'request_change' => 'all', 'confirm_delivery' => 'all', 'publish_job_profile' => 'all',
+            // T-145 — the health path's cards, which no account held.
+            'issue_referral' => 'all',
             'file_complaint' => 'own', 'view_reports' => 'all',
         ],
         // A partner association stands in for the delegate on the files it
@@ -133,6 +135,8 @@ class RoleAndPermissionSeeder extends Seeder
             'view_full_case' => 'all', 'view_masked_case' => 'all', 'search_by_national_id' => 'all',
             'handle_complaint' => 'all', 'manage_campaigns' => 'all', 'approve_content' => 'all',
             'approve_disbursement' => 'all',
+            // T-145 — the health path: the cards and the askings before them.
+            'issue_referral' => 'all',
             /*
              | T-105 — mass distributions and the allocation of general money
              | to families. Both were the administrator's screens, and both
@@ -265,7 +269,12 @@ class RoleAndPermissionSeeder extends Seeder
     public function run(): void
     {
         foreach (PermissionService::permissionKeys() as $key) {
-            Permission::firstOrCreate(['key' => $key], ['name_ar' => __('sanabel.permissions.keys.'.$key)]);
+            /*
+             | T-145 — updateOrCreate, not firstOrCreate: a key seeded before
+             | its Arabic name existed kept the untranslated placeholder as
+             | its name for ever, and the permission matrix printed it.
+             */
+            Permission::updateOrCreate(['key' => $key], ['name_ar' => __('sanabel.permissions.keys.'.$key)]);
         }
 
         $permissions = Permission::pluck('id', 'key');

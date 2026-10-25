@@ -23,6 +23,17 @@ class PermissionService
         'request_change', 'approve_change', 'merge_duplicates', 'donate',
         'verify_payment', 'manage_campaigns', 'manage_distribution', 'confirm_delivery',
         'manage_own_offers', 'verify_referral', 'publish_job_profile', 'manage_members',
+        /*
+         | T-145 — issuing a referral card.
+         |
+         | The screen that issues them has existed since T-29 and asked for
+         | `verify_referral`, which only a service provider holds — and a
+         | provider cannot open that panel at all. So the card nobody could
+         | issue was the reason the health path looked unbuilt. This is the
+         | association's half of it; `verify_referral` stays the provider's,
+         | for redeeming a card at their counter.
+         */
+        'issue_referral',
         'file_complaint', 'handle_complaint', 'manage_cms', 'approve_content', 'manage_users',
         // The disbursement path of 6 October, one key per step so no role
         // quietly holds two of them.

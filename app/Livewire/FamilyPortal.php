@@ -4,8 +4,10 @@ namespace App\Livewire;
 
 use App\Models\Beneficiary;
 use App\Models\Disbursement;
+use App\Models\ReferralRequest;
 use App\Services\CoverageService;
 use App\Services\DisbursementService;
+use App\Services\HealthPathService;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
 
@@ -63,6 +65,56 @@ class FamilyPortal extends Component
         $this->disputing = null;
     }
 
+    /*
+     | T-145 — «ونحتاج يكون عنده تقديم مسار الصحي اللي هو تقديم على اطباء او
+     | مشافي او صيدلية», 28 October. The household's own asking, from their own
+     | page: the kind of place they need, what for, and in their own words.
+     */
+    public string $healthType = '';
+
+    public string $healthSpecialty = '';
+
+    public string $healthNote = '';
+
+    public function applyForHealthPath(): void
+    {
+        $this->notice = $this->error = null;
+
+        $family = $this->family();
+
+        if (! $family) {
+            $this->error = __('sanabel.disbursement.not_your_payment');
+
+            return;
+        }
+
+        $this->validate([
+            'healthType' => ['required', 'string', 'in:'.implode(',', ReferralRequest::TYPES)],
+            'healthSpecialty' => ['nullable', 'string', 'max:191'],
+            'healthNote' => ['nullable', 'string', 'max:1000'],
+        ], attributes: [
+            'healthType' => __('sanabel.health_path.provider_type'),
+            'healthSpecialty' => __('sanabel.health_path.specialty'),
+            'healthNote' => __('sanabel.health_path.note'),
+        ]);
+
+        try {
+            app(HealthPathService::class)->apply(
+                $family,
+                $this->healthType,
+                $this->healthSpecialty ?: null,
+                $this->healthNote ?: null,
+            );
+        } catch (\RuntimeException $e) {
+            $this->error = $e->getMessage();
+
+            return;
+        }
+
+        $this->healthType = $this->healthSpecialty = $this->healthNote = '';
+        $this->notice = __('sanabel.health_path.applied');
+    }
+
     private function run(int $id, callable $step, string $success): void
     {
         $this->notice = $this->error = null;
@@ -106,6 +158,18 @@ class FamilyPortal extends Component
                     ->get()
                 : collect(),
             'confirmDays' => DisbursementService::confirmDays(),
+            // T-145 — their own askings, newest first, with the card where one
+            // has been issued. The code is read here and never sent in a
+            // notification.
+            'healthRequests' => $family
+                ? ReferralRequest::where('beneficiary_id', $family->getKey())
+                    ->with('referral')
+                    ->latest('id')
+                    ->get()
+                : collect(),
+            'healthTypes' => collect(ReferralRequest::TYPES)
+                ->mapWithKeys(fn (string $type) => [$type => __('sanabel.provider_type.'.$type)])
+                ->all(),
             // T-67 — the page layout. Without it Livewire falls back to its own
             // default, components.layouts.app, which this project does not have,
             // and the route answers 500. The other three full-page components all
