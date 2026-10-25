@@ -15,6 +15,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
@@ -48,6 +49,32 @@ class DonationResource extends Resource
         $pending = static::getModel()::where('status', 'pending')->count();
 
         return $pending > 0 ? (string) $pending : null;
+    }
+
+    /**
+     * T-143 — «ومسؤول البيانات يظهر عنده فقط المقيدة, بينما التبرعات العامة
+     * لصندوق سنابل يوصل لامين الصندوق», 28 October.
+     *
+     * An account that raises payment requests reads the money that names
+     * files, because that is the money it turns into payments. The
+     * association's general fund is not its business: that is allocated by
+     * the treasurer, from «توزيع المال العام», and an account that cannot
+     * allocate it has no reason to read it.
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user = auth()->user();
+
+        if ($user?->can_('verify_payment') || $user?->isAdmin() || $user?->hasRole('council')) {
+            return $query;
+        }
+
+        if ($user?->can_('confirm_disbursement')) {
+            return $query->where('designation', 'earmarked');
+        }
+
+        return $query;
     }
 
     public static function form(Form $form): Form

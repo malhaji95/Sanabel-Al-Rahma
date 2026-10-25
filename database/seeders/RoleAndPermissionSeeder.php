@@ -216,7 +216,18 @@ class RoleAndPermissionSeeder extends Seeder
         ],
 
         // Checks the entry: completeness, duplicates, sending a file back.
+        /*
+         | T-143 — «صفحة مسؤول البيانات: لما تجي التبرعات لعنده يقدر يعمل طلب
+         | صرف ويطلع لامين الصندوق, ويتم بعدين يطلع عند المدير التنفيذي ويعمل
+         | موافقة, ويرجع لامين الصندوق ويعمل التحويل», 28 October.
+         |
+         | The first step of the money path — «this family is owed this much
+         | this month» — was the case officer's and the data manager's. The
+         | association put it in this account's hands as well; the four steps
+         | after it do not move, and no account holds two of them.
+         */
         'data_supervisor' => [
+            'confirm_disbursement' => 'all',
             'create_case' => 'all', 'edit_draft' => 'all', 'upload_media' => 'all',
             'merge_duplicates' => 'all', 'view_full_case' => 'all', 'search_by_national_id' => 'all',
             'request_change' => 'all', 'approve_change' => 'all',

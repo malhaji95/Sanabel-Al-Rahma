@@ -261,6 +261,20 @@ class DisbursementService
         // And the accountant, who reconciles what left.
         $this->tell('reconcile_disbursement', 'disbursement_executed', $disbursement->order);
 
+        /*
+         | T-143 — «ويرجع لامين الصندوق ويعمل التحويل وتجي رسالة تأكيد
+         | التحويل», 28 October: the account that raised this line is told
+         | that the money it asked for has gone. It is the one person on the
+         | path who otherwise never hears the end of their own request.
+         */
+        if ($disbursement->confirmed_by) {
+            $this->notifications->send(
+                $disbursement->confirmed_by,
+                'disbursement_executed',
+                ['ref' => $disbursement->order?->reference_no ?? $disbursement->transfer_ref],
+            );
+        }
+
         return $disbursement->refresh();
     }
 

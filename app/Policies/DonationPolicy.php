@@ -15,6 +15,11 @@ class DonationPolicy
         // Whoever may verify a transfer must be able to open the queue of
         // transfers waiting for it.
         return $this->canWrite($user, 'verify_payment')
+            // T-143 — and whoever turns money into a payment request reads the
+            // money that funds it. What they read is narrowed to the gifts
+            // that name files, in DonationResource: the association's general
+            // money is the treasurer's to allocate.
+            || $this->canWrite($user, 'confirm_disbursement')
             || $user->isAdmin() || $user->hasRole('council') || $user->hasRole('donor');
     }
 
@@ -22,6 +27,12 @@ class DonationPolicy
     {
         if ($user->isAdmin() || $user->hasRole('council') || $this->canWrite($user, 'verify_payment')) {
             return true;
+        }
+
+        // T-143 — earmarked money only, for the account that raises the
+        // payment requests it pays for.
+        if ($this->canWrite($user, 'confirm_disbursement')) {
+            return $donation->designation === 'earmarked';
         }
 
         return $user->donor?->getKey() === $donation->donor_id;
