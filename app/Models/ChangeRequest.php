@@ -63,6 +63,9 @@ class ChangeRequest extends Model
         // Its social survey.
         'gender', 'birth_date', 'town_ar', 'quarter_ar', 'latitude', 'longitude', 'works', 'workplace_ar', 'work_income',
         'declared_monthly_income',
+        // T-127 — the three-valued answer and the questions behind it. A
+        // breadwinner who finds work after approval is corrected this way.
+        'work_status', 'profession_ar', 'sought_trade_ar', 'has_certificate', 'experience_years', 'can_teach_quran',
         // The four consents (T-69). A consent is a fact about what the
         // family agreed to, so correcting one goes the same way as
         // correcting anything else on a live file.

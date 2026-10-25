@@ -52,6 +52,9 @@ class Beneficiary extends Model
         'declaration_on',
         // The association's own social survey, carried into the file.
         'gender', 'birth_date', 'town_ar', 'latitude', 'longitude', 'works', 'workplace_ar', 'work_income',
+        // T-127 — يعمل | لا يعمل | يبحث عن عمل، وما يُسأل عند كل جواب.
+        'work_status', 'profession_ar', 'sought_trade_ar', 'has_certificate',
+        'certificate_ar', 'experience_years', 'can_teach_quran',
         'has_quran_memorizers', 'quran_memorizer_count', 'livelihood_proposal_ar',
         'proposal_skills_ar', 'proposal_cost', 'surveyed_by_ar', 'furnishing_ar',
         // T-100 — the two the survey asks and the file had no room for.
@@ -151,6 +154,9 @@ class Beneficiary extends Model
             'declaration_on' => 'date',
             'birth_date' => 'date',
             'works' => 'boolean',
+            'has_certificate' => 'boolean',
+            'can_teach_quran' => 'boolean',
+            'experience_years' => 'integer',
             'smokes' => 'boolean',
             'story_approved_at' => 'datetime',
             'has_quran_memorizers' => 'boolean',
@@ -444,6 +450,21 @@ class Beneficiary extends Model
 
         static::creating($consent);
         static::updating($consent);
+
+        /*
+         | T-127 — «هل يعمل» now has three answers, and `works` has two.
+         |
+         | The masked card and the change-request allowlist both read the
+         | boolean, so it is kept in step here rather than at the one screen
+         | that happens to write it: a file that arrives through the offline
+         | sync or an import says the same thing as one typed in the panel.
+         | «يبحث عن عمل» is not work.
+         */
+        static::saving(function (self $case) {
+            if ($case->isDirty('work_status') && $case->work_status !== null) {
+                $case->works = $case->work_status === 'yes';
+            }
+        });
     }
 
     /** sha256 of the normalised national id — rule 11, exact match blocks a second file. */

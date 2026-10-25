@@ -221,26 +221,71 @@ class BeneficiaryResource extends Resource
                             }
                         }),
 
-                    // هل يعمل صاحب العلاقة — and where, only if he does.
-                    Forms\Components\Toggle::make('works')
-                        ->label(__('sanabel.beneficiary.works'))
+                    /*
+                     | T-127 — «الافضل يكون نعم, لا, يبحث عن عمل», 27 October.
+                     |
+                     | A yes/no toggle made a man who would take a job this
+                     | week answer «لا», which is also the answer of a
+                     | household with nobody of working age in it. The
+                     | association runs a job market for the first of those
+                     | two, and could not tell them apart.
+                     */
+                    Forms\Components\Select::make('work_status')
+                        ->label(__('sanabel.beneficiary.work_status'))
+                        ->options(__('sanabel.work_status'))
                         ->live()
                         ->rule(fn (Forms\Get $get) => function ($attribute, $value, $fail) use ($get) {
-                            if ($value && ! DependencyRules::answersAsAdult(self::ageFromDate($get('birth_date')))) {
+                            if (in_array($value, ['yes', 'seeking'], true)
+                                && ! DependencyRules::answersAsAdult(self::ageFromDate($get('birth_date')))) {
                                 $fail(__('sanabel.cases.too_young_to_work'));
                             }
                         }),
 
+                    // «في حال نعم يذكر المهنة والراتب الحالي».
+                    Forms\Components\TextInput::make('profession_ar')
+                        ->label(__('sanabel.beneficiary.profession_ar'))
+                        ->visible(fn (Forms\Get $get) => $get('work_status') === 'yes'),
+
                     Forms\Components\TextInput::make('workplace_ar')
                         ->label(__('sanabel.beneficiary.workplace_ar'))
-                        ->visible(fn (Forms\Get $get) => (bool) $get('works')),
+                        ->visible(fn (Forms\Get $get) => $get('work_status') === 'yes'),
 
                     // T-121 — what the work pays, asked where the work is.
                     Forms\Components\TextInput::make('work_income')
                         ->label(__('sanabel.beneficiary.work_income'))
                         ->helperText(__('sanabel.beneficiary.work_income_help'))
                         ->numeric()->minValue(0)
-                        ->visible(fn (Forms\Get $get) => (bool) $get('works')),
+                        ->visible(fn (Forms\Get $get) => $get('work_status') === 'yes'),
+
+                    /*
+                     | «في حال يبحث عن عمل تظهر عنده ما هي المهنة التي يستطيع
+                     | العمل بها وهل لديه شهادة وكم سنوات الخبرة واضف خيار هل
+                     | يستطيع تدريس القرأن الكريم». Four questions that only
+                     | mean anything of somebody who is looking.
+                     */
+                    Forms\Components\TextInput::make('sought_trade_ar')
+                        ->label(__('sanabel.beneficiary.sought_trade_ar'))
+                        ->visible(fn (Forms\Get $get) => $get('work_status') === 'seeking'),
+
+                    Forms\Components\Toggle::make('has_certificate')
+                        ->label(__('sanabel.beneficiary.has_certificate'))
+                        ->live()
+                        ->visible(fn (Forms\Get $get) => $get('work_status') === 'seeking'),
+
+                    Forms\Components\TextInput::make('certificate_ar')
+                        ->label(__('sanabel.beneficiary.certificate_ar'))
+                        ->visible(fn (Forms\Get $get) => $get('work_status') === 'seeking'
+                            && (bool) $get('has_certificate')),
+
+                    Forms\Components\TextInput::make('experience_years')
+                        ->label(__('sanabel.beneficiary.experience_years'))
+                        ->numeric()->minValue(0)->maxValue(70)
+                        ->visible(fn (Forms\Get $get) => $get('work_status') === 'seeking'),
+
+                    Forms\Components\Toggle::make('can_teach_quran')
+                        ->label(__('sanabel.beneficiary.can_teach_quran'))
+                        ->helperText(__('sanabel.beneficiary.can_teach_quran_help'))
+                        ->visible(fn (Forms\Get $get) => $get('work_status') === 'seeking'),
 
                     /*
                      | T-100 — the survey asks it of the head and of every
