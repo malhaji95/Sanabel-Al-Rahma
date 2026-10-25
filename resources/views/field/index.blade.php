@@ -22,6 +22,7 @@
             <h1 class="text-lg font-bold">{{ __('sanabel.field.title') }}</h1>
         </div>
 
+        <div class="flex shrink-0 items-center gap-2">
         {{-- The delegate always knows whether the device is online. --}}
         <span
             class="badge shrink-0"
@@ -32,6 +33,18 @@
             <span class="inline-block h-2 w-2 rounded-full" :class="online ? 'bg-brand-600' : 'bg-gold-500'"></span>
             <span x-text="online ? '{{ __('sanabel.field.online') }}' : '{{ __('sanabel.field.offline') }}'"></span>
         </span>
+
+        {{--
+            T-120 — a delegate's phone is the one most likely to be lent,
+            lost or handed over, and it had no way to sign out either.
+        --}}
+        <form method="POST" action="{{ route('logout') }}">
+            @csrf
+            <button type="submit" class="btn-secondary !px-3 !py-1.5 text-sm">
+                {{ __('sanabel.public.logout') }}
+            </button>
+        </form>
+        </div>
     </header>
 
     <div class="alert-warning mb-6 flex-col !items-stretch" x-show="pending > 0" x-cloak role="status">

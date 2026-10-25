@@ -40,22 +40,36 @@ it('puts nothing identifying in the card a messaging app draws', function () {
 });
 
 it('answers a link to a file that is already covered without taking a donation', function () {
+    /*
+     | T-120 — this used to fund the current month only, and read as covered
+     | because the current month was the only one open. It is not, for the
+     | last seven days of every month: the association asked on 13 October
+     | that the next month open before this one ends so a family is not left
+     | with a gap, so from the 25th of a 31-day month a donor may fund either.
+     |
+     | The test passed for twenty-four days a month and failed for seven, and
+     | it went off on 25 October. What it means to say is that a file with
+     | nothing left to fund says so — so it funds every month that is open,
+     | whichever day of the month the suite is run on.
+     */
     $region = regionWithRates();
     $case = publishedCase($region);
     $coverage = app(CoverageService::class);
 
-    $donation = app(DonationService::class)->record([
-        'donor_id' => Donor::factory()->create()->id,
-        'amount' => $coverage->needAmount($case),
-        'transaction_ref' => 'REF-COVERED',
-        'designation' => 'general',
-    ]);
-
     $admin = userWithRole('admin');
-    app(DonationService::class)->verify($donation, $admin->id);
-    app(GeneralMoneyService::class)->allocate(
-        $donation, $case, $coverage->needAmount($case), $coverage->currentMonth(), $admin
-    );
+    $need = $coverage->needAmount($case);
+
+    foreach ($coverage->openMonths() as $index => $month) {
+        $donation = app(DonationService::class)->record([
+            'donor_id' => Donor::factory()->create()->id,
+            'amount' => $need,
+            'transaction_ref' => 'REF-COVERED-'.$index,
+            'designation' => 'general',
+        ]);
+
+        app(DonationService::class)->verify($donation, $admin->id);
+        app(GeneralMoneyService::class)->allocate($donation, $case, $need, $month, $admin);
+    }
 
     $this->get(route('opportunity', $case->file_number))
         ->assertOk()
