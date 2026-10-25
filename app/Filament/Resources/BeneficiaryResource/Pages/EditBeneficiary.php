@@ -25,7 +25,7 @@ class EditBeneficiary extends EditRecord
      */
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        foreach (['phone_encrypted', 'wallet_encrypted', 'national_id_encrypted'] as $column) {
+        foreach (['phone_encrypted', 'wallet_encrypted', 'national_id_encrypted', 'spouse_national_id_encrypted'] as $column) {
             $data[$column] = $this->record->{$column};
         }
 

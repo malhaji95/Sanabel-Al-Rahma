@@ -55,6 +55,8 @@ class Beneficiary extends Model
         // T-127 — يعمل | لا يعمل | يبحث عن عمل، وما يُسأل عند كل جواب.
         'work_status', 'profession_ar', 'sought_trade_ar', 'has_certificate',
         'certificate_ar', 'experience_years', 'can_teach_quran',
+        // T-128 — الزوج أو الزوجة باسمه ورقمه، حتى إن كان متوفًّى.
+        'spouse_name_ar', 'spouse_national_id_encrypted',
         'has_quran_memorizers', 'quran_memorizer_count', 'livelihood_proposal_ar',
         'proposal_skills_ar', 'proposal_cost', 'surveyed_by_ar', 'furnishing_ar',
         // T-100 — the two the survey asks and the file had no room for.
@@ -132,7 +134,11 @@ class Beneficiary extends Model
         return $this->morphMany(Media::class, 'owner', 'owner_type', 'owner_id');
     }
 
-    protected $hidden = ['national_id_encrypted', 'national_id_hash', 'phone_encrypted', 'wallet_encrypted'];
+    protected $hidden = [
+        'national_id_encrypted', 'national_id_hash', 'phone_encrypted', 'wallet_encrypted',
+        // T-128 — a spouse's identity number is hers, not the file's heading.
+        'spouse_national_id_encrypted',
+    ];
 
     protected function casts(): array
     {
@@ -161,6 +167,8 @@ class Beneficiary extends Model
             'story_approved_at' => 'datetime',
             'has_quran_memorizers' => 'boolean',
             'national_id_encrypted' => 'encrypted',
+            // T-128 — رقم الزوج أو الزوجة خاصّ كرقم صاحب الملف.
+            'spouse_national_id_encrypted' => 'encrypted',
             'phone_encrypted' => 'encrypted',
             'wallet_encrypted' => 'encrypted',
             'last_assessment_at' => 'datetime',

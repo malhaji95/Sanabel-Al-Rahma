@@ -99,6 +99,9 @@ class AnonymiseService
             'phone_encrypted', 'wallet_encrypted',
             'town_ar', 'quarter_ar', 'latitude', 'longitude', 'birth_date', 'workplace_ar',
             'surveyed_by_ar',
+            // T-128 — the spouse named on the head's own row is a person too,
+            // and T-127's certificate is free text that can carry a name.
+            'spouse_name_ar', 'spouse_national_id_encrypted', 'certificate_ar',
             'previous_aid_ar', 'livelihood_proposal_ar', 'proposal_skills_ar', 'furnishing_ar',
             // The link back to the old system's archive, which still holds the
             // name. Leaving it would make this a redirection, not an erasure.

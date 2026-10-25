@@ -222,6 +222,42 @@ class BeneficiaryResource extends Resource
                         }),
 
                     /*
+                     | T-128 — «مافي بيانات الزوجة, او بيانات الزوج, يجب
+                     | تصحيح الامر وتضمينهم حتى لو متوفية يتم ذكرهم»,
+                     | 27 October.
+                     |
+                     | The file said «أرمل» and stopped there. Every dependant
+                     | in the household has carried her husband's name and
+                     | number since T-69, and the one person the file is named
+                     | after carried neither.
+                     |
+                     | Asked of any head who is not single, and of a widow
+                     | exactly as of a wife: the words change with who is
+                     | being asked, the questions do not. A deceased spouse is
+                     | named and is not a household member, so no money moves.
+                     */
+                    Forms\Components\Fieldset::make('spouse')
+                        ->label(fn (Forms\Get $get) => self::spouseLabel($get('gender')))
+                        ->visible(fn (Forms\Get $get) => filled($get('marital_status'))
+                            && $get('marital_status') !== 'single')
+                        ->schema([
+                            Forms\Components\TextInput::make('spouse_name_ar')
+                                ->label(fn (Forms\Get $get) => self::spouseNameLabel($get('gender')))
+                                ->helperText(fn (Forms\Get $get) => $get('marital_status') === 'widowed'
+                                    ? __('sanabel.beneficiary.spouse_deceased_help')
+                                    : __('sanabel.beneficiary.spouse_member_help')),
+
+                            Forms\Components\TextInput::make('spouse_national_id_encrypted')
+                                ->label(__('sanabel.beneficiary.spouse_national_id'))
+                                ->maxLength(IdentityFormat::NATIONAL_ID_DIGITS)
+                                ->rule(fn () => IdentityFormat::lengthRule(
+                                    IdentityFormat::NATIONAL_ID_DIGITS,
+                                    __('sanabel.cases.national_id_digits'),
+                                ))
+                                ->dehydrateStateUsing(fn (?string $state) => IdentityFormat::digits($state)),
+                        ])->columns(2)->columnSpanFull(),
+
+                    /*
                      | T-127 — «الافضل يكون نعم, لا, يبحث عن عمل», 27 October.
                      |
                      | A yes/no toggle made a man who would take a job this
@@ -1347,6 +1383,32 @@ class BeneficiaryResource extends Resource
         return $gender === 'female'
             ? __('sanabel.marital_status_f')
             : __('sanabel.marital_status');
+    }
+
+    /**
+     * T-128 — whose spouse is being asked about.
+     *
+     * A widow is asked about her husband and a married man about his wife,
+     * and the file has the head's own gender to read it from. Where the
+     * gender has not been answered yet the neutral pair is used rather than
+     * a guess.
+     */
+    public static function spouseLabel(?string $gender): string
+    {
+        return match ($gender) {
+            'female' => __('sanabel.beneficiary.spouse_husband'),
+            'male' => __('sanabel.beneficiary.spouse_wife'),
+            default => __('sanabel.beneficiary.spouse_either'),
+        };
+    }
+
+    public static function spouseNameLabel(?string $gender): string
+    {
+        return match ($gender) {
+            'female' => __('sanabel.beneficiary.spouse_husband_name'),
+            'male' => __('sanabel.beneficiary.spouse_wife_name'),
+            default => __('sanabel.beneficiary.spouse_either_name'),
+        };
     }
 
     /** Years old, from a date of birth, or null when there is none. */
