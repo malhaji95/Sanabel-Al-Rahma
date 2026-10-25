@@ -1,4 +1,7 @@
-<div>
+{{-- T-139 — the typed amount is mirrored into Alpine so the «بشرى خير» line
+     below appears with the digit rather than a round trip after it. Livewire
+     still owns the value; this only reads it. --}}
+<div x-data="{ typed: @js((int) $amount), remaining: {{ $remaining }} }">
     @if ($remaining <= 0)
         {{-- Named, because coverage answers one month and not the family's
              whole future: the next month opens on its own date. --}}
@@ -21,12 +24,18 @@
             </label>
         @endif
 
+        {{-- T-139 — «نحتاج لما يجيي بده يتبرع بمبلغ اكبر يكتب بشرى خير هذه
+             العائلة يكتمل تمويلها», 28 October. Read from the box as the donor
+             types, in Alpine rather than through the server: a line that
+             appears a second after the digit is a line nobody connects to
+             what they just typed. Livewire still owns the value. --}}
         <form wire:submit="add" class="flex gap-2">
             <label class="sr-only" for="amount-{{ $fileNumber }}">{{ __('sanabel.public.amount') }}</label>
             <input
                 id="amount-{{ $fileNumber }}"
                 type="number"
                 wire:model="amount"
+                x-model.number="typed"
                 min="1"
                 max="{{ $remaining }}"
                 inputmode="numeric"
@@ -52,6 +61,18 @@
                 </button>
             </div>
         @endif
+
+        <p
+            x-show="typed >= remaining && remaining > 0"
+            x-cloak
+            class="mt-2 text-xs font-medium leading-relaxed"
+            style="color: var(--accent);"
+        >
+            {{ __('sanabel.funding.good_news_will_complete', [
+                'amount' => number_format($remaining),
+                'currency' => \App\Services\Money::label(),
+            ]) }}
+        </p>
 
         @error('amount')
             <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>

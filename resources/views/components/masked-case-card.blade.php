@@ -143,6 +143,21 @@
             </p>
         @endif
 
+        {{-- T-139 — «ولما يكتمل كامل المبلغ يتم الكتابة فوق نسبة التغطية»,
+             28 October, in the association's own words. Above the percentage,
+             because the percentage is where the eye lands. --}}
+        @if ($covered)
+            <div class="mb-2 rounded-xl p-3 text-xs leading-relaxed"
+                 style="background-color: color-mix(in srgb, var(--accent) 10%, transparent);">
+                <p>{{ __('sanabel.funding.good_news_complete') }}</p>
+
+                <a href="{{ route('cases.browse') }}" class="mt-1.5 inline-block font-semibold underline"
+                   style="color: var(--accent);">
+                    {{ __('sanabel.funding.good_news_browse') }}
+                </a>
+            </div>
+        @endif
+
         <div class="flex items-baseline justify-between text-sm">
             <span style="color: var(--text-muted);">{{ __('sanabel.beneficiary.coverage') }}</span>
             <span class="tabular font-semibold">{{ $coveredPercent }}%</span>
@@ -156,8 +171,15 @@
             aria-valuemax="100"
             aria-label="{{ __('sanabel.beneficiary.coverage') }}"
         >
+            {{-- T-138 — the association's four bands, on the family's bar as
+                 on a campaign's: red under forty, amber to eighty, light green
+                 to ninety-nine, and the identity's deep green when it is
+                 done. --}}
             @if ($coveredPercent > 0)
-                <div @class(['meter-fill', 'meter-fill-complete' => $coveredPercent >= 100]) style="width: {{ $coveredPercent }}%"></div>
+                <div
+                    class="meter-fill meter-fill-{{ \App\Services\ProgressBand::of($coveredPercent) }}"
+                    style="width: {{ $coveredPercent }}%"
+                ></div>
             @endif
         </div>
 

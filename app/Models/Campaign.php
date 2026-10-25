@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\Auditable;
 use App\Models\Concerns\TracksCreator;
 use App\Services\CoverageService;
+use App\Services\ProgressBand;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -97,12 +98,8 @@ class Campaign extends Model
     {
         $percent ??= $this->progressPercent();
 
-        return match (true) {
-            $percent >= 100 => 'complete',
-            $percent >= 81 => 'high',
-            $percent >= 41 => 'mid',
-            default => 'low',
-        };
+        // T-138 — the same four bands the family cards draw, named once.
+        return ProgressBand::of($percent);
     }
 
     public function acceptsPledges(?int $collected = null): bool
