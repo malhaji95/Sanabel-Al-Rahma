@@ -1469,7 +1469,24 @@ class BeneficiaryResource extends Resource
                             ? app(CoverageService::class)->coveragePercent($record).'%'
                             : '—'),
                 ])->columns(2),
-            ])->columnSpanFull()->skippable(),
+            ])->columnSpanFull()
+                /*
+                 | T-146 — the wizard is walked, not jumped.
+                 |
+                 | It was `skippable()`, and Filament runs no validation at all
+                 | on a skippable wizard's «التالي» — it does not even call the
+                 | step's own afterValidation. So T-131's refusal to hand the
+                 | consents page over was unreachable from the screen: a
+                 | screenshot of that page, pressed with both answers still
+                 | off, walked straight through to the next one.
+                 |
+                 | The cost of walking it is the header: a step is reached by
+                 | «التالي» rather than by clicking its number. The save is not
+                 | affected — «إضافة» and «حفظ» sit under the form on every
+                 | step, which is what keeps T-130's draft, filled on the first
+                 | page and saved there, exactly as it was.
+                 */
+                ->skippable(false),
         ]);
     }
 
