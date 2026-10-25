@@ -20,7 +20,7 @@ class HouseholdMember extends Model
         'dependent', 'unable_to_earn', 'is_student', 'has_documented_condition', 'notes_ar', 'created_by',
         // From the association's social survey.
         'national_id_encrypted', 'relation_other_ar', 'birth_date', 'marital_status',
-        'spouse_name_ar', 'occupation', 'school_grade_ar', 'works', 'workplace_ar',
+        'spouse_name_ar', 'occupation', 'school_grade_ar', 'works', 'workplace_ar', 'work_income',
         'is_quran_memorizer', 'certificate_ar', 'skills_ar',
         // T-69 - «تصنيف اليتم», and a married dependant's husband.
         'is_orphan', 'spouse_national_id_encrypted',
@@ -47,6 +47,7 @@ class HouseholdMember extends Model
         'smokes' => 'boolean',
         'birth_date' => 'date',
         'works' => 'boolean',
+        'work_income' => 'integer',
         'is_quran_memorizer' => 'boolean',
     ];
 

@@ -33,6 +33,31 @@ class DependencyRules
         return $hasDocumentedCondition;
     }
 
+    /**
+     * T-121 — «عند وضع عمري 3 سنوات تم وضع اني اعمل وأرمل وتم القبول. هذا
+     * الأشياء مفروض يعطي انه في خطأ», 25 October. The form took it, and a file
+     * that records a three-year-old widow in work is a file nobody can act on.
+     *
+     * Fifteen is the association's own line: it is the age the survey already
+     * asks every dependant about («العمر أقل من ١٥ سنة»), so the form is not
+     * being given a boundary of ours to enforce. What it refuses is only what
+     * cannot be true — working, and a marriage ended or in force — and never
+     * the age itself: a household headed by a minor exists, and the system has
+     * no business telling an orphan they are too young to hold their own file.
+     *
+     * If the association would rather draw it at another age, it is this one
+     * number.
+     */
+    public const ANSWERS_AS_ADULT_FROM = 15;
+
+    /** True when the person is old enough for the questions that imply an adult. */
+    public static function answersAsAdult(?int $age): bool
+    {
+        // An unknown age is not a contradiction, and the form asks for the age
+        // elsewhere. Only what is stated is checked.
+        return $age === null || $age >= self::ANSWERS_AS_ADULT_FROM;
+    }
+
     /** The kinship value that carries its own money class. */
     public const SPOUSE = 'spouse';
 

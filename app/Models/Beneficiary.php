@@ -51,7 +51,7 @@ class Beneficiary extends Model
         'privacy_policy_seen', 'privacy_consent', 'privacy_consent_on', 'privacy_policy_version',
         'declaration_on',
         // The association's own social survey, carried into the file.
-        'gender', 'birth_date', 'town_ar', 'latitude', 'longitude', 'works', 'workplace_ar',
+        'gender', 'birth_date', 'town_ar', 'latitude', 'longitude', 'works', 'workplace_ar', 'work_income',
         'has_quran_memorizers', 'quran_memorizer_count', 'livelihood_proposal_ar',
         'proposal_skills_ar', 'proposal_cost', 'surveyed_by_ar', 'furnishing_ar',
         // T-100 — the two the survey asks and the file had no room for.
@@ -141,6 +141,7 @@ class Beneficiary extends Model
             // «فقيرة، يتيمة».
             'case_classifications' => 'array',
             'declared_monthly_income' => 'integer',
+            'work_income' => 'integer',
             'donor_visit_consent' => 'boolean',
             'donor_visit_consent_on' => 'date',
             'zakat_recommended' => 'boolean',

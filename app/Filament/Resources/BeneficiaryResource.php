@@ -9,6 +9,7 @@ use App\Models\Region;
 use App\Models\User;
 use App\Services\CoverageService;
 use App\Services\DependencyRules;
+use App\Services\IdentityFormat;
 use App\Services\RankingService;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -68,7 +69,14 @@ class BeneficiaryResource extends Resource
                     Forms\Components\TextInput::make('national_id_encrypted')
                         ->label(__('sanabel.beneficiary.national_id'))
                         ->required()
-                        ->maxLength(64)
+                        // T-121 — «11 الرقم يتوقف, يعني لا يقبل اكثر او اقل».
+                        // The box stops at eleven and the rule refuses ten.
+                        ->maxLength(IdentityFormat::NATIONAL_ID_DIGITS)
+                        ->rule(fn () => IdentityFormat::lengthRule(
+                            IdentityFormat::NATIONAL_ID_DIGITS,
+                            __('sanabel.cases.national_id_digits'),
+                        ))
+                        ->dehydrateStateUsing(fn (?string $state) => IdentityFormat::digits($state))
                         // Rule 11 — an exact match blocks a second file.
                         ->rule(fn (?Beneficiary $record) => function ($attribute, $value, $fail) use ($record) {
                             $existing = Beneficiary::withoutGlobalScopes()
@@ -87,13 +95,23 @@ class BeneficiaryResource extends Resource
 
                     Forms\Components\Select::make('gender')
                         ->label(__('sanabel.beneficiary.gender'))
-                        ->options(__('sanabel.gender')),
+                        ->options(__('sanabel.gender'))
+                        // T-121 — the marital states below are written to match.
+                        ->live(),
 
                     Forms\Components\DatePicker::make('birth_date')
                         ->label(__('sanabel.beneficiary.birth_date'))
                         ->maxDate(now()),
 
-                    Forms\Components\TextInput::make('phone_encrypted')->label(__('sanabel.beneficiary.phone'))->tel(),
+                    Forms\Components\TextInput::make('phone_encrypted')
+                        ->label(__('sanabel.beneficiary.phone'))
+                        ->tel()
+                        ->maxLength(20)
+                        ->rule(fn () => IdentityFormat::lengthRule(
+                            IdentityFormat::PHONE_DIGITS,
+                            __('sanabel.cases.phone_digits'),
+                        ))
+                        ->dehydrateStateUsing(fn (?string $state) => IdentityFormat::digits($state)),
                     // T-59 — on a live file this is read-only, and the change
                     // goes through the header action beside it so that
                     // somebody other than whoever asked for it approves it.
@@ -113,9 +131,46 @@ class BeneficiaryResource extends Resource
                         ->searchable()
                         ->helperText(__('sanabel.beneficiary.association_help')),
 
+                    /*
+                     | T-121 — «عند ادخال المنطقة موجود القرى كذالك, نحتاج فقط
+                     | أظهار المنطقة والقرى موجود لوحدها», 25 October.
+                     |
+                     | One list held all hundred and forty-seven places at
+                     | once: the governorate, the five areas and every village,
+                     | town and city under them. Two now, and the first only
+                     | narrows the second — what is saved is still the locality
+                     | itself, because that is what a delegate is attached to
+                     | and what the reference amounts are resolved from.
+                     */
+                    Forms\Components\Select::make('region_area_id')
+                        ->label(__('sanabel.beneficiary.region_area'))
+                        ->options(fn () => Region::where('is_active', true)
+                            ->where('type', 'area')
+                            ->orderBy('name_ar')
+                            ->pluck('name_ar', 'id'))
+                        ->searchable()
+                        ->live()
+                        ->dehydrated(false)
+                        /*
+                         | On an open file the area is read back rather than
+                         | asked for again — from the locality's parent, or
+                         | from the region itself on a file that was attached
+                         | to an area before the two questions were split.
+                         */
+                        ->afterStateHydrated(function (Forms\Components\Select $component, ?Beneficiary $record) {
+                            $region = $record?->region;
+
+                            $component->state($region?->type === 'area' ? $region->id : $region?->parent_id);
+                        })
+                        ->afterStateUpdated(fn (Forms\Set $set) => $set('region_id', null)),
+
                     Forms\Components\Select::make('region_id')
                         ->label(__('sanabel.beneficiary.region'))
-                        ->options(fn () => Region::where('is_active', true)->pluck('name_ar', 'id'))
+                        ->helperText(__('sanabel.beneficiary.region_help'))
+                        ->options(fn (Forms\Get $get) => Region::where('is_active', true)
+                            ->where('parent_id', $get('region_area_id'))
+                            ->orderBy('name_ar')
+                            ->pluck('name_ar', 'id'))
                         ->searchable()
                         ->required(),
 
@@ -125,26 +180,66 @@ class BeneficiaryResource extends Resource
                     Forms\Components\TextInput::make('quarter_ar')
                         ->label(__('sanabel.beneficiary.quarter_ar')),
 
-                    Forms\Components\TextInput::make('latitude')
-                        ->label(__('sanabel.beneficiary.latitude'))
-                        ->helperText(__('sanabel.beneficiary.gps_help'))
-                        ->numeric()->minValue(-90)->maxValue(90),
+                    /*
+                     | T-121 — «موقع السكن خط العرض وخط الطول مو واضح معنا وما
+                     | بيدخل, مافهمناها», 25 October.
+                     |
+                     | Two decimal degrees, typed by hand, on a phone whose
+                     | keyboard sends Arabic-Indic digits. Nobody was going to
+                     | fill that in, and nobody should have been asked to: the
+                     | delegate's own visit screen has had a «حدّد الموقع»
+                     | button since T-14 and they know it. This is that button,
+                     | and the two numbers are what it writes rather than what
+                     | anyone types.
+                     */
+                    Forms\Components\ViewField::make('location_capture')
+                        ->view('filament.forms.location')
+                        ->dehydrated(false)
+                        ->columnSpanFull(),
 
-                    Forms\Components\TextInput::make('longitude')
-                        ->label(__('sanabel.beneficiary.longitude'))
-                        ->numeric()->minValue(-180)->maxValue(180),
+                    Forms\Components\Hidden::make('latitude'),
+                    Forms\Components\Hidden::make('longitude'),
 
+                    /*
+                     | T-121 — «عند ادخال أنثى يظهر بيانات انه مطلق وهذا للرجل
+                     | … عند ادخل أنثى يجب تأنيثهم», 25 October.
+                     |
+                     | The stored value does not change — `widowed` is
+                     | `widowed` — only the word the researcher reads. The
+                     | feminine list has existed since T-101 for the donor's
+                     | card; it belongs on the form that a widow is sitting in
+                     | front of far more than it belongs there.
+                     */
                     Forms\Components\Select::make('marital_status')
                         ->label(__('sanabel.beneficiary.marital_status'))
-                        ->options(__('sanabel.marital_status')),
+                        ->options(fn (Forms\Get $get) => self::maritalOptions($get('gender')))
+                        ->live()
+                        ->rule(fn (Forms\Get $get) => function ($attribute, $value, $fail) use ($get) {
+                            if ($value && $value !== 'single'
+                                && ! DependencyRules::answersAsAdult(self::ageFromDate($get('birth_date')))) {
+                                $fail(__('sanabel.cases.too_young_to_marry'));
+                            }
+                        }),
 
                     // هل يعمل صاحب العلاقة — and where, only if he does.
                     Forms\Components\Toggle::make('works')
                         ->label(__('sanabel.beneficiary.works'))
-                        ->live(),
+                        ->live()
+                        ->rule(fn (Forms\Get $get) => function ($attribute, $value, $fail) use ($get) {
+                            if ($value && ! DependencyRules::answersAsAdult(self::ageFromDate($get('birth_date')))) {
+                                $fail(__('sanabel.cases.too_young_to_work'));
+                            }
+                        }),
 
                     Forms\Components\TextInput::make('workplace_ar')
                         ->label(__('sanabel.beneficiary.workplace_ar'))
+                        ->visible(fn (Forms\Get $get) => (bool) $get('works')),
+
+                    // T-121 — what the work pays, asked where the work is.
+                    Forms\Components\TextInput::make('work_income')
+                        ->label(__('sanabel.beneficiary.work_income'))
+                        ->helperText(__('sanabel.beneficiary.work_income_help'))
+                        ->numeric()->minValue(0)
                         ->visible(fn (Forms\Get $get) => (bool) $get('works')),
 
                     /*
@@ -153,9 +248,9 @@ class BeneficiaryResource extends Resource
                      | character, and the helper text says so: an assessor who
                      | reads it as a judgement will not ask it honestly.
                      */
+                    // T-121 — «الملاحظة إلى تحت المدخن حذفها», 25 October.
                     Forms\Components\Toggle::make('smokes')
-                        ->label(__('sanabel.beneficiary.smokes'))
-                        ->helperText(__('sanabel.beneficiary.smokes_help')),
+                        ->label(__('sanabel.beneficiary.smokes')),
 
                     Forms\Components\Toggle::make('has_quran_memorizers')
                         ->label(__('sanabel.beneficiary.has_quran_memorizers'))
@@ -249,7 +344,12 @@ class BeneficiaryResource extends Resource
                             // of household's.
                             Forms\Components\TextInput::make('national_id_encrypted')
                                 ->label(__('sanabel.household_member.national_id'))
-                                ->maxLength(64),
+                                ->maxLength(IdentityFormat::NATIONAL_ID_DIGITS)
+                                ->rule(fn () => IdentityFormat::lengthRule(
+                                    IdentityFormat::NATIONAL_ID_DIGITS,
+                                    __('sanabel.cases.national_id_digits'),
+                                ))
+                                ->dehydrateStateUsing(fn (?string $state) => IdentityFormat::digits($state)),
 
                             Forms\Components\Select::make('relation')
                                 ->label(__('sanabel.household_member.relation'))
@@ -303,7 +403,9 @@ class BeneficiaryResource extends Resource
                                 }),
                             Forms\Components\Select::make('gender')
                                 ->label(__('sanabel.household_member.gender'))
-                                ->options(__('sanabel.gender'))->required(),
+                                ->options(__('sanabel.gender'))->required()
+                                // T-121 — the marital states below follow it.
+                                ->live(),
 
                             // Derived, never typed: each member falls under exactly one class.
                             Forms\Components\Select::make('person_class')
@@ -315,8 +417,14 @@ class BeneficiaryResource extends Resource
 
                             Forms\Components\Select::make('marital_status')
                                 ->label(__('sanabel.household_member.marital_status'))
-                                ->options(__('sanabel.marital_status'))
-                                ->live(),
+                                ->options(fn (Forms\Get $get) => self::maritalOptions($get('gender')))
+                                ->live()
+                                ->rule(fn (Forms\Get $get) => function ($attribute, $value, $fail) use ($get) {
+                                    if ($value && $value !== 'single'
+                                        && ! DependencyRules::answersAsAdult(self::memberAge($get))) {
+                                        $fail(__('sanabel.cases.too_young_to_marry'));
+                                    }
+                                }),
 
                             Forms\Components\TextInput::make('spouse_name_ar')
                                 ->label(__('sanabel.household_member.spouse_name_ar'))
@@ -324,7 +432,12 @@ class BeneficiaryResource extends Resource
 
                             Forms\Components\TextInput::make('spouse_national_id_encrypted')
                                 ->label(__('sanabel.household_member.spouse_national_id'))
-                                ->maxLength(64)
+                                ->maxLength(IdentityFormat::NATIONAL_ID_DIGITS)
+                                ->rule(fn () => IdentityFormat::lengthRule(
+                                    IdentityFormat::NATIONAL_ID_DIGITS,
+                                    __('sanabel.cases.national_id_digits'),
+                                ))
+                                ->dehydrateStateUsing(fn (?string $state) => IdentityFormat::digits($state))
                                 ->visible(fn (Forms\Get $get) => $get('marital_status') === 'married'),
 
                             // T-69 — «تصنيف اليتم», asked of each dependant.
@@ -343,10 +456,21 @@ class BeneficiaryResource extends Resource
 
                             Forms\Components\Toggle::make('works')
                                 ->label(__('sanabel.household_member.works'))
-                                ->live(),
+                                ->live()
+                                ->rule(fn (Forms\Get $get) => function ($attribute, $value, $fail) use ($get) {
+                                    if ($value && ! DependencyRules::answersAsAdult(self::memberAge($get))) {
+                                        $fail(__('sanabel.cases.too_young_to_work'));
+                                    }
+                                }),
 
                             Forms\Components\TextInput::make('workplace_ar')
                                 ->label(__('sanabel.household_member.workplace_ar'))
+                                ->visible(fn (Forms\Get $get) => (bool) $get('works')),
+
+                            // T-121 — what this one's work pays.
+                            Forms\Components\TextInput::make('work_income')
+                                ->label(__('sanabel.household_member.work_income'))
+                                ->numeric()->minValue(0)
                                 ->visible(fn (Forms\Get $get) => (bool) $get('works')),
 
                             Forms\Components\Toggle::make('smokes')
@@ -460,7 +584,15 @@ class BeneficiaryResource extends Resource
                         Forms\Components\Select::make('eviction_band')->label(__('sanabel.housing.eviction'))->options(__('sanabel.bands.eviction'))->default(0)->required(),
 
                         Forms\Components\TextInput::make('landlord_name_ar')->label(__('sanabel.housing.landlord_name')),
-                        Forms\Components\TextInput::make('landlord_phone_encrypted')->label(__('sanabel.housing.landlord_phone'))->tel(),
+                        Forms\Components\TextInput::make('landlord_phone_encrypted')
+                        ->label(__('sanabel.housing.landlord_phone'))
+                        ->tel()
+                        ->maxLength(20)
+                        ->rule(fn () => IdentityFormat::lengthRule(
+                            IdentityFormat::PHONE_DIGITS,
+                            __('sanabel.cases.phone_digits'),
+                        ))
+                        ->dehydrateStateUsing(fn (?string $state) => IdentityFormat::digits($state)),
                     ])
                         ->columns(2)
                         // A Group has no query to hook, so the hidden columns
@@ -565,7 +697,14 @@ class BeneficiaryResource extends Resource
 
                             // A doctor's number is a telephone number too.
                             Forms\Components\TextInput::make('doctor_phone_encrypted')
-                                ->label(__('sanabel.health.doctor_phone'))->tel(),
+                                ->label(__('sanabel.health.doctor_phone'))
+                                ->tel()
+                                ->maxLength(20)
+                                ->rule(fn () => IdentityFormat::lengthRule(
+                                    IdentityFormat::PHONE_DIGITS,
+                                    __('sanabel.cases.phone_digits'),
+                                ))
+                                ->dehydrateStateUsing(fn (?string $state) => IdentityFormat::digits($state)),
 
                             Forms\Components\Textarea::make('medicines_ar')
                                 ->label(__('sanabel.health.medicines_ar'))
@@ -720,7 +859,14 @@ class BeneficiaryResource extends Resource
                                 ->label(__('sanabel.debt.creditor_address_ar')),
 
                             Forms\Components\TextInput::make('creditor_phone_encrypted')
-                                ->label(__('sanabel.debt.creditor_phone'))->tel(),
+                                ->label(__('sanabel.debt.creditor_phone'))
+                                ->tel()
+                                ->maxLength(20)
+                                ->rule(fn () => IdentityFormat::lengthRule(
+                                    IdentityFormat::PHONE_DIGITS,
+                                    __('sanabel.cases.phone_digits'),
+                                ))
+                                ->dehydrateStateUsing(fn (?string $state) => IdentityFormat::digits($state)),
 
                             Forms\Components\TextInput::make('months')
                                 ->label(__('sanabel.debt.months'))
@@ -1081,6 +1227,41 @@ class BeneficiaryResource extends Resource
             ])
             ->defaultSort('id', 'desc')
             ->paginated([25, 50, 100]);
+    }
+
+    /**
+     * T-121 — the four marital states, written to match who is being asked.
+     *
+     * The keys are the same whichever list is drawn: what is saved for a
+     * widow and for a widower is `widowed`, and only the word on the screen
+     * changes.
+     */
+    public static function maritalOptions(?string $gender): array
+    {
+        return $gender === 'female'
+            ? __('sanabel.marital_status_f')
+            : __('sanabel.marital_status');
+    }
+
+    /** Years old, from a date of birth, or null when there is none. */
+    public static function ageFromDate(mixed $birthDate): ?int
+    {
+        return filled($birthDate) ? Carbon::parse($birthDate)->age : null;
+    }
+
+    /**
+     * A dependant's age. The survey gives a full date and the engine reads the
+     * year, so either may be the one that was filled in.
+     */
+    public static function memberAge(Forms\Get $get): ?int
+    {
+        if ($age = self::ageFromDate($get('birth_date'))) {
+            return $age;
+        }
+
+        $year = (int) $get('birth_year');
+
+        return $year > 0 ? (int) date('Y') - $year : null;
     }
 
     /** T-59 — a file whose payments are already flowing. */

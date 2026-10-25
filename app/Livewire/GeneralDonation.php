@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Donor;
+use App\Services\IdentityFormat;
 use App\Payments\DuplicateTransactionRef;
 use App\Payments\PaymentGateway;
 use App\Services\TransferRouting;
@@ -67,7 +68,8 @@ class GeneralDonation extends Component
             'amount' => ['required', 'integer', 'min:1'],
             'transactionRef' => ['required', 'string', 'max:191'],
             'name' => $signedIn ? null : ['required', 'string', 'min:3', 'max:191'],
-            'phone' => $signedIn ? null : ['nullable', 'string', 'max:40'],
+            // T-121 — ten digits here too, when one is given at all.
+            'phone' => $signedIn ? null : ['nullable', 'string', 'digits:'.IdentityFormat::PHONE_DIGITS],
         ]), attributes: [
             'amount' => __('sanabel.donation.amount'),
             'transactionRef' => __('sanabel.donation.transaction_ref'),
@@ -123,7 +125,7 @@ class GeneralDonation extends Component
      */
     private function guestDonor(): Donor
     {
-        $phone = trim($this->phone);
+        $phone = (string) IdentityFormat::digits($this->phone);
 
         if ($phone === '') {
             return Donor::create(['name_ar' => trim($this->name)]);

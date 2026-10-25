@@ -61,7 +61,7 @@ class ChangeRequest extends Model
         'association_id', 'zakat_recommended', 'case_classifications', 'is_shareable', 'previous_aid_ar',
         'legacy_file_no', 'urgency_deadline_at', 'documented_debt',
         // Its social survey.
-        'gender', 'birth_date', 'town_ar', 'quarter_ar', 'latitude', 'longitude', 'works', 'workplace_ar',
+        'gender', 'birth_date', 'town_ar', 'quarter_ar', 'latitude', 'longitude', 'works', 'workplace_ar', 'work_income',
         'declared_monthly_income',
         // The four consents (T-69). A consent is a fact about what the
         // family agreed to, so correcting one goes the same way as
