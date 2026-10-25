@@ -1204,9 +1204,56 @@ class BeneficiaryResource extends Resource
                 Tables\Filters\SelectFilter::make('status')
                     ->label(__('sanabel.beneficiary.status'))
                     ->options(collect(Beneficiary::STATUSES)->mapWithKeys(fn ($s) => [$s => __('sanabel.status.'.$s)])),
-                Tables\Filters\SelectFilter::make('region_id')
-                    ->label(__('sanabel.beneficiary.region'))
-                    ->options(fn () => Region::pluck('name_ar', 'id')),
+                /*
+                 | T-124 — «احتاج يكون المناطق بشكل رئيسي ثم القرى بشكل فرعي
+                 | لكل شيء تابع له», 26 October.
+                 |
+                 | One list of a hundred and forty-seven places, the same
+                 | flat list the registration form had before T-121. Two
+                 | questions now: the area, and then the locality inside it.
+                 | Choosing the area alone is a real answer — it means every
+                 | file in that area — which is how a supervisor reads their
+                 | own patch.
+                 */
+                Tables\Filters\Filter::make('place')
+                    ->form([
+                        Forms\Components\Select::make('area_id')
+                            ->label(__('sanabel.beneficiary.region_area'))
+                            ->options(fn () => Region::where('type', 'area')
+                                ->orderBy('name_ar')
+                                ->pluck('name_ar', 'id'))
+                            ->searchable()
+                            ->live()
+                            ->afterStateUpdated(fn (Forms\Set $set) => $set('region_id', null)),
+
+                        Forms\Components\Select::make('region_id')
+                            ->label(__('sanabel.beneficiary.region'))
+                            ->options(fn (Forms\Get $get) => Region::where('parent_id', $get('area_id'))
+                                ->orderBy('name_ar')
+                                ->pluck('name_ar', 'id'))
+                            ->searchable()
+                            ->visible(fn (Forms\Get $get) => filled($get('area_id'))),
+                    ])
+                    ->query(function (Builder $query, array $data) {
+                        if (filled($data['region_id'] ?? null)) {
+                            return $query->where('region_id', $data['region_id']);
+                        }
+
+                        if (blank($data['area_id'] ?? null)) {
+                            return $query;
+                        }
+
+                        // The area itself, and everything under it: a file
+                        // may be attached to either.
+                        return $query->where(fn (Builder $q) => $q
+                            ->where('region_id', $data['area_id'])
+                            ->orWhereIn('region_id', Region::where('parent_id', $data['area_id'])->select('id')));
+                    })
+                    ->indicateUsing(function (array $data) {
+                        $place = Region::find($data['region_id'] ?? $data['area_id'] ?? null);
+
+                        return $place ? __('sanabel.beneficiary.region').': '.$place->name_ar : null;
+                    }),
                 // T-63 — what they added it for.
                 // A list column, so the filter asks the json whether it holds
                 // the value rather than comparing one string to another.

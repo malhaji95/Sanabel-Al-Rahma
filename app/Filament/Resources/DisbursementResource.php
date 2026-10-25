@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\BeneficiaryResource;
 use App\Filament\Resources\DisbursementResource\Pages;
 use App\Models\Beneficiary;
 use App\Models\Disbursement;
@@ -76,8 +77,38 @@ class DisbursementResource extends Resource
     {
         return $table
             ->columns([
+                /*
+                 | T-124 — «دخلت من حساب رئيس الأمناء على طلبات الصرف بس مافي
+                 | بيانات العائلة او اني اقدر اضغط على بيانات الاسرة», 26
+                 | October.
+                 |
+                 | The file number was a string on a money row and nothing
+                 | else, so the one question an approver has — who is this
+                 | for? — could not be answered from the screen they approve
+                 | on. It opens the family's own file now, for an account
+                 | that may read it, and stays a plain string for one that
+                 | may not: the link is the permission, not a decoration.
+                 */
                 Tables\Columns\TextColumn::make('beneficiary.file_number')
-                    ->label(__('sanabel.beneficiary.file_number'))->searchable()->sortable(),
+                    ->label(__('sanabel.beneficiary.file_number'))->searchable()->sortable()
+                    ->url(fn (Disbursement $record) => $record->beneficiary
+                        && auth()->user()->can('view', $record->beneficiary)
+                            ? BeneficiaryResource::getUrl('edit', ['record' => $record->beneficiary_id])
+                            : null)
+                    ->openUrlInNewTab()
+                    ->color(fn (Disbursement $record) => $record->beneficiary
+                        && auth()->user()->can('view', $record->beneficiary) ? 'primary' : null)
+                    ->tooltip(fn (Disbursement $record) => $record->beneficiary
+                        && auth()->user()->can('view', $record->beneficiary)
+                            ? __('sanabel.disbursement.open_case')
+                            : null),
+
+                // The region, so a row says where the money is going without
+                // opening anything at all. Rule 15 — the area, never the
+                // village, is what a page outside the file may carry.
+                Tables\Columns\TextColumn::make('beneficiary.region.name_ar')
+                    ->label(__('sanabel.beneficiary.region'))
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('amount')
                     ->label(__('sanabel.disbursement.amount'))->numeric()->sortable(),
                 Tables\Columns\TextColumn::make('period')
