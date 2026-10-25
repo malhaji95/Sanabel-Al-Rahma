@@ -15,6 +15,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * T-20 and T-21 — the verification queue.
@@ -57,9 +58,20 @@ class DonationResource extends Resource
                 ->label(__('sanabel.donation.donor'))
                 ->searchable()->required(),
 
+            /*
+             | T-142 — «وموضوع تعديل المبالغ ليش في تعديل؟», 28 October.
+             |
+             | Because a transfer is read off a bank statement by a person,
+             | and a person mistypes. The window is the one rule 5 leaves
+             | open: before verification, a pending row may be corrected.
+             | After it, nothing on this screen opens — the policy refuses the
+             | edit — and a correction is a reversal with its own linked row.
+             | The screen says so where the figure is typed.
+             */
             Forms\Components\TextInput::make('amount')
                 ->label(__('sanabel.donation.amount'))
                 ->numeric()->minValue(1)->required()
+                ->helperText(__('sanabel.donation.amount_edit_help'))
                 ->suffix(Money::short()),
 
             Forms\Components\TextInput::make('transaction_ref')
@@ -70,14 +82,36 @@ class DonationResource extends Resource
 
             Forms\Components\Select::make('fund_id')
                 ->label(__('sanabel.donation.fund'))
+                ->helperText(__('sanabel.donation.fund_help'))
                 ->options(fn () => Fund::pluck('name_ar', 'id'))
                 ->default(fn () => Fund::byKey(Fund::OPERATIONAL)->id)
                 ->required(),
 
+            /*
+             | T-142 — «وما المقصود بتبرع مباشر او عبر المنصة؟», 28 October.
+             | Where the association learned of the transfer, and nothing
+             | about who gave it or what it is for: «عبر المنصة» is a row the
+             | donor created on the site themselves, «مباشر» is money that
+             | reached the association outside it — a counter, a wallet, a
+             | bank statement — and was entered here by its staff.
+             */
             Forms\Components\Select::make('route')
                 ->label(__('sanabel.donation.route'))
+                ->helperText(__('sanabel.donation.route_help'))
                 ->options(__('sanabel.donation_route'))
                 ->default('platform')->required(),
+
+            /*
+             | Derived, never typed: money that arrives with a basket behind it
+             | is earmarked for the files in that basket, and money entered by
+             | hand is general until the association allocates it from
+             | «توزيع المال العام». Shown because the treasurer asked what
+             | decides it.
+             */
+            Forms\Components\Placeholder::make('designation_display')
+                ->label(__('sanabel.designation.label'))
+                ->helperText(__('sanabel.donation.designation_help'))
+                ->content(fn (?Donation $record) => __('sanabel.designation.'.($record?->designation ?? 'general'))),
 
             Forms\Components\TextInput::make('receipt_media_id')
                 ->label(__('sanabel.donation.receipt'))
@@ -210,6 +244,61 @@ class DonationResource extends Resource
 
                 Tables\Actions\EditAction::make()
                     ->visible(fn (Donation $record) => auth()->user()->can('update', $record)),
+            ])
+            ->bulkActions([
+                /*
+                 | T-142 — «ممكن عنده كشف حساب وعم يراجعهم: حوالة, حوالة,
+                 | وبعدها بيعطي تأكيد … يعني ممكن يأكد 20 حبة او اكثر»,
+                 | 28 October.
+                 |
+                 | One at a time with a confirmation each is the right shape
+                 | for a transfer somebody is deciding about; it is the wrong
+                 | shape for a statement of twenty that have already been
+                 | matched line by line. So the same verification, over a
+                 | selection — and it is the same verification: every row goes
+                 | through the gateway and the policy exactly as the single
+                 | button does, so nothing is confirmed here that could not be
+                 | confirmed there. What the selection holds and the account
+                 | may not verify is left alone and counted out loud, rather
+                 | than skipped in silence.
+                 */
+                Tables\Actions\BulkAction::make('verifySelected')
+                    ->label(__('sanabel.donation.verify_selected'))
+                    ->modalDescription(__('sanabel.donation.verify_selected_help'))
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->visible(fn () => auth()->user()?->can_('verify_payment'))
+                    ->requiresConfirmation()
+                    ->deselectRecordsAfterCompletion()
+                    ->action(function (Collection $records) {
+                        $verified = 0;
+                        $skipped = 0;
+
+                        foreach ($records as $donation) {
+                            if (! auth()->user()->can('verify', $donation)) {
+                                $skipped++;
+
+                                continue;
+                            }
+
+                            app(PaymentGateway::class)->verify($donation, auth()->id());
+                            $verified++;
+                        }
+
+                        if ($verified === 0) {
+                            Notification::make()
+                                ->title(__('sanabel.donation.nothing_to_verify'))
+                                ->warning()->send();
+
+                            return;
+                        }
+
+                        Notification::make()
+                            ->title($skipped > 0
+                                ? __('sanabel.donation.verified_count_skipped', ['count' => $verified, 'skipped' => $skipped])
+                                : __('sanabel.donation.verified_count', ['count' => $verified]))
+                            ->success()->send();
+                    }),
             ])
             ->defaultSort('id', 'desc');
     }

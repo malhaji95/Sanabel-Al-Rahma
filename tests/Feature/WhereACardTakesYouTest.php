@@ -46,7 +46,12 @@ it('opens the family file from the money row, for an account that may read it', 
         ->html();
 
     expect($html)->toContain($case->file_number)
-        ->and($html)->toContain(BeneficiaryResource::getUrl('edit', ['record' => $case->id]));
+        /*
+         | T-141 — the read-only screen, not the edit screen: the accounts
+         | that approve money hold `view_full_case` and not `edit_draft`, so
+         | the link they were given led to a door that answers them no.
+         */
+        ->and($html)->toContain(BeneficiaryResource::getUrl('view', ['record' => $case->id]));
 })->group('AUTH-01');
 
 it('leaves the file number a plain string for an account that may not read it', function () {

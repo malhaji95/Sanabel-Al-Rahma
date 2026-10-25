@@ -11,7 +11,14 @@ class FundSeeder extends Seeder
     {
         // Membership money can never be counted as family coverage.
         $funds = [
-            [Fund::OPERATIONAL, 'الصندوق التشغيلي', true],
+            /*
+             | T-142 — «يجب السماح باختيار الصندوق العام», 28 October: the
+             | treasurer went looking for «الصندوق العام» and the list said
+             | «التشغيلي». The key does not move, because every row written
+             | since the first day points at it; the word the association uses
+             | goes first, and ours stays beside it.
+             */
+            [Fund::OPERATIONAL, 'الصندوق العام (التشغيلي)', true],
             [Fund::RESTRICTED, 'الصندوق المقيّد', true],
             [Fund::ZAKAT, 'صندوق الزكاة', true],
             [Fund::MEMBERSHIP, 'صندوق العضويات', false],
