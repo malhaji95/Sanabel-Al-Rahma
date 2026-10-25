@@ -163,6 +163,23 @@ class BeneficiaryPolicy
             && ($this->canWrite($user, 'recommend') || $this->canWrite($user, 'approve_case'));
     }
 
+    /**
+     * T-144 — handing a finished registration to the field.
+     *
+     * Whoever opened the file, while it is still a draft. A partner
+     * association's whole part is this: it registers the household and passes
+     * it on, and signs nothing after.
+     */
+    public function sendToField(User $user, Beneficiary $case): bool
+    {
+        return $case->status === 'draft'
+            && $this->canWrite($user, 'edit_draft')
+            && $this->inScope($user, $case)
+            && ($case->created_by === $user->getKey()
+                || $case->created_by === $user->association_id
+                || $this->permissions()->scopeFor($user, 'edit_draft') !== 'own');
+    }
+
     public function requestChange(User $user, Beneficiary $case): bool
     {
         return $this->canWrite($user, 'request_change') && $this->inScope($user, $case);
@@ -188,13 +205,27 @@ class BeneficiaryPolicy
             return true;
         }
 
-        // The association sees the families of the city it works in, not only
-        // the ones it referred itself — decided 30 Sep 2026. Its own referrals
-        // stay visible even if the file was later moved to another region.
+        /*
+         | T-144 — «هذي الجمعية ليش تظهر اسماء مستفيدين وهو ماضاف شي؟»,
+         | 28 October.
+         |
+         | Because of a branch that read the region as well as the creator,
+         | added on 30 Sep so a partner could see the families of the city it
+         | works in. In practice that handed a partner the full file — name,
+         | members, health, debts — of every household another body had
+         | registered in its city, and the association read its own screen and
+         | asked why.
+         |
+         | docs/04-permissions.md rule 3 is the answer, and it was there all
+         | along: «an association sees its own and referred cases only. Out of
+         | scope lookup by national ID returns four values only». The city-wide
+         | awareness that decision was after is the coordination lookup, which
+         | answers «registered? assessed? supported this period? covered how
+         | much» and carries no name at all.
+         */
         if ($user->hasRole('association')) {
             return $case->created_by === $user->getKey()
-                || ($user->association_id !== null && $case->created_by === $user->association_id)
-                || $this->permissions()->coversRegion($user, $case->region_id);
+                || ($user->association_id !== null && $case->created_by === $user->association_id);
         }
 
         if ($user->hasRole('beneficiary')) {

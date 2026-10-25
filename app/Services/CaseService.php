@@ -29,6 +29,66 @@ class CaseService
     public const AWAITING_FIELD = ['draft', 'pending_visit', 'needs_reassessment'];
 
     /** The delegate's sign-off: the family was visited and the file matches. */
+    /**
+     * T-144 — «الجمعية لازم دورها من التسجيل كفقير وبعدها يذهب الى المندوب
+     * الميداني», 28 October.
+     *
+     * A draft is «I am still typing this». A file waiting on a visit is «I
+     * have finished, it is yours now». Both statuses already sat in the
+     * delegate's queue, so the two sentences were one row apart and nobody
+     * could tell them apart — which is exactly what the association is
+     * describing: their part ends at registration, and the hand-over should
+     * be something they do rather than something the queue infers.
+     *
+     * The consents are the model's own gate (T-74): a file does not leave
+     * draft without both, and that refusal stands here untouched.
+     */
+    public function sendToField(Beneficiary $case, User $sender): Beneficiary
+    {
+        if ($case->status !== 'draft') {
+            throw new \RuntimeException(__('sanabel.cases.only_a_draft_is_sent'));
+        }
+
+        $case->forceFill(['status' => 'pending_visit'])->save();
+
+        /*
+         | The delegates whose own region covers the file. Not every delegate
+         | in the governorate: a file in one village is not work for the
+         | delegate of another, and a notification nobody can act on teaches
+         | people to stop reading notifications.
+         */
+        foreach ($this->fieldAccountsFor($case) as $userId) {
+            $this->notifications->send($userId, 'case_awaiting_visit', [
+                'file_number' => $case->file_number,
+            ]);
+        }
+
+        return $case->refresh();
+    }
+
+    /**
+     * The accounts that do the visiting where this file is.
+     *
+     * @return array<int,int>
+     */
+    private function fieldAccountsFor(Beneficiary $case): array
+    {
+        $lineage = [];
+        $region = $case->region;
+
+        while ($region) {
+            $lineage[] = $region->id;
+            $region = $region->parent;
+        }
+
+        return User::query()
+            ->where('is_active', true)
+            ->whereIn('region_id', $lineage)
+            ->whereHas('role', fn ($q) => $q->whereIn('key', BeneficiaryPolicy::FIELD_VERIFIERS))
+            ->pluck('id')
+            ->all();
+    }
+
     public function verifyInField(Beneficiary $case, User $delegate): Beneficiary
     {
         if (! in_array($case->status, self::AWAITING_FIELD, true)) {

@@ -16,12 +16,22 @@ beforeEach(function () {
     $this->region = regionWithRates();
 });
 
-it('shows an association the families of its own city', function () {
+it('keeps an association out of a file another body registered in its city', function () {
+    /*
+     | T-144 — this test used to assert the opposite, on the decision of
+     | 30 Sep 2026 that a partner sees the families of the city it works in.
+     | The association read its own screen on 28 October and asked why: «هذي
+     | الجمعية ليش تظهر اسماء مستفيدين وهو ماضاف شي؟».
+     |
+     | docs/04-permissions.md rule 3 was the answer and had not moved: its own
+     | and referred cases only. The city-wide awareness that decision was
+     | after is the coordination lookup, which answers «registered? assessed?
+     | supported this period? covered how much» and carries no name.
+     */
     $association = userWithRole('association', ['region_id' => $this->region->id]);
     $caseInCity = familyOf($this->region);
 
-    // Not referred by this association, but in the city it works in.
-    expect($association->can('view', $caseInCity))->toBeTrue();
+    expect($association->can('view', $caseInCity))->toBeFalse();
 });
 
 it('still keeps an association out of another city', function () {

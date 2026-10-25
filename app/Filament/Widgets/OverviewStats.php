@@ -134,6 +134,18 @@ class OverviewStats extends BaseWidget
                 ->color($returned > 0 ? 'warning' : 'info')
                 ->url($this->cases('pending_visit', mine: true)),
 
+            /*
+             | T-144 — a file a partner association registered is waiting on
+             | this delegate too, and `created_by` is not theirs. Counted on
+             | the region instead, which is what «في منطقتي» means, and it
+             | opens the list without the «ملفاتي» filter.
+             */
+            Stat::make(__('sanabel.dashboard.area_awaiting_visit'),
+                Beneficiary::whereIn('status', CaseService::AWAITING_FIELD)->count())
+                ->description(__('sanabel.dashboard.area_awaiting_visit_help'))
+                ->color('info')
+                ->url($this->cases('pending_visit')),
+
             Stat::make(__('sanabel.dashboard.my_awaiting_supervisor'), $mine('verified'))
                 ->description(__('sanabel.dashboard.awaiting_supervisor_help'))
                 ->color('info')

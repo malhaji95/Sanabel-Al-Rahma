@@ -3,9 +3,10 @@
 namespace App\Filament\Association\Resources;
 
 use App\Filament\Association\Resources\CaseResource\Pages;
+use App\Filament\Resources\BeneficiaryResource;
 use App\Models\Beneficiary;
-use App\Models\Region;
 use App\Models\Scopes\RegionScope;
+use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -31,11 +32,18 @@ class CaseResource extends Resource
     }
 
     /**
-     * The city the association works in, plus anything it referred itself.
+     * T-144 — the files this association registered, and nothing else.
      *
-     * RegionScope already narrows the query to the association's own region
-     * subtree, so this only widens it back to include a file it referred that
-     * has since been moved elsewhere.
+     * «هذي الجمعية ليش تظهر اسماء مستفيدين وهو ماضاف شي؟», 28 October. It
+     * used to list every household in the association's city, by name,
+     * including the ones another body had registered. docs/04-permissions.md
+     * rule 3 says its own and referred cases only, and that is what this is
+     * now; the city-wide awareness lives in the coordination lookup, which
+     * carries no name.
+     *
+     * The region scope is lifted deliberately: a file this association
+     * registered stays its own even if the household later moved to another
+     * area.
      */
     public static function getEloquentQuery(): Builder
     {
@@ -48,11 +56,13 @@ class CaseResource extends Resource
                 if ($user->association_id) {
                     $query->orWhere('created_by', $user->association_id);
                 }
-
-                if ($user->region_id) {
-                    $query->orWhereIn('region_id', Region::descendantIds($user->region_id));
-                }
             });
+    }
+
+    /** The same registration form the association's own researchers fill. */
+    public static function form(Form $form): Form
+    {
+        return BeneficiaryResource::form($form);
     }
 
     public static function table(Table $table): Table
@@ -67,7 +77,14 @@ class CaseResource extends Resource
                     ->badge()
                     ->formatStateUsing(fn (string $state) => __('sanabel.status.'.$state)),
             ])
-            ->actions([Tables\Actions\ViewAction::make()])
+            ->actions([
+                Tables\Actions\ViewAction::make(),
+                // While it is still a draft: after the hand-over the file
+                // belongs to the field, and a change to it goes through a
+                // change request like anybody else's.
+                Tables\Actions\EditAction::make()
+                    ->visible(fn (Beneficiary $record) => auth()->user()->can('update', $record)),
+            ])
             ->defaultSort('id', 'desc');
     }
 
@@ -75,7 +92,11 @@ class CaseResource extends Resource
     {
         return [
             'index' => Pages\ListCases::route('/'),
+            // T-144 — «دورها من التسجيل كفقير»: the association's part starts
+            // here, and it had no screen for it.
+            'create' => Pages\CreateCase::route('/create'),
             'view' => Pages\ViewCase::route('/{record}'),
+            'edit' => Pages\EditCase::route('/{record}/edit'),
         ];
     }
 }
