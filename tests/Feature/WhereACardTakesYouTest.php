@@ -4,14 +4,11 @@ use App\Filament\Resources\BeneficiaryResource;
 use App\Filament\Resources\DisbursementResource;
 use App\Filament\Resources\DonationResource;
 use App\Filament\Widgets\OverviewStats;
-use App\Models\Beneficiary;
 use App\Models\Disbursement;
 use App\Models\Donation;
 use App\Models\Donor;
 use App\Models\Region;
 use Filament\Facades\Filament;
-
-use function Pest\Livewire\livewire;
 
 /*
  | T-124 — four of the association's notes of 26 October, all about a screen
@@ -122,6 +119,10 @@ it('filters the files by area first, then by the place inside it', function () {
 });
 
 it('gives every number on the dashboard the screen it was counted from', function () {
+    // T-126 — the cards now follow the reader's reports scope, so this asks
+    // the account that is shown all of them.
+    $this->actingAs(userWithRole('executive_director'));
+
     $method = new ReflectionMethod(OverviewStats::class, 'getStats');
     $method->setAccessible(true);
 

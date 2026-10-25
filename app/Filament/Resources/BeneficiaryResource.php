@@ -585,14 +585,14 @@ class BeneficiaryResource extends Resource
 
                         Forms\Components\TextInput::make('landlord_name_ar')->label(__('sanabel.housing.landlord_name')),
                         Forms\Components\TextInput::make('landlord_phone_encrypted')
-                        ->label(__('sanabel.housing.landlord_phone'))
-                        ->tel()
-                        ->maxLength(20)
-                        ->rule(fn () => IdentityFormat::lengthRule(
-                            IdentityFormat::PHONE_DIGITS,
-                            __('sanabel.cases.phone_digits'),
-                        ))
-                        ->dehydrateStateUsing(fn (?string $state) => IdentityFormat::digits($state)),
+                            ->label(__('sanabel.housing.landlord_phone'))
+                            ->tel()
+                            ->maxLength(20)
+                            ->rule(fn () => IdentityFormat::lengthRule(
+                                IdentityFormat::PHONE_DIGITS,
+                                __('sanabel.cases.phone_digits'),
+                            ))
+                            ->dehydrateStateUsing(fn (?string $state) => IdentityFormat::digits($state)),
                     ])
                         ->columns(2)
                         // A Group has no query to hook, so the hidden columns
@@ -1267,6 +1267,20 @@ class BeneficiaryResource extends Resource
                         : $query),
                 Tables\Filters\TernaryFilter::make('duplicate_review_flag')
                     ->label(__('sanabel.beneficiary.duplicate_flag')),
+
+                /*
+                 | T-126 — the files this account opened itself.
+                 |
+                 | The region scope answers «my village»; this answers «my
+                 | work», which is what a delegate standing in a village with
+                 | three other delegates actually needs. It is also what the
+                 | dashboard cards count, so a card and the list it opens now
+                 | show the same number.
+                 */
+                Tables\Filters\Filter::make('mine')
+                    ->label(__('sanabel.beneficiary.mine'))
+                    ->toggle()
+                    ->query(fn (Builder $query) => $query->where('created_by', auth()->id())),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
