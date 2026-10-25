@@ -2,10 +2,10 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\BeneficiaryResource;
 use App\Filament\Resources\DisbursementResource\Pages;
 use App\Models\Beneficiary;
 use App\Models\Disbursement;
+use App\Services\CoverageService;
 use App\Services\DisbursementService;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -58,11 +58,38 @@ class DisbursementResource extends Resource
                         ? number_format(app(DisbursementService::class)
                             ->remainingForPeriod($family, now()->startOfMonth()))
                         : null);
+
+                    // T-141 — the stage the association is collecting for,
+                    // beside the need it is a share of.
+                    $set('target_hint', $family
+                        ? number_format(app(CoverageService::class)->targetAmount($family))
+                            .' ('.app(CoverageService::class)->targetPercent($family).'%)'
+                        : null);
                 }),
 
+            /*
+             | T-141 — «المبلغ المتبقي من احتياج الاسرة هذا الشهر: هل هذا
+             | الاحتياج الأساسي المتبقي أم مبلغ التمويل الذي هو مثلا 30
+             | بالمئة؟», 28 October.
+             |
+             | The first: the family's whole monthly need, less what has
+             | already been confirmed for the same month and less what another
+             | body paid for it. The funding stage is a fundraising figure —
+             | what the association is asking donors for now — and it is not a
+             | ceiling on what a family may be paid when the money is there.
+             |
+             | Both are on the screen now, each named, because the question was
+             | asked of a label that gave one number and said neither.
+             */
             Forms\Components\Placeholder::make('remaining_hint')
                 ->label(__('sanabel.disbursement.remaining_this_month'))
+                ->helperText(__('sanabel.disbursement.remaining_help'))
                 ->content(fn (Forms\Get $get) => $get('remaining_hint') ?? '—'),
+
+            Forms\Components\Placeholder::make('target_hint')
+                ->label(__('sanabel.disbursement.target_this_month'))
+                ->helperText(__('sanabel.disbursement.target_help'))
+                ->content(fn (Forms\Get $get) => $get('target_hint') ?? '—'),
 
             Forms\Components\TextInput::make('amount')
                 ->label(__('sanabel.disbursement.amount'))
@@ -91,9 +118,22 @@ class DisbursementResource extends Resource
                  */
                 Tables\Columns\TextColumn::make('beneficiary.file_number')
                     ->label(__('sanabel.beneficiary.file_number'))->searchable()->sortable()
+                    /*
+                     | T-141 — «اول شي حالة امر صرف ما عم تفتح, لازم تفتح لان
+                     | المدير التنفيذي ممكن يحتاج يطلع على الحالة قبل اعتماد»,
+                     | 28 October.
+                     |
+                     | The link was right and the destination was not: it
+                     | pointed at the edit screen, which opens for `edit_draft`
+                     | — a key the executive director does not hold and should
+                     | not. So the one account that most needs to read a family
+                     | before approving money for them was sent to a door that
+                     | answers it no. It opens the read-only screen now, which
+                     | carries the whole file and, since T-133, its decisions.
+                     */
                     ->url(fn (Disbursement $record) => $record->beneficiary
                         && auth()->user()->can('view', $record->beneficiary)
-                            ? BeneficiaryResource::getUrl('edit', ['record' => $record->beneficiary_id])
+                            ? BeneficiaryResource::getUrl('view', ['record' => $record->beneficiary_id])
                             : null)
                     ->openUrlInNewTab()
                     ->color(fn (Disbursement $record) => $record->beneficiary

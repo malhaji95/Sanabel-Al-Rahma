@@ -159,9 +159,23 @@ class User extends Authenticatable implements FilamentUser
      */
     public static function verifiers(): array
     {
+        return static::holdersOf('verify_payment');
+    }
+
+    /**
+     * T-141 — the active accounts holding one permission.
+     *
+     * `verifiers()` has done this for `verify_payment` since the donations
+     * were built; the money path needed the same answer for three more keys,
+     * and three more copies of one query is three places for it to drift.
+     *
+     * @return array<int,int>
+     */
+    public static function holdersOf(string $permissionKey): array
+    {
         return static::query()
             ->where('is_active', true)
-            ->whereHas('role.permissions', fn ($q) => $q->where('key', 'verify_payment'))
+            ->whereHas('role.permissions', fn ($q) => $q->where('key', $permissionKey))
             ->pluck('id')
             ->all();
     }

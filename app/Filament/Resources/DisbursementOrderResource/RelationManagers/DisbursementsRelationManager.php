@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\DisbursementOrderResource\RelationManagers;
 
+use App\Filament\Resources\BeneficiaryResource;
 use App\Filament\Resources\DisbursementOrderResource;
 use App\Models\Disbursement;
 use App\Services\DisbursementService;
@@ -9,6 +10,7 @@ use Filament\Forms;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * The lines inside one order. Each keeps its own state, so a single failure
@@ -19,7 +21,7 @@ class DisbursementsRelationManager extends RelationManager
 {
     protected static string $relationship = 'disbursements';
 
-    public static function getTitle(\Illuminate\Database\Eloquent\Model $ownerRecord, string $pageClass): string
+    public static function getTitle(Model $ownerRecord, string $pageClass): string
     {
         return __('sanabel.disbursement.lines');
     }
@@ -28,8 +30,30 @@ class DisbursementsRelationManager extends RelationManager
     {
         return $table
             ->columns([
+                /*
+                 | T-141 — the approver reads the family from the screen they
+                 | approve on, not from another list they have to find. The
+                 | read-only screen, because that is the one an approver can
+                 | open; a plain string for an account that may not read it.
+                 */
                 Tables\Columns\TextColumn::make('beneficiary.file_number')
-                    ->label(__('sanabel.beneficiary.file_number'))->searchable(),
+                    ->label(__('sanabel.beneficiary.file_number'))->searchable()
+                    ->url(fn (Disbursement $record) => $record->beneficiary
+                        && auth()->user()->can('view', $record->beneficiary)
+                            ? BeneficiaryResource::getUrl('view', ['record' => $record->beneficiary_id])
+                            : null)
+                    ->openUrlInNewTab()
+                    ->color(fn (Disbursement $record) => $record->beneficiary
+                        && auth()->user()->can('view', $record->beneficiary) ? 'primary' : null)
+                    ->tooltip(fn (Disbursement $record) => $record->beneficiary
+                        && auth()->user()->can('view', $record->beneficiary)
+                            ? __('sanabel.disbursement.open_case')
+                            : null),
+
+                Tables\Columns\TextColumn::make('beneficiary.region.name_ar')
+                    ->label(__('sanabel.beneficiary.region'))
+                    ->toggleable(),
+
                 Tables\Columns\TextColumn::make('amount')
                     ->label(__('sanabel.disbursement.amount'))->numeric(),
                 Tables\Columns\TextColumn::make('status')

@@ -150,6 +150,17 @@ class DisbursementService
 
         $order->forceFill(['status' => 'pending_approval', 'submitted_at' => now()])->save();
 
+        /*
+         | T-141 — the order waits on somebody, and that somebody is told.
+         |
+         | «بعد ما امر الصرف راح للمدير التنفيذي وتم اعتماده رجع عند امين
+         | الصندوق ما عطاني اي حالة محددة», 28 October. Every step of this
+         | path moved the row and told nobody, so the next pair of hands
+         | learned about it by opening the screen and looking. The payload
+         | carries the order's reference and nothing else (rule 10).
+         */
+        $this->tell('approve_disbursement', 'disbursement_order_submitted', $order);
+
         return $order->refresh();
     }
 
@@ -182,8 +193,29 @@ class DisbursementService
                 'approved_duly' => true,
             ])->save();
 
+            // Approved means «the treasurer may now move this money», and
+            // until T-141 the treasurer was not told so.
+            $this->tell('execute_disbursement', 'disbursement_order_approved', $order);
+
             return $order->refresh();
         });
+    }
+
+    /**
+     * Tells the holders of one permission that an order has moved a step.
+     *
+     * The reference and nothing more: no family, no amount, no name (rule 10).
+     * A reader who may open the order reads the rest inside it.
+     */
+    private function tell(string $permissionKey, string $template, ?DisbursementOrder $order): void
+    {
+        if (! $order) {
+            return;
+        }
+
+        foreach (User::holdersOf($permissionKey) as $userId) {
+            $this->notifications->send($userId, $template, ['ref' => $order->reference_no]);
+        }
     }
 
     /** One line set aside while the rest of the order goes through. */
@@ -225,6 +257,9 @@ class DisbursementService
         ])->save();
 
         $this->settle($disbursement->order?->refresh());
+
+        // And the accountant, who reconciles what left.
+        $this->tell('reconcile_disbursement', 'disbursement_executed', $disbursement->order);
 
         return $disbursement->refresh();
     }
