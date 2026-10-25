@@ -7,6 +7,7 @@ use App\Models\Beneficiary;
 use App\Models\ChangeRequest;
 use App\Models\HouseholdMember;
 use App\Models\Region;
+use App\Models\Scopes\RegionScope;
 use App\Models\User;
 use App\Services\CoverageService;
 use App\Services\DependencyRules;
@@ -145,10 +146,11 @@ class BeneficiaryResource extends Resource
                      */
                     Forms\Components\Select::make('region_area_id')
                         ->label(__('sanabel.beneficiary.region_area'))
-                        ->options(fn () => Region::where('is_active', true)
-                            ->where('type', 'area')
-                            ->orderBy('name_ar')
-                            ->pluck('name_ar', 'id'))
+                        // T-130 — see openableBy(): a scoped account is offered
+                        // its own area only, because a file filed outside it
+                        // disappears the moment it is saved.
+                        ->options(fn () => self::areaOptions())
+                        ->default(fn () => array_key_first(self::areaOptions()))
                         ->searchable()
                         ->live()
                         ->dehydrated(false)
@@ -168,10 +170,7 @@ class BeneficiaryResource extends Resource
                     Forms\Components\Select::make('region_id')
                         ->label(__('sanabel.beneficiary.region'))
                         ->helperText(__('sanabel.beneficiary.region_help'))
-                        ->options(fn (Forms\Get $get) => Region::where('is_active', true)
-                            ->where('parent_id', $get('region_area_id'))
-                            ->orderBy('name_ar')
-                            ->pluck('name_ar', 'id'))
+                        ->options(fn (Forms\Get $get) => self::localityOptions($get('region_area_id')))
                         ->searchable()
                         ->required(),
 
@@ -271,6 +270,21 @@ class BeneficiaryResource extends Resource
                         ->label(__('sanabel.beneficiary.work_status'))
                         ->options(__('sanabel.work_status'))
                         ->live()
+                        /*
+                         | A file written before this task answered the old
+                         | boolean and nothing else. The migration carried
+                         | those rows across; this carries the ones that
+                         | arrive afterwards from an import or the offline
+                         | sync, so the screen never shows an empty question
+                         | over an answer the file is holding.
+                         */
+                        ->afterStateHydrated(function (Forms\Components\Select $component, ?Beneficiary $record) {
+                            $component->state($record?->work_status ?? match ($record?->works) {
+                                true => 'yes',
+                                false => 'no',
+                                default => null,
+                            });
+                        })
                         ->rule(fn (Forms\Get $get) => function ($attribute, $value, $fail) use ($get) {
                             if (in_array($value, ['yes', 'seeking'], true)
                                 && ! DependencyRules::answersAsAdult(self::ageFromDate($get('birth_date')))) {
@@ -418,6 +432,12 @@ class BeneficiaryResource extends Resource
                             ['national_id_encrypted', 'spouse_national_id_encrypted', 'doctor_phone_encrypted'],
                         ))
                         ->label(__('sanabel.beneficiary.members'))
+                        // T-130 — a repeater that opens with a blank row asks a
+                        // question the family may not have an answer to, and then
+                        // refuses the whole file over it. It opens empty: no row
+                        // is «لا», and the delete button is how «لا» is said later.
+                        ->defaultItems(0)
+                        ->addActionLabel(__('sanabel.repeater.add_members'))
                         ->schema([
                             Forms\Components\TextInput::make('name_ar')->label(__('sanabel.household_member.name'))->required(),
 
@@ -736,6 +756,12 @@ class BeneficiaryResource extends Resource
                     Forms\Components\Repeater::make('incomes')
                         ->relationship()
                         ->label(__('sanabel.beneficiary.incomes'))
+                        // T-130 — a repeater that opens with a blank row asks a
+                        // question the family may not have an answer to, and then
+                        // refuses the whole file over it. It opens empty: no row
+                        // is «لا», and the delete button is how «لا» is said later.
+                        ->defaultItems(0)
+                        ->addActionLabel(__('sanabel.repeater.add_incomes'))
                         ->schema([
                             Forms\Components\TextInput::make('source_type')->label(__('sanabel.income.source'))->required(),
                             Forms\Components\TextInput::make('amount')
@@ -763,57 +789,69 @@ class BeneficiaryResource extends Resource
                 ]),
 
                 Forms\Components\Wizard\Step::make(__('sanabel.beneficiary.step_housing'))->schema([
-                    Forms\Components\Group::make()->relationship('housing')->schema([
-                        Forms\Components\Select::make('housing_type')
-                            ->label(__('sanabel.housing.type'))
-                            ->options(__('sanabel.housing_type'))->required()->live(),
+                    /*
+                     | T-130 — the housing page is written when the visit has
+                     | happened, and a file saved before it is a draft, not an
+                     | error. The row is created once the type is answered;
+                     | until then there is no housing row at all, rather than
+                     | one full of zeroes that the score would read as a sound
+                     | house. The need engine already reads «no housing» as
+                     | «not renting».
+                     */
+                    Forms\Components\Group::make()
+                        ->relationship('housing', condition: fn (?array $state) => filled($state['housing_type'] ?? null))
+                        ->schema([
+                            Forms\Components\Select::make('housing_type')
+                                ->label(__('sanabel.housing.type'))
+                                ->helperText(__('sanabel.housing.type_help'))
+                                ->options(__('sanabel.housing_type'))->live(),
 
-                        // Free text beside the list, not a new housing type:
-                        // the engine reads housing_type (shelter raises an
-                        // adjustment, rent raises the rent reference), so a new
-                        // option there would quietly change a need.
-                        Forms\Components\TextInput::make('type_other_ar')
-                            ->label(__('sanabel.housing.type_other_ar'))
-                            ->helperText(__('sanabel.housing.type_other_help')),
+                            // Free text beside the list, not a new housing type:
+                            // the engine reads housing_type (shelter raises an
+                            // adjustment, rent raises the rent reference), so a new
+                            // option there would quietly change a need.
+                            Forms\Components\TextInput::make('type_other_ar')
+                                ->label(__('sanabel.housing.type_other_ar'))
+                                ->helperText(__('sanabel.housing.type_other_help')),
 
-                        Forms\Components\TextInput::make('monthly_rent')
-                            ->label(__('sanabel.housing.rent'))
-                            ->numeric()->minValue(0)->default(0)
-                            ->suffix(config('sanabel.currency'))
-                            ->visible(fn (Forms\Get $get) => $get('housing_type') === 'rent'),
+                            Forms\Components\TextInput::make('monthly_rent')
+                                ->label(__('sanabel.housing.rent'))
+                                ->numeric()->minValue(0)->default(0)
+                                ->suffix(config('sanabel.currency'))
+                                ->visible(fn (Forms\Get $get) => $get('housing_type') === 'rent'),
 
-                        Forms\Components\Select::make('rent_period')
-                            ->label(__('sanabel.housing.rent_period'))
-                            ->options(__('sanabel.rent_period'))
-                            ->visible(fn (Forms\Get $get) => $get('housing_type') === 'rent'),
+                            Forms\Components\Select::make('rent_period')
+                                ->label(__('sanabel.housing.rent_period'))
+                                ->options(__('sanabel.rent_period'))
+                                ->visible(fn (Forms\Get $get) => $get('housing_type') === 'rent'),
 
-                        Forms\Components\TextInput::make('habitable_rooms')
-                            ->label(__('sanabel.housing.habitable_rooms'))
-                            ->helperText(__('sanabel.housing.rooms_help'))
-                            ->numeric()->minValue(0)->default(1)->required(),
+                            Forms\Components\TextInput::make('habitable_rooms')
+                                ->label(__('sanabel.housing.habitable_rooms'))
+                                ->helperText(__('sanabel.housing.rooms_help'))
+                                ->numeric()->minValue(0)->default(1)->required(),
 
-                        Forms\Components\TextInput::make('bathrooms')
-                            ->label(__('sanabel.housing.bathrooms'))
-                            ->numeric()->minValue(0),
+                            Forms\Components\TextInput::make('bathrooms')
+                                ->label(__('sanabel.housing.bathrooms'))
+                                ->numeric()->minValue(0),
 
-                        Forms\Components\Toggle::make('has_kitchen')
-                            ->label(__('sanabel.housing.has_kitchen')),
+                            Forms\Components\Toggle::make('has_kitchen')
+                                ->label(__('sanabel.housing.has_kitchen')),
 
-                        Forms\Components\Select::make('safety_band')->label(__('sanabel.housing.safety'))->options(__('sanabel.bands.safety'))->default(0)->required(),
-                        Forms\Components\Select::make('services_band')->label(__('sanabel.housing.services'))->options(__('sanabel.bands.services'))->default(0)->required(),
-                        Forms\Components\Select::make('eviction_band')->label(__('sanabel.housing.eviction'))->options(__('sanabel.bands.eviction'))->default(0)->required(),
+                            Forms\Components\Select::make('safety_band')->label(__('sanabel.housing.safety'))->options(__('sanabel.bands.safety'))->default(0)->required(),
+                            Forms\Components\Select::make('services_band')->label(__('sanabel.housing.services'))->options(__('sanabel.bands.services'))->default(0)->required(),
+                            Forms\Components\Select::make('eviction_band')->label(__('sanabel.housing.eviction'))->options(__('sanabel.bands.eviction'))->default(0)->required(),
 
-                        Forms\Components\TextInput::make('landlord_name_ar')->label(__('sanabel.housing.landlord_name')),
-                        Forms\Components\TextInput::make('landlord_phone_encrypted')
-                            ->label(__('sanabel.housing.landlord_phone'))
-                            ->tel()
-                            ->maxLength(20)
-                            ->rule(fn () => IdentityFormat::lengthRule(
-                                IdentityFormat::PHONE_DIGITS,
-                                __('sanabel.cases.phone_digits'),
-                            ))
-                            ->dehydrateStateUsing(fn (?string $state) => IdentityFormat::digits($state)),
-                    ])
+                            Forms\Components\TextInput::make('landlord_name_ar')->label(__('sanabel.housing.landlord_name')),
+                            Forms\Components\TextInput::make('landlord_phone_encrypted')
+                                ->label(__('sanabel.housing.landlord_phone'))
+                                ->tel()
+                                ->maxLength(20)
+                                ->rule(fn () => IdentityFormat::lengthRule(
+                                    IdentityFormat::PHONE_DIGITS,
+                                    __('sanabel.cases.phone_digits'),
+                                ))
+                                ->dehydrateStateUsing(fn (?string $state) => IdentityFormat::digits($state)),
+                        ])
                         ->columns(2)
                         // A Group has no query to hook, so the hidden columns
                         // are read off the row itself. Same reason as unhide().
@@ -887,6 +925,12 @@ class BeneficiaryResource extends Resource
                             ['description_ar', 'doctor_phone_encrypted'],
                         ))
                         ->label(__('sanabel.beneficiary.health'))
+                        // T-130 — a repeater that opens with a blank row asks a
+                        // question the family may not have an answer to, and then
+                        // refuses the whole file over it. It opens empty: no row
+                        // is «لا», and the delete button is how «لا» is said later.
+                        ->defaultItems(0)
+                        ->addActionLabel(__('sanabel.repeater.add_health'))
                         ->schema([
                             // T-101 — المرض من قائمة، وهو الحقل الصحي الوحيد
                             // الذي يراه المتبرّع. التفاصيل في «الوصف» أدناه،
@@ -943,6 +987,12 @@ class BeneficiaryResource extends Resource
                     Forms\Components\Repeater::make('assets')
                         ->relationship()
                         ->label(__('sanabel.asset.plural'))
+                        // T-130 — a repeater that opens with a blank row asks a
+                        // question the family may not have an answer to, and then
+                        // refuses the whole file over it. It opens empty: no row
+                        // is «لا», and the delete button is how «لا» is said later.
+                        ->defaultItems(0)
+                        ->addActionLabel(__('sanabel.repeater.add_assets'))
                         ->schema([
                             Forms\Components\Select::make('kind')
                                 ->label(__('sanabel.asset.kind'))
@@ -1013,6 +1063,12 @@ class BeneficiaryResource extends Resource
                     Forms\Components\Repeater::make('livestock')
                         ->relationship()
                         ->label(__('sanabel.livestock.plural'))
+                        // T-130 — a repeater that opens with a blank row asks a
+                        // question the family may not have an answer to, and then
+                        // refuses the whole file over it. It opens empty: no row
+                        // is «لا», and the delete button is how «لا» is said later.
+                        ->defaultItems(0)
+                        ->addActionLabel(__('sanabel.repeater.add_livestock'))
                         ->schema([
                             Forms\Components\Select::make('kind')
                                 ->label(__('sanabel.livestock.kind'))
@@ -1064,6 +1120,12 @@ class BeneficiaryResource extends Resource
                             ['creditor_phone_encrypted'],
                         ))
                         ->label(__('sanabel.debt.plural'))
+                        // T-130 — a repeater that opens with a blank row asks a
+                        // question the family may not have an answer to, and then
+                        // refuses the whole file over it. It opens empty: no row
+                        // is «لا», and the delete button is how «لا» is said later.
+                        ->defaultItems(0)
+                        ->addActionLabel(__('sanabel.repeater.add_debts'))
                         ->schema([
                             Forms\Components\TextInput::make('creditor_name_ar')
                                 ->label(__('sanabel.debt.creditor_name_ar'))
@@ -1112,6 +1174,16 @@ class BeneficiaryResource extends Resource
                     Forms\Components\Repeater::make('supportSources')
                         ->relationship()
                         ->label(__('sanabel.support_source.plural'))
+                        // T-130 — the association's own example: «لما يتم
+                        // اختيار لا, تختفي مباشر جميع الخيارات التابعة لها».
+                        // An empty table is that «لا», and it says so.
+                        ->helperText(__('sanabel.support_source.empty_means_none'))
+                        // T-130 — a repeater that opens with a blank row asks a
+                        // question the family may not have an answer to, and then
+                        // refuses the whole file over it. It opens empty: no row
+                        // is «لا», and the delete button is how «لا» is said later.
+                        ->defaultItems(0)
+                        ->addActionLabel(__('sanabel.repeater.add_support_sources'))
                         ->schema([
                             Forms\Components\TextInput::make('name_ar')
                                 ->label(__('sanabel.support_source.name_ar'))
@@ -1151,6 +1223,12 @@ class BeneficiaryResource extends Resource
                             ['national_id_encrypted'],
                         ))
                         ->label(__('sanabel.caregiver.plural'))
+                        // T-130 — a repeater that opens with a blank row asks a
+                        // question the family may not have an answer to, and then
+                        // refuses the whole file over it. It opens empty: no row
+                        // is «لا», and the delete button is how «لا» is said later.
+                        ->defaultItems(0)
+                        ->addActionLabel(__('sanabel.repeater.add_caregivers'))
                         ->schema([
                             Forms\Components\TextInput::make('name_ar')
                                 ->label(__('sanabel.caregiver.name_ar')),
@@ -1621,6 +1699,57 @@ class BeneficiaryResource extends Resource
             : DependencyRules::isUnableToEarn((bool) ($data['has_documented_condition'] ?? false));
 
         return $data;
+    }
+
+    /**
+     * T-130 — «عند اضافة ملف المستفيد ما يظهر الملفات الجديدة المحفوظة»,
+     * 27 October.
+     *
+     * One cause was a blank repeater row refusing the save on a step nobody
+     * was looking at. The other was this: the place selects offered every
+     * area and every locality in the governorate, while the region scope
+     * shows a delegate only the locality they are attached to. File a family
+     * in the next village along and it saved, and then vanished — from the
+     * list, from their dashboard, from everything they can open.
+     *
+     * So a scoped account is offered the places it can still see afterwards,
+     * and an unscoped one is offered them all.
+     *
+     * @return array<int,string>
+     */
+    private static function areaOptions(): array
+    {
+        $query = Region::where('is_active', true)->where('type', 'area');
+
+        if ($own = self::scopedRegion()) {
+            $area = $own->ancestorOfType('area');
+
+            $query->whereIn('id', $area ? [$area->id] : Region::descendantIds($own->id));
+        }
+
+        return $query->orderBy('name_ar')->pluck('name_ar', 'id')->all();
+    }
+
+    /** @return array<int,string> */
+    private static function localityOptions(mixed $areaId): array
+    {
+        $query = Region::where('is_active', true)->where('parent_id', $areaId);
+
+        if ($own = self::scopedRegion()) {
+            $query->whereIn('id', Region::descendantIds($own->id));
+        }
+
+        return $query->orderBy('name_ar')->pluck('name_ar', 'id')->all();
+    }
+
+    /** The region an account is tied to, when its role is tied to one at all. */
+    private static function scopedRegion(): ?Region
+    {
+        $user = auth()->user();
+
+        return in_array($user?->role?->key, RegionScope::SCOPED_ROLES, true) && $user->region_id
+            ? Region::withoutGlobalScope(RegionScope::class)->find($user->region_id)
+            : null;
     }
 
     /**

@@ -186,7 +186,8 @@ it('records what the work pays, where the work is asked about', function () {
     livewire(EditBeneficiary::class, ['record' => $case->getRouteKey()])
         ->fillForm([
             'birth_date' => '1984-03-02',
-            'works' => true,
+            // T-127 — «هل يعمل» is three answers now; «نعم» is this one.
+            'work_status' => 'yes',
             'workplace_ar' => 'ورشة حدادة',
             'work_income' => 450_000,
         ])
@@ -206,9 +207,16 @@ it('refuses a three-year-old who works, and one who has been widowed', function 
     $threeYearsOld = now()->subYears(3)->toDateString();
 
     livewire(EditBeneficiary::class, ['record' => $case->getRouteKey()])
-        ->fillForm(['birth_date' => $threeYearsOld, 'works' => true])
+        ->fillForm(['birth_date' => $threeYearsOld, 'work_status' => 'yes'])
         ->call('save')
-        ->assertHasFormErrors(['works']);
+        // T-127 — the refusal moved onto the three-valued answer with the
+        // toggle it replaced, and «يبحث عن عمل» is refused of a child too.
+        ->assertHasFormErrors(['work_status']);
+
+    livewire(EditBeneficiary::class, ['record' => $case->getRouteKey()])
+        ->fillForm(['birth_date' => $threeYearsOld, 'work_status' => 'seeking'])
+        ->call('save')
+        ->assertHasFormErrors(['work_status']);
 
     livewire(EditBeneficiary::class, ['record' => $case->getRouteKey()])
         ->fillForm(['birth_date' => $threeYearsOld, 'marital_status' => 'widowed'])
@@ -218,7 +226,7 @@ it('refuses a three-year-old who works, and one who has been widowed', function 
     // The age itself is not refused: a household headed by a minor exists,
     // and what cannot be true is the work and the marriage.
     livewire(EditBeneficiary::class, ['record' => $case->getRouteKey()])
-        ->fillForm(['birth_date' => $threeYearsOld, 'works' => false, 'marital_status' => 'single'])
+        ->fillForm(['birth_date' => $threeYearsOld, 'work_status' => 'no', 'marital_status' => 'single'])
         ->call('save')
         ->assertHasNoFormErrors();
 });

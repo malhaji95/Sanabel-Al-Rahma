@@ -38,7 +38,8 @@ it('saves the survey questions about the household through the form', function (
             'town_ar' => 'حي المنشية',
             'latitude' => 32.6189,
             'longitude' => 36.1021,
-            'works' => true,
+            // T-127 — «هل يعمل» is three answers, and `works` follows it.
+            'work_status' => 'yes',
             'workplace_ar' => 'ورشة حدادة',
             'has_quran_memorizers' => true,
             'quran_memorizer_count' => 2,
@@ -56,6 +57,7 @@ it('saves the survey questions about the household through the form', function (
         ->and($case->birth_date->toDateString())->toBe('1984-03-02')
         ->and($case->town_ar)->toBe('حي المنشية')
         ->and((float) $case->latitude)->toBe(32.6189)
+        ->and($case->work_status)->toBe('yes')
         ->and($case->works)->toBeTrue()
         ->and($case->workplace_ar)->toBe('ورشة حدادة')
         ->and($case->quran_memorizer_count)->toBe(2)
@@ -72,7 +74,9 @@ it('opens the form with the survey answers it already holds', function () {
         ->assertFormSet([
             'town_ar' => 'حي المنشية',
             'surveyed_by_ar' => 'أبو محمد',
-            'works' => true,
+            // T-127 — a row that only holds the old boolean is read onto the
+            // three-valued question rather than opening it empty.
+            'work_status' => 'yes',
         ]);
 });
 
