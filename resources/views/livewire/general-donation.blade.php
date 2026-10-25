@@ -37,19 +37,7 @@
                  system records it (rule 7). --}}
             <form wire:submit="record" class="space-y-4">
                 @if ($transferWallet)
-                    <div>
-                        <p class="text-sm font-medium">{{ __('sanabel.transfer.single') }}</p>
-
-                        <div class="mt-2 rounded-lg border p-4" style="border-color: var(--border);">
-                            <p class="text-sm font-semibold" style="color: var(--brand-primary);">
-                                {{ __('sanabel.transfer.destination') }}
-                            </p>
-                            <p class="tabular mt-2 text-lg font-bold" dir="ltr">{{ $transferWallet['wallet'] }}</p>
-                            <p class="mt-1 text-xs" style="color: var(--text-muted);">
-                                {{ __('sanabel.transfer.holder') }}: {{ $transferWallet['holder'] }}
-                            </p>
-                        </div>
-                    </div>
+                    <x-transfer-wallet :wallet="$transferWallet" />
                 @else
                     <p class="text-sm" style="color: var(--text-muted);">{{ __('sanabel.transfer.none') }}</p>
                 @endif
@@ -93,6 +81,26 @@
                     <label class="field-label" for="general-ref">{{ __('sanabel.donation.transaction_ref') }}</label>
                     <input id="general-ref" type="text" wire:model="transactionRef" class="field tabular" dir="ltr">
                     @error('transactionRef')
+                        <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                {{-- T-123 — «لازم يتم رفع صورة الحوالة سواء pdf او أي صورة». --}}
+                <div>
+                    <label class="field-label" for="general-receipt">
+                        {{ __('sanabel.donation.receipt_upload') }}
+                    </label>
+
+                    <input id="general-receipt" type="file" wire:model="receipt" class="field"
+                           accept="image/*,application/pdf">
+
+                    <p class="mt-1.5 text-xs" style="color: var(--text-muted);">
+                        {{ __('sanabel.donation.receipt_help') }}
+                    </p>
+
+                    <p class="mt-1 text-xs" wire:loading wire:target="receipt">…</p>
+
+                    @error('receipt')
                         <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
                     @enderror
                 </div>

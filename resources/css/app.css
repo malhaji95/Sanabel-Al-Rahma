@@ -45,6 +45,12 @@
          */
         --logo-field: #FFFFFF;
 
+        /* T-123 — the progress bands. */
+        --meter-low: #C62828;
+        --meter-mid: var(--brand-gold);
+        --meter-high: #7CB342;
+        --meter-complete: #1B5E20;
+
         color-scheme: light;
     }
 
@@ -59,6 +65,11 @@
         --accent: #5A9A5E;
         --accent-contrast: #0B1F0C;
         --logo-field: #F7F9F4;
+
+        --meter-low: #EF5350;
+        --meter-mid: #D4B13F;
+        --meter-high: #9CCC65;
+        --meter-complete: #43A047;
 
         color-scheme: dark;
     }
@@ -251,8 +262,26 @@
         @apply h-full rounded-full transition-[width] duration-500;
     }
 
+    /*
+     | T-123 — the four bands the association asked for on 26 October: red
+     | under forty, amber to eighty, a light green to ninety-nine, and the
+     | identity's deep green when it is done. The dark scheme lifts each one,
+     | because a deep green on a near-black page is a bar nobody can read.
+     */
+    .meter-fill-low {
+        background-color: var(--meter-low);
+    }
+
+    .meter-fill-mid {
+        background-color: var(--meter-mid);
+    }
+
+    .meter-fill-high {
+        background-color: var(--meter-high);
+    }
+
     .meter-fill-complete {
-        background-color: var(--brand-gold);
+        background-color: var(--meter-complete);
     }
 
     /* ---- an article body written in the rich editor ---- */

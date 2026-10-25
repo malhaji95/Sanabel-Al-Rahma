@@ -26,6 +26,14 @@
     'card-interactive' => ! $full,
     'card' => $full,
 ])>
+    {{-- T-123 — «عند إضافة حملة نحتاج أن يكون متوفر خيار رفع صورة». --}}
+    @if ($campaign->imageUrl())
+        <img src="{{ $campaign->imageUrl() }}"
+             alt="{{ $campaign->title_ar }}"
+             class="mb-3 h-40 w-full rounded-xl object-cover"
+             loading="lazy" decoding="async">
+    @endif
+
     @if ($full)
         <h1 class="text-2xl leading-snug">{{ $campaign->title_ar }}</h1>
     @else
@@ -81,7 +89,8 @@
             aria-label="{{ __('sanabel.public.progress') }}"
         >
             @if ($progress > 0)
-                <div @class(['meter-fill', 'meter-fill-complete' => $progress >= 100]) style="width: {{ $progress }}%"></div>
+                <div class="meter-fill meter-fill-{{ $campaign->progressBand($progress) }}"
+                     style="width: {{ $progress }}%"></div>
             @endif
         </div>
 
@@ -167,9 +176,32 @@
         </p>
     </details>
 
+    {{--
+        T-123 — «هل المفروض تظهر كلمة التبرع لدى كل حملة؟ أم انها تظهر فقط
+        لمستخدمين برتبة متبرع؟», 26 October.
+
+        It used to appear for a signed-in donor and for nobody else, so a
+        visitor reading a campaign — which is who a campaign is written for —
+        was shown a goal, a bar, and no way to give to it. The form still
+        belongs to an account, because a pledge holds money against the goal
+        and has to be somebody's; what a visitor gets is the way in.
+    --}}
     @if ($campaign->acceptsPledges($collected) && auth()->user()?->donor)
         <livewire:pledge-to-campaign :campaign="$campaign" :key="'pledge-' . $campaign->id" />
-    @elseif (! $campaign->acceptsPledges($collected))
+    @elseif ($campaign->acceptsPledges($collected))
+        <div class="mt-auto space-y-2 pt-4">
+            <a href="{{ route('donate.general') }}" class="btn-primary block text-center no-underline">
+                {{ __('sanabel.public.donate_now') }}
+            </a>
+
+            <p class="text-center text-xs" style="color: var(--text-muted);">
+                <a href="{{ route('login') }}" style="color: var(--accent);">
+                    {{ __('sanabel.public.login') }}
+                </a>
+                {{ __('sanabel.public.pledge_needs_account') }}
+            </p>
+        </div>
+    @else
         <p class="mt-auto pt-4 text-sm" style="color: var(--text-muted);">
             {{ __('sanabel.public.campaign_closed') }}
         </p>

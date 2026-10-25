@@ -4,11 +4,14 @@ namespace App\Livewire;
 
 use App\Models\Donor;
 use App\Services\IdentityFormat;
+use App\Services\MediaService;
 use App\Payments\DuplicateTransactionRef;
 use App\Payments\PaymentGateway;
 use App\Services\TransferRouting;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 
 /**
  * T-103 — giving without picking a family.
@@ -41,6 +44,8 @@ use Livewire\Component;
  */
 class GeneralDonation extends Component
 {
+    use WithFileUploads;
+
     public ?int $amount = null;
 
     public string $transactionRef = '';
@@ -51,6 +56,9 @@ class GeneralDonation extends Component
     public string $phone = '';
 
     public ?string $notice = null;
+
+    /** T-123 — an image or a PDF of the transfer, optional. */
+    public $receipt = null;
 
     public ?string $error = null;
 
@@ -70,11 +78,14 @@ class GeneralDonation extends Component
             'name' => $signedIn ? null : ['required', 'string', 'min:3', 'max:191'],
             // T-121 — ten digits here too, when one is given at all.
             'phone' => $signedIn ? null : ['nullable', 'string', 'digits:'.IdentityFormat::PHONE_DIGITS],
+            // T-123 — the slip for the transfer, image or PDF.
+            'receipt' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,heic,pdf', 'max:8192'],
         ]), attributes: [
             'amount' => __('sanabel.donation.amount'),
             'transactionRef' => __('sanabel.donation.transaction_ref'),
             'name' => __('sanabel.donation.donor'),
             'phone' => __('sanabel.donor.phone'),
+            'receipt' => __('sanabel.donation.receipt_upload'),
         ]);
 
         /*
@@ -97,7 +108,7 @@ class GeneralDonation extends Component
             // No basket, so the service marks it general on its own. Passing
             // the designation here as well would be a second place for the
             // same decision to be made differently.
-            app(PaymentGateway::class)->record([
+            $donation = app(PaymentGateway::class)->record([
                 'donor_id' => $donor->id,
                 'amount' => $this->amount,
                 'transaction_ref' => $this->transactionRef,
@@ -109,8 +120,28 @@ class GeneralDonation extends Component
             return;
         }
 
+        /*
+         | T-123 — the slip, against the donation it belongs to. There may be
+         | no account behind it: a guest's gift is still their own transfer,
+         | and the row records what was uploaded without naming a person who
+         | was never asked to sign in.
+         */
+        if ($this->receipt instanceof TemporaryUploadedFile) {
+            try {
+                $media = app(MediaService::class)
+                    ->store($this->receipt, $donation, 'receipt', auth()->user());
+
+                $donation->forceFill(['receipt_media_id' => $media->getKey()])->save();
+            } catch (\RuntimeException $e) {
+                // The money has already moved; the picture is not worth
+                // losing the record of it over.
+                $this->error = $e->getMessage();
+            }
+        }
+
         $this->amount = null;
         $this->transactionRef = '';
+        $this->receipt = null;
         $this->notice = __('sanabel.public.transfer_recorded');
         $this->thanks = true;
     }

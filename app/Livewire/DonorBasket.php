@@ -10,9 +10,12 @@ use App\Models\BasketItem;
 use App\Models\Setting;
 use App\Payments\PaymentGateway;
 use App\Services\BasketService;
+use App\Services\MediaService;
 use App\Services\TransferRouting;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 
 /**
  * T-19 and T-26 — the basket, its 24h hold, and recording the transfer.
@@ -20,6 +23,8 @@ use Livewire\Component;
  */
 class DonorBasket extends Component
 {
+    use WithFileUploads;
+
     public ?string $error = null;
 
     public ?string $notice = null;
@@ -28,6 +33,9 @@ class DonorBasket extends Component
     public bool $thanks = false;
 
     public string $transactionRef = '';
+
+    /** T-123 — an image or a PDF of the transfer, optional. */
+    public $receipt = null;
 
     #[On('basket-updated')]
     public function refreshBasket(): void
@@ -67,7 +75,15 @@ class DonorBasket extends Component
 
         $this->validate([
             'transactionRef' => ['required', 'string', 'max:191'],
-        ], attributes: ['transactionRef' => __('sanabel.donation.transaction_ref')]);
+            // T-123 — the slip for the transfer the donor has just made.
+            // Optional, because the reference is what the finance desk
+            // matches against the statement; the picture is what saves them
+            // asking for it.
+            'receipt' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,heic,pdf', 'max:8192'],
+        ], attributes: [
+            'transactionRef' => __('sanabel.donation.transaction_ref'),
+            'receipt' => __('sanabel.donation.receipt_upload'),
+        ]);
 
         $basket = $this->basket();
 
@@ -78,7 +94,7 @@ class DonorBasket extends Component
         }
 
         try {
-            app(PaymentGateway::class)->record([
+            $donation = app(PaymentGateway::class)->record([
                 'donor_id' => auth()->user()->donor->id,
                 'amount' => $basket->total(),
                 'transaction_ref' => $this->transactionRef,
@@ -91,10 +107,38 @@ class DonorBasket extends Component
             return;
         }
 
+        $this->attachReceipt($donation);
+
         $this->transactionRef = '';
+        $this->receipt = null;
         $this->notice = __('sanabel.public.transfer_recorded');
         // Shown once, under the confirmation, in the association's own words.
         $this->thanks = true;
+    }
+
+    /**
+     * T-123 — the slip, stored against the donation it belongs to.
+     *
+     * A refused file never costs the donor the transfer they have already
+     * made: the donation is recorded either way and the screen says what
+     * happened to the picture.
+     */
+    private function attachReceipt(\App\Models\Donation $donation): void
+    {
+        if (! $this->receipt instanceof TemporaryUploadedFile) {
+            return;
+        }
+
+        try {
+            $media = app(MediaService::class)
+                ->store($this->receipt, $donation, 'receipt', auth()->user());
+        } catch (\RuntimeException $e) {
+            $this->error = $e->getMessage();
+
+            return;
+        }
+
+        $donation->forceFill(['receipt_media_id' => $media->getKey()])->save();
     }
 
     /**

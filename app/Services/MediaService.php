@@ -19,7 +19,15 @@ use Illuminate\Support\Facades\Storage;
  */
 class MediaService
 {
-    public function store(UploadedFile $file, Model $owner, string $kind, User $uploader): Media
+    /**
+     * T-123 — the uploader may be nobody.
+     *
+     * A donor giving without an account uploads the slip for their own
+     * transfer, and there is no user to name. The row still records what was
+     * uploaded, when, and against which donation; it simply cannot name a
+     * person who was never asked to sign in.
+     */
+    public function store(UploadedFile $file, Model $owner, string $kind, ?User $uploader = null): Media
     {
         $disk = config('sanabel.media_disk');
         $config = config('sanabel.media');
@@ -72,7 +80,7 @@ class MediaService
             'size_bytes' => $size,
             'scan_status' => $held ? Media::PENDING : Media::CLEAN,
             'scanned_at' => $held ? null : now(),
-            'uploaded_by' => $uploader->getKey(),
+            'uploaded_by' => $uploader?->getKey(),
         ]);
     }
 

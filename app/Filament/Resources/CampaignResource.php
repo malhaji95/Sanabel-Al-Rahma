@@ -40,6 +40,16 @@ class CampaignResource extends Resource
                 ->helperText(__('sanabel.campaign.body_help'))
                 ->rows(8)
                 ->columnSpanFull(),
+
+            // T-123 — «عند إضافة حملة نحتاج أن يكون متوفر خيار رفع صورة».
+            Forms\Components\FileUpload::make('image')
+                ->label(__('sanabel.campaign.image'))
+                ->helperText(__('sanabel.campaign.image_help'))
+                ->image()
+                ->disk('public')
+                ->directory('campaigns')
+                ->maxSize(4096)
+                ->columnSpanFull(),
             Forms\Components\TextInput::make('goal_amount')->label(__('sanabel.campaign.goal'))->numeric()->minValue(0)->required()->suffix(config('sanabel.currency')),
             Forms\Components\Select::make('beneficiary_id')->label(__('sanabel.campaign.case'))->relationship('beneficiary', 'file_number')->searchable(),
             Forms\Components\DatePicker::make('starts_on')

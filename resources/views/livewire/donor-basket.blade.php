@@ -86,19 +86,7 @@
                     {{-- One destination for everything in the basket: Sanabel
                          Al-Wafa's own wallet. A family's account is never here. --}}
                     @if ($transferWallet)
-                        <div class="space-y-3">
-                            <p class="text-sm font-medium">{{ __('sanabel.transfer.single') }}</p>
-
-                            <div class="rounded-lg border p-4" style="border-color: var(--border);">
-                                <p class="text-sm font-semibold" style="color: var(--brand-primary);">
-                                    {{ __('sanabel.transfer.destination') }}
-                                </p>
-                                <p class="mt-2 text-lg font-bold tabular" dir="ltr">{{ $transferWallet['wallet'] }}</p>
-                                <p class="mt-1 text-xs" style="color: var(--text-muted);">
-                                    {{ __('sanabel.transfer.holder') }}: {{ $transferWallet['holder'] }}
-                                </p>
-                            </div>
-                        </div>
+                        <x-transfer-wallet :wallet="$transferWallet" />
                     @else
                         <p class="text-sm" style="color: var(--text-muted);">{{ __('sanabel.transfer.none') }}</p>
                     @endif
@@ -109,6 +97,26 @@
                         </label>
                         <input id="transaction-ref" type="text" wire:model="transactionRef" class="field tabular" dir="ltr">
                         @error('transactionRef')
+                            <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- T-123 — «لازم يتم رفع صورة الحوالة سواء pdf او أي صورة». --}}
+                    <div>
+                        <label class="field-label" for="basket-receipt">
+                            {{ __('sanabel.donation.receipt_upload') }}
+                        </label>
+
+                        <input id="basket-receipt" type="file" wire:model="receipt" class="field"
+                               accept="image/*,application/pdf">
+
+                        <p class="mt-1.5 text-xs" style="color: var(--text-muted);">
+                            {{ __('sanabel.donation.receipt_help') }}
+                        </p>
+
+                        <p class="mt-1 text-xs" wire:loading wire:target="receipt">…</p>
+
+                        @error('receipt')
                             <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
                         @enderror
                     </div>

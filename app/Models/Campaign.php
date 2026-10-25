@@ -10,13 +10,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Campaign extends Model
 {
     use Auditable, HasFactory, SoftDeletes, TracksCreator;
 
     protected $fillable = [
-        'beneficiary_id', 'title_ar', 'body_ar', 'goal_amount',
+        'beneficiary_id', 'title_ar', 'body_ar', 'image', 'goal_amount',
         'starts_on', 'ends_on',
         'currency', 'wallet_encrypted', 'surplus_policy_text_ar', 'is_published', 'status',
         'fund_id', 'created_by',
@@ -65,6 +66,43 @@ class Campaign extends Model
         return $this->goal_amount > 0
             ? (int) min(100, floor(100 * ($collected ?? $this->collectedAmount()) / $this->goal_amount))
             : 0;
+    }
+
+    /**
+     * T-123 — the picture the association uploaded, or null.
+     *
+     * The same rule as a home page card: a path under `images/` ships with
+     * the application and anything else was uploaded to the public disk.
+     */
+    public function imageUrl(): ?string
+    {
+        if (! $this->image) {
+            return null;
+        }
+
+        return str_starts_with($this->image, 'images/')
+            ? asset($this->image)
+            : Storage::disk('public')->url($this->image);
+    }
+
+    /**
+     * T-123 — how far along the bar is, as the association reads it.
+     *
+     * «تحت 40 بالمية اللون الاحمر، ومن 41 الى 80 باللون البرتقالي، ومن 81 الى
+     * 99 اخضر فاتح، اما المكتملة تكون باللون الاخضر الغامق», 26 October. The
+     * colour is a word here and a class in the stylesheet, so the bands are
+     * named in one place rather than written into a template.
+     */
+    public function progressBand(?int $percent = null): string
+    {
+        $percent ??= $this->progressPercent();
+
+        return match (true) {
+            $percent >= 100 => 'complete',
+            $percent >= 81 => 'high',
+            $percent >= 41 => 'mid',
+            default => 'low',
+        };
     }
 
     public function acceptsPledges(?int $collected = null): bool
