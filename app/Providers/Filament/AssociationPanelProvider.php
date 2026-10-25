@@ -13,6 +13,8 @@ use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
+use Illuminate\Contracts\View\View;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -54,6 +56,15 @@ class AssociationPanelProvider extends PanelProvider
                 provider: LocalFontProvider::class,
             )
             ->defaultAvatarProvider(InitialsAvatarProvider::class)
+            /*
+             | T-137 — the signed-in account's name in the bar, beside the
+             | avatar Filament draws. The name itself sits inside the menu,
+             | which is one click away on a screen somebody has open all day.
+             */
+            ->renderHook(
+                PanelsRenderHook::USER_MENU_BEFORE,
+                fn (): View => view('filament.components.signed-in-as'),
+            )
             ->discoverResources(in: app_path('Filament/Association/Resources'), for: 'App\\Filament\\Association\\Resources')
             ->discoverPages(in: app_path('Filament/Association/Pages'), for: 'App\\Filament\\Association\\Pages')
             ->pages([Pages\Dashboard::class])

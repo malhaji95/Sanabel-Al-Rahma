@@ -78,33 +78,7 @@
 
                 <x-theme-toggle />
 
-                @auth
-                    <a href="{{ route('donor.portal') }}" class="btn-secondary">
-                        {{ __('sanabel.public.my_account') }}
-                    </a>
-
-                    {{--
-                        T-120 — the way out. The route has existed since the
-                        login did and nothing on any page called it, so an
-                        account signed in on a borrowed phone stayed signed in.
-
-                        A form rather than a link: signing somebody out is a
-                        change to their session, so it is a POST carrying the
-                        token, and no page a visitor is shown can end their
-                        session by being loaded.
-                    --}}
-                    <form method="POST" action="{{ route('logout') }}" class="contents">
-                        @csrf
-                        <button type="submit" class="btn-secondary"
-                                title="{{ __('sanabel.public.logout_full') }}">
-                            {{ __('sanabel.public.logout') }}
-                        </button>
-                    </form>
-                @else
-                    <a href="{{ route('login') }}" class="btn-primary no-underline">
-                        {{ __('sanabel.public.login') }}
-                    </a>
-                @endauth
+                <x-account-menu />
             </nav>
         </div>
 

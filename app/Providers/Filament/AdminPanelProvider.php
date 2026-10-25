@@ -17,6 +17,8 @@ use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
+use Illuminate\Contracts\View\View;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -58,6 +60,15 @@ class AdminPanelProvider extends PanelProvider
                 provider: LocalFontProvider::class,
             )
             ->defaultAvatarProvider(InitialsAvatarProvider::class)
+            /*
+             | T-137 — the signed-in account's name in the bar, beside the
+             | avatar Filament draws. The name itself sits inside the menu,
+             | which is one click away on a screen somebody has open all day.
+             */
+            ->renderHook(
+                PanelsRenderHook::USER_MENU_BEFORE,
+                fn (): View => view('filament.components.signed-in-as'),
+            )
             ->defaultThemeMode(ThemeMode::System)
             ->navigationGroups([
                 NavigationGroup::make(__('sanabel.nav.beneficiaries')),
