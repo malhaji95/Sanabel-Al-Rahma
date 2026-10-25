@@ -76,23 +76,28 @@ it('denies council every write permission and allows it read permissions', funct
         ->and($council->isReadOnly())->toBeTrue();
 })->group('AUTH-01');
 
-it('stops an association from opening a case outside its city', function () {
+it('opens to an association its own files and no other body files', function () {
     $association = userWithRole('association', ['region_id' => $this->region->id]);
     $otherAssociation = userWithRole('association', ['region_id' => $this->region->id]);
 
     $ownCase = publishedCase($this->region);
     $ownCase->forceFill(['created_by' => $association->id])->save();
 
-    // Since 30 Sep 2026 an association sees the families of the city it works
-    // in, so a second association in the same city is no longer a boundary —
-    // the city is. A file in another city stays closed to it.
+    /*
+     | T-144 — this used to assert that a file another body registered in the
+     | same city opened too, on the decision of 30 Sep 2026. The association
+     | read that screen on 28 October and asked why it was showing them
+     | families they had never touched, and docs/04-permissions.md rule 3 had
+     | the answer all along: its own and referred cases only. The city-wide
+     | awareness is the coordination lookup, which carries no name.
+     */
     $sameCity = publishedCase($this->region);
     $sameCity->forceFill(['created_by' => $otherAssociation->id])->save();
 
     $otherCity = publishedCase(regionWithRates());
 
     $this->actingAs($association, 'sanctum')->getJson(route('cases.show', $ownCase))->assertOk();
-    $this->actingAs($association, 'sanctum')->getJson(route('cases.show', $sameCity))->assertOk();
+    $this->actingAs($association, 'sanctum')->getJson(route('cases.show', $sameCity))->assertForbidden();
     // Not found rather than forbidden: the region scope removes the row from
     // the query, so the association cannot even learn the file exists.
     $this->actingAs($association, 'sanctum')->getJson(route('cases.show', $otherCity))->assertNotFound();
