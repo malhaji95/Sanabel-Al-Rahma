@@ -21,6 +21,17 @@
         ]],
     ])
 
+    {{--
+        T-134 — the blocks this reader may see. Five of the six count money
+        that belongs to the association rather than to a place, so an account
+        whose reports are its own area reads the family block and no other.
+    --}}
+    @php($sections = collect($sections)->only($this->sections())->all())
+
+    @if (! $this->seesMoney())
+        <p class="text-sm" style="color: var(--gray-500);">{{ __('sanabel.reports.area_only') }}</p>
+    @endif
+
     @foreach ($sections as $group => $section)
         <x-filament::section :heading="$section['heading']">
             <dl class="grid gap-4 sm:grid-cols-3 lg:grid-cols-4">

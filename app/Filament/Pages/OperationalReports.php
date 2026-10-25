@@ -12,6 +12,7 @@ use App\Models\DonationAllocation;
 use App\Models\Sponsorship;
 use App\Models\SponsorshipInstallment;
 use App\Services\CoverageService;
+use App\Services\PermissionService;
 use Filament\Forms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -67,10 +68,39 @@ class OperationalReports extends Page implements HasForms
         }
 
         return in_array(
-            app(\App\Services\PermissionService::class)->scopeFor($user, 'view_reports'),
+            app(PermissionService::class)->scopeFor($user, 'view_reports'),
             ['all', 'area'],
             true,
         );
+    }
+
+    /**
+     * T-134 — «بالنسبة لمشرف المنطقة عند KPI Cards ضمن لوحة التحكم يجب ان
+     * تظهر له فقط البيانات التي تخصه … مشرف المنطقة ما الشكاوي التي تظهر عنده
+     * والتقارير التشغيلية حتى المندوب كذلك؟», 28 October.
+     *
+     * The page opened for an area scope as well as for the association's own
+     * accounts, and five of its six blocks have no region in them at all: a
+     * donation, a basket, a sponsorship, a campaign and a disbursement belong
+     * to the association, not to a place. So an area supervisor opened the
+     * operational reports and read the association's whole cash position —
+     * what was collected this month, what is still held, what was reversed.
+     *
+     * The family block is the one that is already narrowed, because every
+     * query in it reads `beneficiaries` through the region scope. That block
+     * is the area supervisor's report; the rest is the association's.
+     */
+    public function seesMoney(): bool
+    {
+        return app(PermissionService::class)->scopeFor(auth()->user(), 'view_reports') === 'all';
+    }
+
+    /** The blocks this reader may see, in the order the screen draws them. */
+    public function sections(): array
+    {
+        return $this->seesMoney()
+            ? ['money', 'families', 'sponsorships', 'failures', 'campaigns']
+            : ['families'];
     }
 
     public function mount(): void
@@ -113,13 +143,16 @@ class OperationalReports extends Page implements HasForms
         $from = $this->from();
         $to = $from->copy()->endOfMonth();
 
-        return [
-            'money' => $this->money($from, $to),
-            'sponsorships' => $this->sponsorships(),
-            'failures' => $this->failures($from, $to),
+        // Computed only where it is shown: a figure an account may not read
+        // is not worth the queries, and a report that counts what it hides is
+        // one edit away from printing it.
+        return array_filter([
+            'money' => $this->seesMoney() ? $this->money($from, $to) : null,
+            'sponsorships' => $this->seesMoney() ? $this->sponsorships() : null,
+            'failures' => $this->seesMoney() ? $this->failures($from, $to) : null,
             'families' => $this->families(),
-            'campaigns' => $this->campaigns(),
-        ];
+            'campaigns' => $this->seesMoney() ? $this->campaigns() : null,
+        ]);
     }
 
     private function money(Carbon $from, Carbon $to): array

@@ -83,7 +83,13 @@ class OverviewStats extends BaseWidget
         $files = ! $user?->can_('view_full_case') ? []
             : match ($scope) {
                 'own' => $this->ownFiles($user),
-                'area', 'all' => $this->reviewQueues(),
+                // T-134 — the same queues, and the screen says whose they are:
+                // every count below reads `beneficiaries` through the region
+                // scope, so an area supervisor's figures are their own area's.
+                // Saying so is the difference between a number they trust and
+                // one they assume belongs to somebody else.
+                'area' => $this->reviewQueues(mine: true),
+                'all' => $this->reviewQueues(),
                 default => [],
             };
 
@@ -161,11 +167,17 @@ class OverviewStats extends BaseWidget
      *
      * @return array<int,Stat>
      */
-    private function reviewQueues(): array
+    private function reviewQueues(bool $mine = false): array
     {
+        // «ضمن منطقتك» under each figure, for a reader whose lists are their
+        // own region and whose figures therefore are too.
+        $where = fn (?string $help = null) => $mine
+            ? trim(($help ? $help.' — ' : '').__('sanabel.dashboard.in_your_area'))
+            : $help;
+
         return [
             Stat::make(__('sanabel.dashboard.published_cases'), Beneficiary::published()->count())
-                ->description(__('sanabel.dashboard.published_help'))
+                ->description($where(__('sanabel.dashboard.published_help')))
                 ->color('success')
                 ->url($this->cases('published')),
 
@@ -174,7 +186,7 @@ class OverviewStats extends BaseWidget
             // which file.
             Stat::make(__('sanabel.dashboard.awaiting_delegate'),
                 Beneficiary::whereIn('status', CaseService::AWAITING_FIELD)->count())
-                ->description(__('sanabel.dashboard.awaiting_delegate_help'))
+                ->description($where(__('sanabel.dashboard.awaiting_delegate_help')))
                 ->color('info')
                 /*
                  | T-125 — the figure said how many and not whose. It opens
@@ -186,17 +198,19 @@ class OverviewStats extends BaseWidget
 
             Stat::make(__('sanabel.dashboard.awaiting_supervisor'),
                 Beneficiary::where('status', 'verified')->count())
-                ->description(__('sanabel.dashboard.awaiting_supervisor_help'))
+                ->description($where(__('sanabel.dashboard.awaiting_supervisor_help')))
                 ->color('info')
                 ->url(ApprovalFollowUp::getUrl()),
 
             Stat::make(__('sanabel.dashboard.pending_approval'),
                 Beneficiary::where('status', 'pending_approval')->count())
+                ->description($where())
                 ->color('warning')
                 ->url($this->cases('pending_approval')),
 
             Stat::make(__('sanabel.dashboard.needs_reassessment'),
                 Beneficiary::where('status', 'needs_reassessment')->count())
+                ->description($where())
                 ->color('danger')
                 ->url($this->cases('needs_reassessment')),
         ];

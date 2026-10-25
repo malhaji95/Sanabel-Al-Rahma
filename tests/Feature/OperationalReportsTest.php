@@ -3,6 +3,7 @@
 use App\Filament\Pages\OperationalReports;
 use App\Models\DonationAllocation;
 use App\Models\Donor;
+use App\Services\BasketService;
 use App\Services\DisbursementService;
 use App\Services\DonationService;
 
@@ -15,6 +16,14 @@ beforeEach(function () {
     seedCore();
     $this->region = regionWithRates();
     $this->admin = userWithRole('admin');
+
+    /*
+     | T-134 — the page now answers to the reader: an account whose reports
+     | are its own area is shown the family block and not the association's
+     | money. These figures are the association's, so they are read as an
+     | account that may read them.
+     */
+    $this->actingAs($this->admin);
 });
 
 function reportFor(?string $month = null): array
@@ -30,7 +39,7 @@ it('counts the month money, split the way the association reads it', function ()
 
     // Earmarked money arrives the way a donor sends it: through a basket.
     $donor = Donor::factory()->create();
-    $baskets = app(App\Services\BasketService::class);
+    $baskets = app(BasketService::class);
     $basket = $baskets->currentFor($donor);
     $baskets->addItem($basket, $family, 6_000);
     $baskets->reserve($basket);

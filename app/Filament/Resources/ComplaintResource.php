@@ -10,6 +10,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 /** T-33 — reference number, category, owner, status, resolution. Nothing more. */
 class ComplaintResource extends Resource
@@ -31,6 +32,38 @@ class ComplaintResource extends Resource
     public static function getPluralModelLabel(): string
     {
         return __('sanabel.complaint.plural');
+    }
+
+    /**
+     * T-134 — «مشرف المنطقة ما الشكاوي التي تظهر عنده … حتى المندوب كذلك؟»,
+     * 28 October.
+     *
+     * Every one of them, as it turned out. The screen opens for whoever may
+     * act on what is on it (T-115), and `file_complaint` is held by a
+     * delegate, an area supervisor, a partner association and a donor — so
+     * the list showed all of them every complaint in the association,
+     * including the ones families filed about their own payments.
+     *
+     * Handling a complaint is `handle_complaint`, which belongs to the
+     * executive director and the oversight committee. An account that only
+     * files one sees the ones it filed, and the ones filed from its own
+     * portal account, and nothing else. The board of trustees and the
+     * chairman oversee, so they read them all as before.
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user = auth()->user();
+
+        if ($user?->can_('handle_complaint')
+            || $user?->isAdmin()
+            || $user?->hasRole('council', 'board_director', 'deputy_board_director')) {
+            return $query;
+        }
+
+        return $query->where(fn (Builder $mine) => $mine
+            ->where('created_by', $user?->getKey())
+            ->orWhere('submitted_by', $user?->getKey()));
     }
 
     public static function form(Form $form): Form
