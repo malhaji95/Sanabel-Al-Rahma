@@ -26,7 +26,7 @@ beforeEach(function () {
  * Pays an amount into one family's month and has it verified — the way a
  * donor's money actually arrives: through a basket, and never to the family.
  */
-function fund(Beneficiary $family, int $amount, string $ref): void
+function fundTheStage(Beneficiary $family, int $amount, string $ref): void
 {
     $donor = Donor::factory()->create();
 
@@ -56,7 +56,7 @@ it('measures the coverage a donor reads against the stage, not the whole need', 
         ->and($target)->toBeLessThan($need);
 
     // Half the stage arrives.
-    fund($family, intdiv($target, 2), 'TRX-STAGE-HALF');
+    fundTheStage($family, intdiv($target, 2), 'TRX-STAGE-HALF');
 
     $family->refresh();
 
@@ -110,7 +110,7 @@ it('calls the stage complete once its amount has arrived, and says so', function
     $family = publishedCase($this->region);
     $target = app(CoverageService::class)->targetAmount($family);
 
-    fund($family, $target, 'TRX-STAGE-FULL');
+    fundTheStage($family, $target, 'TRX-STAGE-FULL');
 
     $card = (new MaskedCaseResource($family->refresh()))->resolve();
 
