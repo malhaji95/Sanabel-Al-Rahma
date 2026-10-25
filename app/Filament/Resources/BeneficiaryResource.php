@@ -15,7 +15,9 @@ use App\Services\IdentityFormat;
 use App\Services\RankingService;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Support\Exceptions\Halt;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -1396,7 +1398,41 @@ class BeneficiaryResource extends Resource
                     Forms\Components\DatePicker::make('declaration_on')
                         ->label(__('sanabel.beneficiary.declaration_on'))
                         ->maxDate(now()),
-                ])->columns(2),
+                ])
+                    ->columns(2)
+                    /*
+                     | T-131 — «عند عدم اختيار الموافقة على سياسة الخصوصية
+                     | واطلعت على سياسة الخصوصية لا يجب ان تنتقل الى الصفحة
+                     | التالية لعدم الموافقة وتظهر خطأ», 27 October.
+                     |
+                     | The model has refused a file leaving draft without both
+                     | answers since T-74, which is the hard stop. But it is a
+                     | refusal at the end, and this page is where the two
+                     | questions are asked: a researcher who walked past them
+                     | found out at the very last screen. So the page does not
+                     | hand over to the next one until they are answered, and
+                     | says which of the two is missing.
+                     |
+                     | A validation rule on the two toggles would have done it
+                     | at the price of the thing T-130 just fixed: a file whose
+                     | visit has not happened yet could no longer be saved as a
+                     | draft at all. This refuses the step, not the save.
+                     */
+                    ->afterValidation(function (Forms\Get $get) {
+                        if ($get('privacy_policy_seen') === true && $get('privacy_consent') === true) {
+                            return;
+                        }
+
+                        Notification::make()
+                            ->title($get('privacy_policy_seen') !== true
+                                ? __('sanabel.beneficiary.privacy_needs_seen_first')
+                                : __('sanabel.beneficiary.privacy_consent_required'))
+                            ->danger()
+                            ->persistent()
+                            ->send();
+
+                        throw new Halt;
+                    }),
 
                 Forms\Components\Wizard\Step::make(__('sanabel.beneficiary.step_urgency'))->schema([
                     Forms\Components\DateTimePicker::make('urgency_deadline_at')
