@@ -111,6 +111,8 @@ class AnonymiseService
             'national_id_encrypted', 'spouse_national_id_encrypted',
             'relation_other_ar', 'birth_date', 'spouse_name_ar',
             'workplace_ar', 'school_grade_ar', 'certificate_ar', 'skills_ar', 'notes_ar',
+            // T-129 — the member's own health note and the doctor on it.
+            'condition_description_ar', 'doctor_phone_encrypted',
         ],
         Housing::class => ['landlord_name_ar', 'landlord_phone_encrypted', 'type_other_ar'],
         HealthRecord::class => [

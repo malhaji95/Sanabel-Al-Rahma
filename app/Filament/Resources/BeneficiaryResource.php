@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\BeneficiaryResource\Pages;
 use App\Models\Beneficiary;
 use App\Models\ChangeRequest;
+use App\Models\HouseholdMember;
 use App\Models\Region;
 use App\Models\User;
 use App\Services\CoverageService;
@@ -414,7 +415,7 @@ class BeneficiaryResource extends Resource
                         // the screen does not show.
                         ->relationship(modifyQueryUsing: fn ($query) => self::unhide(
                             $query,
-                            ['national_id_encrypted', 'spouse_national_id_encrypted'],
+                            ['national_id_encrypted', 'spouse_national_id_encrypted', 'doctor_phone_encrypted'],
                         ))
                         ->label(__('sanabel.beneficiary.members'))
                         ->schema([
@@ -432,18 +433,34 @@ class BeneficiaryResource extends Resource
                                 ))
                                 ->dehydrateStateUsing(fn (?string $state) => IdentityFormat::digits($state)),
 
+                            /*
+                             | T-129 — «الربط بين صلة القرابة والجنس بحيث تكون
+                             | ابنة والجنس انثى», 27 October.
+                             |
+                             | «ابنة» and «ذكر» was a row the form accepted,
+                             | and the two words beside each other are the
+                             | kind of contradiction nobody reads twice. The
+                             | kinship answers the gender where it can: a
+                             | daughter, a mother, a sister and a wife are
+                             | female and a son, a father and a brother are
+                             | male. «رب الأسرة» and «أخرى» say nothing about
+                             | it, so they leave it as it was.
+                             */
                             Forms\Components\Select::make('relation')
                                 ->label(__('sanabel.household_member.relation'))
                                 ->options(__('sanabel.relation'))
                                 ->required()
                                 ->live()
-                                ->afterStateUpdated(fn ($state, Forms\Get $get, Forms\Set $set) => $set(
-                                    'person_class',
-                                    DependencyRules::personClass(
+                                ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
+                                    if ($gender = self::genderOfRelation($state)) {
+                                        $set('gender', $gender);
+                                    }
+
+                                    $set('person_class', DependencyRules::personClass(
                                         (int) date('Y') - (int) ($get('birth_year') ?: date('Y')),
                                         $state,
-                                    ),
-                                )),
+                                    ));
+                                }),
                             Forms\Components\TextInput::make('relation_other_ar')
                                 ->label(__('sanabel.household_member.relation_other_ar'))
                                 ->visible(fn (Forms\Get $get) => $get('relation') === 'other'),
@@ -467,6 +484,14 @@ class BeneficiaryResource extends Resource
                                         (int) date('Y') - $year,
                                         $get('relation'),
                                     ));
+                                    // T-129 — the age moved, so the rules'
+                                    // own answer about dependency moves with
+                                    // it. It stays editable afterwards.
+                                    $set('dependent', DependencyRules::isDependent(
+                                        (int) date('Y') - $year,
+                                        $get('occupation') === 'student',
+                                        false,
+                                    ));
                                 }),
 
                             Forms\Components\TextInput::make('birth_year')
@@ -479,6 +504,11 @@ class BeneficiaryResource extends Resource
                                         $set('person_class', DependencyRules::personClass(
                                             (int) date('Y') - (int) $state,
                                             $get('relation'),
+                                        ));
+                                        $set('dependent', DependencyRules::isDependent(
+                                            (int) date('Y') - (int) $state,
+                                            $get('occupation') === 'student',
+                                            false,
                                         ));
                                     }
                                 }),
@@ -522,37 +552,135 @@ class BeneficiaryResource extends Resource
                                 ->visible(fn (Forms\Get $get) => $get('marital_status') === 'married'),
 
                             // T-69 — «تصنيف اليتم», asked of each dependant.
+                            // T-129 — and asked here rather than in the status
+                            // list: an orphan is also a student or a child.
                             Forms\Components\Toggle::make('is_orphan')
                                 ->label(__('sanabel.household_member.is_orphan')),
 
+                            /*
+                             | T-129 — the status decides what is asked next.
+                             |
+                             | It used to be a label with nothing behind it,
+                             | sitting beside two toggles that could contradict
+                             | it: «موظف» and «لا يعمل» in the same row. The
+                             | toggles are gone — `works` and `is_student` are
+                             | derived from this answer in the model — and each
+                             | status now opens its own questions and no others.
+                             */
                             Forms\Components\Select::make('occupation')
                                 ->label(__('sanabel.household_member.occupation'))
-                                ->options(__('sanabel.occupation')),
-
-                            Forms\Components\Toggle::make('is_student')->label(__('sanabel.household_member.is_student'))->live(),
-
-                            Forms\Components\TextInput::make('school_grade_ar')
-                                ->label(__('sanabel.household_member.school_grade_ar'))
-                                ->visible(fn (Forms\Get $get) => (bool) $get('is_student')),
-
-                            Forms\Components\Toggle::make('works')
-                                ->label(__('sanabel.household_member.works'))
+                                ->options(__('sanabel.occupation'))
                                 ->live()
+                                ->afterStateUpdated(fn ($state, Forms\Get $get, Forms\Set $set) => $set(
+                                    'dependent',
+                                    DependencyRules::isDependent(
+                                        (int) self::memberAge($get),
+                                        $state === 'student',
+                                        false,
+                                    ),
+                                ))
                                 ->rule(fn (Forms\Get $get) => function ($attribute, $value, $fail) use ($get) {
-                                    if ($value && ! DependencyRules::answersAsAdult(self::memberAge($get))) {
+                                    if (in_array($value, HouseholdMember::WORKING_OCCUPATIONS, true)
+                                        && ! DependencyRules::answersAsAdult(self::memberAge($get))) {
                                         $fail(__('sanabel.cases.too_young_to_work'));
                                     }
                                 }),
 
+                            // طالب — «بأي مرحلة وأي صف».
+                            Forms\Components\Select::make('school_stage')
+                                ->label(__('sanabel.household_member.school_stage'))
+                                ->options(__('sanabel.school_stage'))
+                                ->visible(fn (Forms\Get $get) => $get('occupation') === 'student'),
+
+                            Forms\Components\TextInput::make('school_grade_ar')
+                                ->label(__('sanabel.household_member.school_grade_ar'))
+                                ->visible(fn (Forms\Get $get) => $get('occupation') === 'student'),
+
+                            // موظف أو عامل — «مكان العمل والراتب الشهري».
                             Forms\Components\TextInput::make('workplace_ar')
                                 ->label(__('sanabel.household_member.workplace_ar'))
-                                ->visible(fn (Forms\Get $get) => (bool) $get('works')),
+                                ->visible(fn (Forms\Get $get) => in_array(
+                                    $get('occupation'),
+                                    HouseholdMember::WORKING_OCCUPATIONS,
+                                    true,
+                                )),
 
                             // T-121 — what this one's work pays.
                             Forms\Components\TextInput::make('work_income')
                                 ->label(__('sanabel.household_member.work_income'))
                                 ->numeric()->minValue(0)
-                                ->visible(fn (Forms\Get $get) => (bool) $get('works')),
+                                ->visible(fn (Forms\Get $get) => in_array(
+                                    $get('occupation'),
+                                    HouseholdMember::WORKING_OCCUPATIONS,
+                                    true,
+                                )),
+
+                            // باحث عن عمل — the same four answers the head is
+                            // asked (T-127), asked of whoever is looking.
+                            Forms\Components\TextInput::make('sought_trade_ar')
+                                ->label(__('sanabel.household_member.sought_trade_ar'))
+                                ->visible(fn (Forms\Get $get) => $get('occupation') === 'jobseeker'),
+
+                            Forms\Components\Toggle::make('has_certificate')
+                                ->label(__('sanabel.household_member.has_certificate'))
+                                ->live()
+                                ->visible(fn (Forms\Get $get) => $get('occupation') === 'jobseeker'),
+
+                            Forms\Components\TextInput::make('certificate_ar')
+                                ->label(__('sanabel.household_member.certificate_ar'))
+                                // Shown to a jobseeker who has one — and to any
+                                // row that already carries one, so an answer
+                                // given before this task is not hidden by it.
+                                ->visible(fn (Forms\Get $get) => ($get('occupation') === 'jobseeker'
+                                    && (bool) $get('has_certificate'))
+                                    || filled($get('certificate_ar'))),
+
+                            Forms\Components\TextInput::make('experience_years')
+                                ->label(__('sanabel.household_member.experience_years'))
+                                ->numeric()->minValue(0)->maxValue(70)
+                                ->visible(fn (Forms\Get $get) => $get('occupation') === 'jobseeker'),
+
+                            Forms\Components\Toggle::make('can_teach_quran')
+                                ->label(__('sanabel.household_member.can_teach_quran'))
+                                ->visible(fn (Forms\Get $get) => $get('occupation') === 'jobseeker'),
+
+                            // متقاعد — «يتم ذكر الراتب التقاعدي».
+                            Forms\Components\TextInput::make('pension_income')
+                                ->label(__('sanabel.household_member.pension_income'))
+                                ->helperText(__('sanabel.household_member.pension_help'))
+                                ->numeric()->minValue(0)
+                                ->suffix(config('sanabel.currency'))
+                                ->visible(fn (Forms\Get $get) => $get('occupation') === 'retired'),
+
+                            /*
+                             | غير قادر على العمل — «يظهر الوضع الصحي الخاص مع
+                             | رفع ملف او وصف مع رقم الطبيب».
+                             |
+                             | The description and the doctor are asked here,
+                             | where the answer is given. The report itself is
+                             | uploaded under «الوثائق» as a medical paper,
+                             | which is the one upload path in this system with
+                             | a type and size gate on it, and the banded
+                             | assessment the need engine reads stays in the
+                             | health step. The helper text says all three.
+                             */
+                            Forms\Components\Textarea::make('condition_description_ar')
+                                ->label(__('sanabel.household_member.condition_description_ar'))
+                                ->helperText(__('sanabel.household_member.condition_evidence_help'))
+                                ->rows(2)
+                                ->columnSpanFull()
+                                ->visible(fn (Forms\Get $get) => $get('occupation') === 'unable'),
+
+                            Forms\Components\TextInput::make('doctor_phone_encrypted')
+                                ->label(__('sanabel.household_member.doctor_phone'))
+                                ->tel()
+                                ->maxLength(20)
+                                ->rule(fn () => IdentityFormat::lengthRule(
+                                    IdentityFormat::PHONE_DIGITS,
+                                    __('sanabel.cases.phone_digits'),
+                                ))
+                                ->dehydrateStateUsing(fn (?string $state) => IdentityFormat::digits($state))
+                                ->visible(fn (Forms\Get $get) => $get('occupation') === 'unable'),
 
                             Forms\Components\Toggle::make('smokes')
                                 ->label(__('sanabel.household_member.smokes')),
@@ -560,31 +688,42 @@ class BeneficiaryResource extends Resource
                             Forms\Components\Toggle::make('is_quran_memorizer')
                                 ->label(__('sanabel.household_member.is_quran_memorizer')),
 
-                            Forms\Components\TextInput::make('certificate_ar')
-                                ->label(__('sanabel.household_member.certificate_ar')),
-
                             Forms\Components\TextInput::make('skills_ar')
                                 ->label(__('sanabel.household_member.skills_ar')),
 
                             Forms\Components\Toggle::make('has_documented_condition')
                                 ->label(__('sanabel.household_member.has_documented_condition'))
                                 ->helperText(__('sanabel.household_member.condition_help'))
-                                ->live(),
+                                ->live()
+                                ->afterStateUpdated(fn ($state, Forms\Set $set) => $set(
+                                    'unable_to_earn',
+                                    DependencyRules::isUnableToEarn((bool) $state),
+                                )),
 
-                            // Both flags are computed from the rules, not entered by hand.
-                            Forms\Components\Placeholder::make('dependent_preview')
+                            /*
+                             | T-129 — «عند معال او عاجز عن العمل يجب ان يكون
+                             | قابلة للتعديل».
+                             |
+                             | They were two read-only lines showing what the
+                             | rules make of the row. The rules still fill them,
+                             | and refill them whenever the age or the status
+                             | that feeds them changes — but the researcher who
+                             | sat with the family can now correct the answer,
+                             | which is what the association asked for.
+                             |
+                             | Both move money: `dependent` feeds the
+                             | dependants ratio in the score and
+                             | `unable_to_earn` opens an adjustment in the need.
+                             | So the screen says so under each one, and every
+                             | change is in the audit log like any other.
+                             */
+                            Forms\Components\Toggle::make('dependent')
                                 ->label(__('sanabel.household_member.dependent'))
-                                ->content(fn (Forms\Get $get) => DependencyRules::isDependent(
-                                    (int) date('Y') - (int) ($get('birth_year') ?: date('Y')),
-                                    (bool) $get('is_student'),
-                                    false,
-                                ) ? __('sanabel.yes') : __('sanabel.no')),
+                                ->helperText(__('sanabel.household_member.dependent_help')),
 
-                            Forms\Components\Placeholder::make('unable_preview')
+                            Forms\Components\Toggle::make('unable_to_earn')
                                 ->label(__('sanabel.household_member.unable_to_earn'))
-                                ->content(fn (Forms\Get $get) => DependencyRules::isUnableToEarn(
-                                    (bool) $get('has_documented_condition')
-                                ) ? __('sanabel.yes') : __('sanabel.no')),
+                                ->helperText(__('sanabel.household_member.unable_help')),
 
                             Forms\Components\Textarea::make('notes_ar')->label(__('sanabel.household_member.notes'))->columnSpanFull(),
                         ])
@@ -1456,16 +1595,54 @@ class BeneficiaryResource extends Resource
         return $query->afterQuery(fn ($records) => $records->each->makeVisible($columns));
     }
 
-    /** dependent and unable_to_earn are always derived, never taken from the form. */
+    /**
+     * The class is always derived. The two dependency flags are derived only
+     * where the screen did not answer them.
+     *
+     * T-129 — «عند معال او عاجز عن العمل يجب ان يكون قابلة للتعديل». The
+     * rules fill both as the row is typed and refill them whenever the age or
+     * the status changes, so what arrives here is the rules' answer unless
+     * somebody corrected it. A row written by an import or the offline sync
+     * sends neither, and is derived as before.
+     */
     private static function deriveMemberFlags(array $data): array
     {
         $age = (int) date('Y') - (int) ($data['birth_year'] ?? date('Y'));
+        $isStudent = ($data['occupation'] ?? null) === 'student' || (bool) ($data['is_student'] ?? false);
 
         $data['person_class'] = DependencyRules::personClass($age, $data['relation'] ?? null);
-        $data['dependent'] = DependencyRules::isDependent($age, (bool) ($data['is_student'] ?? false), false);
-        $data['unable_to_earn'] = DependencyRules::isUnableToEarn((bool) ($data['has_documented_condition'] ?? false));
+
+        $data['dependent'] = array_key_exists('dependent', $data) && $data['dependent'] !== null
+            ? (bool) $data['dependent']
+            : DependencyRules::isDependent($age, $isStudent, false);
+
+        $data['unable_to_earn'] = array_key_exists('unable_to_earn', $data) && $data['unable_to_earn'] !== null
+            ? (bool) $data['unable_to_earn']
+            : DependencyRules::isUnableToEarn((bool) ($data['has_documented_condition'] ?? false));
 
         return $data;
+    }
+
+    /**
+     * T-129 — the gender a kinship states, or null when it states none.
+     *
+     * «ابنة» with «ذكر» beside it was a row the form took. A daughter, a
+     * mother, a sister and a wife are female; a son, a father and a brother
+     * are male. The head of the household and «أخرى» say nothing about it.
+     */
+    public const RELATION_GENDER = [
+        'spouse' => 'female',
+        'daughter' => 'female',
+        'mother' => 'female',
+        'sister' => 'female',
+        'son' => 'male',
+        'father' => 'male',
+        'brother' => 'male',
+    ];
+
+    public static function genderOfRelation(?string $relation): ?string
+    {
+        return self::RELATION_GENDER[$relation] ?? null;
     }
 
     public static function getRelations(): array

@@ -82,6 +82,9 @@ class ChangeRequest extends Model
         // A member of the household.
         'name_ar', 'relation', 'relation_other_ar', 'birth_year', 'spouse_name_ar',
         'occupation', 'school_grade_ar', 'is_quran_memorizer', 'certificate_ar', 'skills_ar',
+        // T-129 — what each status asks about itself.
+        'school_stage', 'sought_trade_ar', 'has_certificate', 'experience_years',
+        'can_teach_quran', 'pension_income', 'condition_description_ar',
         'is_student', 'has_documented_condition', 'notes_ar', 'national_id_encrypted',
         'is_orphan', 'spouse_national_id_encrypted',
         'person_class', 'dependent', 'unable_to_earn',
