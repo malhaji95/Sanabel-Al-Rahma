@@ -517,6 +517,34 @@ class CoverageService
      * What is still missing from the target. Never more than what the month
      * can still take: a target cannot ask for money the need no longer wants.
      */
+    /**
+     * T-140 — «المبلغ الشهري هذا لازم يكون اللي احنا نحدده للتمويل: مثلا
+     * حاجته مليون رح نموله ب 300 الف, اللي يظهر له 300 الاف, ونسبة التغطية
+     * اللي معروض بالشاشة الخارجية حسب التبرع اللي يجييه», 28 October.
+     *
+     * The coverage a donor reads is now measured against the stage the
+     * association is collecting for, not against the whole monthly need: the
+     * association decided to fund three hundred thousand of a million, so
+     * three hundred thousand is what the appeal asks for and what filling it
+     * means. The full need stays on the card beside it (the sufficiency
+     * note), because a family at 100% of a 30% stage is still short seven
+     * tenths of what it needs — and the panel, the ranking and the priority
+     * bands all keep reading the real need, where that distinction decides
+     * who is paid first.
+     */
+    public function targetCoveragePercent(Beneficiary $beneficiary, ?int $confirmed = null, ?Carbon $month = null): int
+    {
+        $target = $this->targetAmount($beneficiary);
+
+        if ($target <= 0) {
+            return $this->coveragePercent($beneficiary, $confirmed, $month);
+        }
+
+        $funded = $confirmed ?? $this->fundedForMonth($beneficiary, $month);
+
+        return (int) round(100 * min(1.0, $funded / $target));
+    }
+
     public function targetRemaining(Beneficiary $beneficiary, ?int $confirmed = null, ?Carbon $month = null): int
     {
         $month = ($month ?? $this->currentMonth())->copy()->startOfMonth();

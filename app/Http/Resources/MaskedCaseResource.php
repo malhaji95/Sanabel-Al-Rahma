@@ -57,6 +57,7 @@ class MaskedCaseResource extends JsonResource
         // T-78 — the funding target. Figures about the appeal, not about the
         // household: a share of a need the donor is already shown.
         'target_percent', 'target_amount', 'target_remaining', 'target_complete',
+        'target_coverage_percent',
         'show_sufficiency_note',
         // T-82 — four digits of the household's account, and nothing more.
         'wallet_last4',
@@ -183,6 +184,10 @@ class MaskedCaseResource extends JsonResource
             'target_amount' => $coverage->targetAmount($case),
             'target_remaining' => $coverage->targetRemaining($case, $confirmed, $month),
             'target_complete' => $coverage->targetIsComplete($case, $confirmed, $month),
+            // T-140 — the percentage of the stage, which is the percentage a
+            // donor reads. `coverage_percent` above stays the real need's, and
+            // the ranking and the priority bands keep reading that one.
+            'target_coverage_percent' => $coverage->targetCoveragePercent($case, $confirmed, $month),
             'show_sufficiency_note' => (bool) Setting::value(
                 'show_sufficiency_note',
                 config('sanabel.setting_defaults.show_sufficiency_note')

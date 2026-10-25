@@ -7,6 +7,17 @@
 @props(['case', 'showNote' => null])
 
 @php
+    /*
+     | T-140 — «المبلغ الشهري هذا لازم يكون اللي احنا نحدده للتمويل … ونسبة
+     | التغطية اللي معروض بالشاشة الخارجية حسب التبرع اللي يجييه», 28 October.
+     |
+     | The donor reads the stage the association is collecting for: its amount,
+     | its remainder and its percentage. The whole monthly need is still on the
+     | card, in the association's own sentence underneath, because a family at
+     | 100% of a 30% stage is short seven tenths of what it needs — and the
+     | panel, the ranking and the priority band all keep reading the real need,
+     | which is where that distinction decides who is paid first.
+     */
     $coveredPercent = $case['coverage_percent'];
     // The badge reads the priority band, which comes from how much of the need
     // is still uncovered. Running out of time is a separate thing, so it gets
@@ -22,6 +33,10 @@
      */
     $targetPercent = $case['target_percent'] ?? 100;
     $isStaged = $targetPercent > 0 && $targetPercent < 100;
+
+    if ($isStaged) {
+        $coveredPercent = $case['target_coverage_percent'] ?? $coveredPercent;
+    }
     // Null means «follow the list switch», which is what the resource carries.
     $showNote = ($showNote ?? ($case['show_sufficiency_note'] ?? false)) && $isStaged;
 
@@ -146,7 +161,7 @@
         {{-- T-139 — «ولما يكتمل كامل المبلغ يتم الكتابة فوق نسبة التغطية»,
              28 October, in the association's own words. Above the percentage,
              because the percentage is where the eye lands. --}}
-        @if ($covered)
+        @if ($covered || ($isStaged && ($case['target_complete'] ?? false)))
             <div class="mb-2 rounded-xl p-3 text-xs leading-relaxed"
                  style="background-color: color-mix(in srgb, var(--accent) 10%, transparent);">
                 <p>{{ __('sanabel.funding.good_news_complete') }}</p>
@@ -187,16 +202,20 @@
             @if ($covered && $monthLabel)
                 <span class="font-bold">{{ __('sanabel.funding.month_complete', ['month' => $monthLabel]) }}</span>
             @else
+                {{-- The stage's remainder where there is a stage, because that
+                     is the figure the appeal is asking for. --}}
                 <span style="color: var(--text-muted);">{{ __('sanabel.public.remaining') }}:</span>
-                <span class="tabular font-bold">{{ number_format($case['remaining_amount']) }}</span>
+                <span class="tabular font-bold">
+                    {{ number_format($isStaged ? $case['target_remaining'] : $case['remaining_amount']) }}
+                </span>
                 <span style="color: var(--text-muted);">{{ \App\Services\Money::label($case['currency']) }}</span>
             @endif
         </p>
 
         @if ($isStaged && ! $covered)
             <p class="mt-1.5 text-sm">
-                <span style="color: var(--text-muted);">{{ __('sanabel.funding.target_remaining') }}:</span>
-                <span class="tabular font-bold">{{ number_format($case['target_remaining']) }}</span>
+                <span style="color: var(--text-muted);">{{ __('sanabel.funding.target_amount') }}:</span>
+                <span class="tabular font-bold">{{ number_format($case['target_amount']) }}</span>
                 <span style="color: var(--text-muted);">{{ \App\Services\Money::label($case['currency']) }}</span>
 
                 @if ($case['target_complete'] ?? false)
