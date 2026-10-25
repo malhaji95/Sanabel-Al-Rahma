@@ -1475,10 +1475,32 @@ class BeneficiaryResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            /*
+             | T-132 — «ضمن صفحة ملفات المستفيدين عالج الظهور العرضي للصفحة كي
+             | تظهر تكون الحاجة لعمل horizontal scrolling», 27 October.
+             |
+             | Eleven columns, seven of them always drawn, on a right-to-left
+             | page: the status and the review date fell off the end and the
+             | reader had to drag the table sideways to see whether a file was
+             | approved. The answer is not a wider page but fewer columns,
+             | without losing anything the list holds — so what belonged
+             | together is drawn together, under the value it qualifies:
+             |
+             |   · the old system's number under the file number;
+             |   · the place under the family name;
+             |   · the review date under the status, in red when it is past.
+             |
+             | Four columns and two badges are left, which fits a laptop and a
+             | telephone, and every column that was taken out is still one
+             | click away under «الأعمدة».
+             */
             ->columns([
-                Tables\Columns\TextColumn::make('file_number')->label(__('sanabel.beneficiary.file_number'))->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('legacy_file_no')->label(__('sanabel.beneficiary.legacy_file_no'))
-                    ->searchable()->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('file_number')
+                    ->label(__('sanabel.beneficiary.file_number'))
+                    ->searchable()->sortable()
+                    ->description(fn (Beneficiary $record) => $record->legacy_file_no
+                        ? __('sanabel.beneficiary.legacy_file_no').': '.$record->legacy_file_no
+                        : null),
                 // T-65 — a file whose personal data has been destroyed, and
                 // one with a request standing against it.
                 Tables\Columns\TextColumn::make('anonymised_at')
@@ -1491,12 +1513,20 @@ class BeneficiaryResource extends Resource
                     ->label(__('sanabel.beneficiary.case_classification'))
                     ->badge()
                     ->formatStateUsing(fn (?string $state) => $state ? __('sanabel.case_classification.'.$state) : '—')
-                    ->toggleable(),
-                Tables\Columns\TextColumn::make('family_name')->label(__('sanabel.beneficiary.family_name'))->searchable(),
-                Tables\Columns\TextColumn::make('region.name_ar')->label(__('sanabel.beneficiary.region'))->sortable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('family_name')
+                    ->label(__('sanabel.beneficiary.family_name'))
+                    ->searchable()
+                    // The place the file is in, under the family it belongs to.
+                    ->description(fn (Beneficiary $record) => $record->region?->name_ar),
+                Tables\Columns\TextColumn::make('region.name_ar')
+                    ->label(__('sanabel.beneficiary.region'))
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('support_type')
                     ->label(__('sanabel.beneficiary.support_type'))
-                    ->formatStateUsing(fn (string $state) => __('sanabel.masked.need_type.'.$state)),
+                    ->formatStateUsing(fn (string $state) => __('sanabel.masked.need_type.'.$state))
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('status')
                     ->label(__('sanabel.beneficiary.status'))
                     ->badge()
@@ -1508,6 +1538,22 @@ class BeneficiaryResource extends Resource
                         // The two waiting rooms read as in-flight, not idle.
                         'verified', 'pending_approval' => 'info',
                         default => 'gray',
+                    })
+                    // The review date under the status it decides, red when it
+                    // has passed — the column it replaces said the same thing
+                    // in the same colour, two columns further along.
+                    ->description(function (Beneficiary $record) {
+                        $due = $record->next_assessment_due_at;
+
+                        if (! $due) {
+                            return null;
+                        }
+
+                        $line = __('sanabel.beneficiary.next_assessment').': '.$due->format('Y-m-d');
+
+                        return $due->isPast()
+                            ? new HtmlString('<span class="text-danger-600 dark:text-danger-400">'.e($line).'</span>')
+                            : $line;
                     }),
 
                 Tables\Columns\TextColumn::make('fieldVerifier.name')
@@ -1532,7 +1578,11 @@ class BeneficiaryResource extends Resource
                 Tables\Columns\TextColumn::make('next_assessment_due_at')
                     ->label(__('sanabel.beneficiary.next_assessment'))
                     ->date()
-                    ->color(fn ($state) => $state && $state->isPast() ? 'danger' : null),
+                    ->sortable()
+                    ->color(fn ($state) => $state && $state->isPast() ? 'danger' : null)
+                    // Drawn under the status by default; still its own column
+                    // for whoever wants to sort the list by it.
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
