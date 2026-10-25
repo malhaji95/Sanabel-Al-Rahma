@@ -2,11 +2,20 @@
 
 namespace App\Livewire;
 
+use App\Exceptions\DuplicateTransactionRef;
 use App\Models\Donor;
+use App\Payments\PaymentGateway;
+/*
+ | T-135 — this used to import App\Payments\DuplicateTransactionRef, a class
+ | that does not exist. PHP does not complain about catching a class it has
+ | never heard of, it simply never matches — so a donor who typed a transfer
+ | reference somebody had already used was answered with a server error
+ | instead of «رقم الحوالة مستخدم من قبل», on the one page that is open to
+ | anybody. Hard rule 1 says a duplicate is refused with a message asking for
+ | review; the refusal worked and the message was unreachable.
+ */
 use App\Services\IdentityFormat;
 use App\Services\MediaService;
-use App\Payments\DuplicateTransactionRef;
-use App\Payments\PaymentGateway;
 use App\Services\TransferRouting;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Component;

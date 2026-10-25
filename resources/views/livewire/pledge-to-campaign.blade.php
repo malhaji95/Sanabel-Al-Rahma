@@ -25,6 +25,6 @@
     @endif
 
     @if ($notice)
-        <p class="mt-2 text-xs font-medium" style="color: var(--accent);">{{ $notice }}</p>
+        <p class="mt-2 text-xs font-medium" style="color: var(--accent);" x-data x-init="$nextTick(() => $el.scrollIntoView({ behavior: 'smooth', block: 'center' }))">{{ $notice }}</p>
     @endif
 </div>

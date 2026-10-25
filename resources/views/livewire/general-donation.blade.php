@@ -14,7 +14,7 @@
     </p>
 
     @if ($notice)
-        <div class="card mt-5 text-center">
+        <div class="card mt-5 text-center" x-data x-init="$nextTick(() => $el.scrollIntoView({ behavior: 'smooth', block: 'center' }))">
             <p class="font-medium" style="color: var(--accent);">{{ $notice }}</p>
 
             @if ($thanks)
@@ -29,7 +29,7 @@
     @endif
 
     @if ($error)
-        <p class="mt-4 text-sm text-red-600 dark:text-red-400">{{ $error }}</p>
+        <p class="mt-4 text-sm text-red-600 dark:text-red-400" x-data x-init="$nextTick(() => $el.scrollIntoView({ behavior: 'smooth', block: 'center' }))">{{ $error }}</p>
     @endif
 
         <div class="card mt-5">

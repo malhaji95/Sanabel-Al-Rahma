@@ -51,10 +51,10 @@
         @endif
 
         @if ($notice)
-            <div class="alert-success" role="status">{{ $notice }}</div>
+            <div class="alert-success" role="status" x-data x-init="$nextTick(() => $el.scrollIntoView({ behavior: 'smooth', block: 'center' }))">{{ $notice }}</div>
         @endif
         @if ($error)
-            <div class="alert-warning" role="alert">{{ $error }}</div>
+            <div class="alert-warning" role="alert" x-data x-init="$nextTick(() => $el.scrollIntoView({ behavior: 'smooth', block: 'center' }))">{{ $error }}</div>
         @endif
 
         <form wire:submit="recordGeneral" class="grid gap-4 sm:grid-cols-2">

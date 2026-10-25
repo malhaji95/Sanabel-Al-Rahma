@@ -9,7 +9,7 @@
     </div>
 
     @if ($error)
-        <div class="alert-danger" role="alert">
+        <div class="alert-danger" role="alert" x-data x-init="$nextTick(() => $el.scrollIntoView({ behavior: 'smooth', block: 'center' }))">
             <svg class="mt-0.5 h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                 <circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01" stroke-linecap="round"/>
             </svg>
@@ -18,7 +18,7 @@
     @endif
 
     @if ($notice)
-        <div class="alert-success" role="status">
+        <div class="alert-success" role="status" x-data x-init="$nextTick(() => $el.scrollIntoView({ behavior: 'smooth', block: 'center' }))">
             <svg class="mt-0.5 h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                 <path d="m5 13 4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
