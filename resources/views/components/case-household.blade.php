@@ -35,6 +35,11 @@
         __('sanabel.masked.has_breadwinner') => isset($case['has_breadwinner'])
             ? __($case['has_breadwinner'] ? 'sanabel.yes' : 'sanabel.no')
             : null,
+        // T-160 — the family's own answer about receiving a donor. No answer
+        // is «لا», which is what T-69 decided and what the row says.
+        __('sanabel.masked.accepts_visit') => isset($case['accepts_visit'])
+            ? __($case['accepts_visit'] ? 'sanabel.yes' : 'sanabel.no')
+            : null,
         // T-106 — «قيمة الديون». The row names the value when there is one
         // and answers the plain question when there is not, rather than
         // reading «قيمة الديون: لا».

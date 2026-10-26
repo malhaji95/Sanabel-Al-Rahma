@@ -382,6 +382,15 @@ return [
         'show_dependents' => true,
 
         /*
+         | T-160 — «يقبل الزيارة نعم لا, ونقدر نوقفها او نفعلها», 30 October.
+         |
+         | The family is asked on the dossier whether they will receive a
+         | donor, and no answer is not a yes. The row says which of the two it
+         | is; this switch takes the whole row off every page at once.
+         */
+        'show_visit_consent' => true,
+
+        /*
          | T-106 — «وضروري شرح»، 16 October. A paragraph written for the
          | donor, which no family has until somebody writes one and somebody
          | who may approve a file signs it off. The switch closes it again

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\RequireTwoFactor;
+use App\Http\Resources\MaskedCaseResource;
 use App\Models\Beneficiary;
 use App\Models\HouseholdMember;
 use App\Models\Housing;
@@ -283,4 +284,14 @@ function memberRow(array $overrides = []): array
 function gatesAnsweredNo(): array
 {
     return ['has_income' => 'no', 'has_health' => 'no', 'has_assets' => 'no'];
+}
+
+/**
+ * The masked payload for a family, as a donor receives it.
+ *
+ * @return array<string,mixed>
+ */
+function maskedOf(Beneficiary $case): array
+{
+    return (new MaskedCaseResource($case->fresh()))->resolve();
 }

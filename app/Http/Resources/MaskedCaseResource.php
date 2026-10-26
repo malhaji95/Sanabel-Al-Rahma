@@ -82,6 +82,8 @@ class MaskedCaseResource extends JsonResource
          | researcher wrote for the committee, and no sentence reaches a donor.
          */
         'illness_severity_label', 'monthly_medical_cost', 'eviction_label', 'has_breadwinner',
+        // T-160 — whether the family will receive a donor, and nothing about when.
+        'accepts_visit',
         'has_vehicle', 'vehicles', 'has_livestock', 'livestock', 'has_property', 'property',
         'dependents',
         // T-106 — the paragraph, and the heading the association chose for it.
@@ -233,6 +235,8 @@ class MaskedCaseResource extends JsonResource
             'monthly_medical_cost' => $this->medicalCost($case),
             'eviction_label' => $this->evictionLabel($case),
             'has_breadwinner' => $this->hasBreadwinner($case),
+            // T-160 — «يقبل الزيارة نعم لا».
+            'accepts_visit' => $this->acceptsVisit($case),
             /*
              | T-102 — «علاج دائم», asked for on 15 October beside the illness.
              | It is the one health answer that changes what a donation is
@@ -448,6 +452,22 @@ class MaskedCaseResource extends JsonResource
         return $case->members
             ->whereIn('occupation', HouseholdMember::WORKING_OCCUPATIONS)
             ->isNotEmpty();
+    }
+
+    /**
+     * T-160 — whether this family will receive a donor.
+     *
+     * The dossier asks them and the answer is theirs; no answer is not a yes
+     * (T-69), so the row reads «لا» for a family that has not agreed rather
+     * than going quiet. Its own switch takes the row off every page.
+     */
+    private function acceptsVisit(Beneficiary $case): ?bool
+    {
+        if (! $this->switched('show_visit_consent')) {
+            return null;
+        }
+
+        return $case->acceptsDonorVisit();
     }
 
     /** Whether anyone in the household is under continuing treatment. */

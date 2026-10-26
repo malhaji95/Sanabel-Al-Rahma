@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Resources\MaskedCaseResource;
 use App\Models\HealthRecord;
 use App\Models\Setting;
 
@@ -21,12 +20,6 @@ beforeEach(function () {
     seedCore();
     $this->region = regionWithRates();
 });
-
-/** The masked payload for a family, as a donor receives it. */
-function maskedOf($case): array
-{
-    return (new MaskedCaseResource($case->fresh()))->resolve();
-}
 
 it('names the worst illness band and what the treatment costs in a month', function () {
     $case = publishedCase($this->region);
