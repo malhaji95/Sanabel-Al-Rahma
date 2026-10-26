@@ -27,6 +27,14 @@
             : null,
         __('sanabel.masked.home_safety') => $case['home_safety_label'] ?? null,
         __('sanabel.masked.home_services') => $case['home_services_label'] ?? null,
+        // T-158 — «خطر الاخلاء», the band the housing sheet already grades. It
+        // travels with the rest of the house, so the switch that closes the
+        // house closes it too.
+        __('sanabel.masked.eviction_risk') => $case['eviction_label'] ?? null,
+        // T-158 — «هل يوجد معيل»: one word, and nothing about who or what.
+        __('sanabel.masked.has_breadwinner') => isset($case['has_breadwinner'])
+            ? __($case['has_breadwinner'] ? 'sanabel.yes' : 'sanabel.no')
+            : null,
         // T-106 — «قيمة الديون». The row names the value when there is one
         // and answers the plain question when there is not, rather than
         // reading «قيمة الديون: لا».
@@ -54,6 +62,12 @@
             : null,
         __('sanabel.masked.ongoing_treatment') => isset($case['ongoing_treatment'])
             ? __($case['ongoing_treatment'] ? 'sanabel.yes' : 'sanabel.no')
+            : null,
+        // T-158 — «المرض شدة الحالة» و«تكلفة الطبية للعلاج», both behind the
+        // health switch like the two rows above them.
+        __('sanabel.masked.illness_severity') => $case['illness_severity_label'] ?? null,
+        __('sanabel.masked.monthly_medical_cost') => isset($case['monthly_medical_cost'])
+            ? number_format((int) $case['monthly_medical_cost']) . ' ' . \App\Services\Money::label()
             : null,
     ])->filter(fn ($value) => filled($value));
 

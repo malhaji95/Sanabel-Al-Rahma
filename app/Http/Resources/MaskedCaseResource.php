@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Beneficiary;
 use App\Models\HealthRecord;
+use App\Models\HouseholdMember;
 use App\Models\Setting;
 use App\Services\CoverageService;
 use App\Services\RankingService;
@@ -73,6 +74,14 @@ class MaskedCaseResource extends JsonResource
         'home_safety_label', 'home_services_label',
         'has_debt', 'debt_amount',
         'conditions', 'ongoing_treatment',
+        /*
+         | T-158 — the association's list of 29 October. Each is a band the
+         | researcher already grades or a figure already on the file, and each
+         | is closed by the switch over the block it belongs to. «وضع فرش
+         | المنزل» and «نوع الأدوية» are not here: both are sentences the
+         | researcher wrote for the committee, and no sentence reaches a donor.
+         */
+        'illness_severity_label', 'monthly_medical_cost', 'eviction_label', 'has_breadwinner',
         'has_vehicle', 'vehicles', 'has_livestock', 'livestock', 'has_property', 'property',
         'dependents',
         // T-106 — the paragraph, and the heading the association chose for it.
@@ -217,6 +226,13 @@ class MaskedCaseResource extends JsonResource
             ...$this->housingDetail($case),
             ...$this->debt($case),
             'conditions' => $this->conditions($case->healthRecords->whereNull('member_id')),
+            // T-158 — the association's list of 29 October. Each of these is
+            // a band the researcher already grades or a figure already on the
+            // file; not one of them is a sentence anybody wrote.
+            'illness_severity_label' => $this->severityLabel($case),
+            'monthly_medical_cost' => $this->medicalCost($case),
+            'eviction_label' => $this->evictionLabel($case),
+            'has_breadwinner' => $this->hasBreadwinner($case),
             /*
              | T-102 — «علاج دائم», asked for on 15 October beside the illness.
              | It is the one health answer that changes what a donation is
@@ -355,6 +371,83 @@ class MaskedCaseResource extends JsonResource
             ->map(fn (string $condition) => __('sanabel.health.conditions.'.$condition))
             ->values()
             ->all();
+    }
+
+    /**
+     * T-158 — «المرض شدة الحالة», the worst of the bands on the file.
+     *
+     * The band is a list the researcher picks from, so it publishes under the
+     * same rule the illness names do. The description beside it stays where
+     * it was written, for the committee.
+     */
+    private function severityLabel(Beneficiary $case): ?string
+    {
+        if (! $this->switched('show_health_condition')) {
+            return null;
+        }
+
+        $worst = $case->healthRecords->max('severity_band');
+
+        return $worst === null ? null : __('sanabel.bands.severity.'.(int) $worst);
+    }
+
+    /**
+     * T-158 — «تكلفة الطبية للعلاج», what the treatment costs in a month.
+     *
+     * A figure, like the debt total, and behind the same switch as the rest
+     * of the health block. Money in the smallest unit (rule 9); the currency
+     * travels beside it in the payload already.
+     */
+    private function medicalCost(Beneficiary $case): ?int
+    {
+        if (! $this->switched('show_health_condition')) {
+            return null;
+        }
+
+        $cost = (int) $case->healthRecords->sum('monthly_medical_cost');
+
+        return $cost > 0 ? $cost : null;
+    }
+
+    /**
+     * T-158 — «خطر الاخلاء», the band the housing sheet already carries.
+     *
+     * It travels with the rest of the house, so the switch that closes the
+     * house closes it too.
+     */
+    private function evictionLabel(Beneficiary $case): ?string
+    {
+        if (! $this->switched('show_housing_detail')) {
+            return null;
+        }
+
+        $band = $case->housing?->eviction_band;
+
+        return $band === null ? null : __('sanabel.bands.eviction.'.(int) $band);
+    }
+
+    /**
+     * T-158 — «هل يوجد معيل»: whether anybody in this household earns.
+     *
+     * Yes if the head works, or if any member's status is one of the working
+     * ones. A jobseeker is not a breadwinner and neither is a student — that
+     * distinction is the whole point of the three answers T-127 put on the
+     * form. Nothing here says who earns or what they do: one word.
+     */
+    private function hasBreadwinner(Beneficiary $case): ?bool
+    {
+        // It describes the household, so it closes with the household.
+        if (! $this->switched('show_household_profile')) {
+            return null;
+        }
+
+        if ($case->work_status === 'yes') {
+            return true;
+        }
+
+        return $case->members
+            ->whereIn('occupation', HouseholdMember::WORKING_OCCUPATIONS)
+            ->isNotEmpty();
     }
 
     /** Whether anyone in the household is under continuing treatment. */
