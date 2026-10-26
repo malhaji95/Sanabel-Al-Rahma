@@ -1,15 +1,22 @@
 <?php
 
+use App\Http\Resources\MaskedCaseResource;
 use App\Models\AuditLog;
 use App\Models\Beneficiary;
+use App\Models\Campaign;
+use App\Models\Complaint;
+use App\Models\JobProfile;
 use App\Models\Media;
+use App\Models\Post;
 use App\Models\Setting;
 use App\Services\AnonymiseService;
+use App\Services\CaseService;
 use App\Services\CoverageService;
 use App\Services\DuplicateService;
 use App\Services\MediaService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 /*
@@ -294,7 +301,7 @@ it('never shows an anonymised file to a donor as a person', function () {
     $this->service->execute($case->fresh(), $this->director);
 
     $payload = json_encode(
-        (new \App\Http\Resources\MaskedCaseResource($case->fresh()))->resolve(),
+        (new MaskedCaseResource($case->fresh()))->resolve(),
         JSON_UNESCAPED_UNICODE,
     );
 
@@ -312,7 +319,7 @@ it('names only columns that exist, so a new personal column cannot be missed', f
         $table = $model->getTable();
 
         foreach ($columns as $column) {
-            expect(\Illuminate\Support\Facades\Schema::hasColumn($table, $column))
+            expect(Schema::hasColumn($table, $column))
                 ->toBeTrue($class.' names a column that does not exist: '.$column);
         }
     }
@@ -332,9 +339,9 @@ it('names only columns that exist, so a new personal column cannot be missed', f
  * family's written consent on the record, so it is built the way the panel
  * builds it: draft, then the consent, then published.
  */
-function storyAbout($case, $uploader): \App\Models\Post
+function storyAbout($case, $uploader): Post
 {
-    $post = \App\Models\Post::create([
+    $post = Post::create([
         'slug' => 'story-'.$case->getKey(),
         'title_ar' => 'قصة اسرة ابو محمد',
         'excerpt_ar' => 'اسرة من حي المنشية',
@@ -361,7 +368,7 @@ it('takes down the public content about the family, not only empties it', functi
 
     $post = storyAbout($case, $this->officer);
 
-    $campaign = \App\Models\Campaign::create([
+    $campaign = Campaign::create([
         'beneficiary_id' => $case->getKey(),
         'title_ar' => 'حملة لاسرة ابو محمد',
         'body_ar' => 'ساعدوا محمد احمد',
@@ -374,7 +381,7 @@ it('takes down the public content about the family, not only empties it', functi
         'is_published' => true,
     ]);
 
-    $profile = \App\Models\JobProfile::create([
+    $profile = JobProfile::create([
         'beneficiary_id' => $case->getKey(),
         'trade_key' => 'smith',
         'summary_ar' => 'محمد احمد حداد بحي المنشية',
@@ -455,7 +462,7 @@ it('takes the values out of the change requests that moved them', function () {
 
     // A change request holds the before and after of the very field being
     // erased, so leaving it is the same leak as leaving the audit payload.
-    app(\App\Services\CaseService::class)->requestChange(
+    app(CaseService::class)->requestChange(
         $case,
         $this->officer,
         ['phone_encrypted' => '0988777666'],
@@ -478,7 +485,7 @@ it('clears the complaint the family filed from their own account', function () {
     $account = userWithRole('beneficiary', ['name' => 'محمد أحمد', 'email' => 'm2@example.test']);
     $case->forceFill(['user_id' => $account->getKey()])->save();
 
-    $complaint = \App\Models\Complaint::create([
+    $complaint = Complaint::create([
         'reference_no' => 'C-'.$case->getKey(),
         'submitted_by' => $account->getKey(),
         'subject_ar' => 'لم يصلني المبلغ',
@@ -523,3 +530,29 @@ it('leaves no trace of the family in any free text or file, anywhere', function 
         }
     }
 })->group('FILE-04');
+
+/*
+ | T-151 — «ماهو السند القانوني؟», 29 October.
+ |
+ | The field asked an admin for a legal basis and did not say what one is, so
+ | the one thing the record keeps about an irreversible act was left to the
+ | reading of whoever pressed the button. The field now says what it wants and
+ | where it comes from, and the text is still required.
+ */
+it('says what a legal basis is on the field that asks for one', function () {
+    expect(__('sanabel.anonymise.reason_help'))
+        ->toContain('مجلس الأمناء')
+        ->toContain('مدة احتفاظ')
+        ->toContain('سجل التدقيق');
+
+    expect(file_get_contents(app_path(
+        'Filament/Resources/BeneficiaryResource/Pages/Concerns/CaseDecisionActions.php'
+    )))->toContain("helperText(__('sanabel.anonymise.reason_help'))");
+});
+
+it('still refuses a request that carries no basis', function () {
+    $case = publishedCase($this->region);
+
+    expect(fn () => $this->service->request($case, $this->chairman, '   '))
+        ->toThrow(RuntimeException::class, __('sanabel.anonymise.reason_required'));
+});

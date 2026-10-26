@@ -230,6 +230,10 @@ trait CaseDecisionActions
                 ->form([
                     Textarea::make('reason_ar')
                         ->label(__('sanabel.anonymise.reason'))
+                        // T-151 — the field asked for a legal basis and did
+                        // not say what one is, so it says so here: what
+                        // compels the erasure and where it came from.
+                        ->helperText(__('sanabel.anonymise.reason_help'))
                         ->required()
                         ->rows(3),
                 ])
