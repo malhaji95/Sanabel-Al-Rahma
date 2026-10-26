@@ -17,7 +17,7 @@ class HouseholdMember extends Model
 
     protected $fillable = [
         'beneficiary_id', 'relation', 'name_ar', 'birth_year', 'gender', 'person_class',
-        'dependent', 'unable_to_earn', 'is_student', 'has_documented_condition', 'notes_ar', 'created_by',
+        'occupation_other_ar', 'dependent', 'unable_to_earn', 'is_student', 'has_documented_condition', 'notes_ar', 'created_by',
         // From the association's social survey.
         'national_id_encrypted', 'relation_other_ar', 'birth_date', 'marital_status',
         'spouse_name_ar', 'occupation', 'school_grade_ar', 'works', 'workplace_ar', 'work_income',

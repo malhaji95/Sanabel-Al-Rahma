@@ -24,24 +24,6 @@ beforeEach(function () {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
 });
 
-/** One member row, with the toggles a new row carries in the browser. */
-function memberRow(array $overrides = []): array
-{
-    return array_merge([
-        'name_ar' => 'فرد',
-        'relation' => 'brother',
-        'gender' => 'male',
-        'birth_year' => 1990,
-        'person_class' => 'adult',
-        'smokes' => false,
-        'is_quran_memorizer' => false,
-        'has_documented_condition' => false,
-        'has_certificate' => false,
-        'can_teach_quran' => false,
-        'is_orphan' => false,
-    ], $overrides);
-}
-
 it('offers the report the moment the household says somebody cannot work', function () {
     $case = familyOf($this->region, adults: 1, children: 0);
 

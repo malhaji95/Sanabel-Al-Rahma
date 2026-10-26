@@ -667,6 +667,17 @@ class BeneficiaryResource extends Resource
                                     }
                                 }),
 
+                            /*
+                             | T-155 — «أخرى» is an answer, not the end of the
+                             | question. The kinship list has asked which since
+                             | the beginning; the status list is the one that
+                             | decides what is asked next, and it did not.
+                             */
+                            Forms\Components\TextInput::make('occupation_other_ar')
+                                ->label(__('sanabel.household_member.occupation_other_ar'))
+                                ->required()
+                                ->visible(fn (Forms\Get $get) => $get('occupation') === 'other'),
+
                             // طالب — «بأي مرحلة وأي صف».
                             Forms\Components\Select::make('school_stage')
                                 ->label(__('sanabel.household_member.school_stage'))

@@ -236,3 +236,40 @@ function runArtisan(string $command, array $arguments = [], bool $failing = fals
 
     return $pending->run();
 }
+
+/**
+ * The toggles a household-member row carries in the browser.
+ *
+ * Filament gives every Toggle a default of false, so a row added on screen
+ * sends false. fillForm() replaces the state wholesale and the defaults go
+ * with it, so a test row states them.
+ *
+ * @return array<string,bool>
+ */
+function memberToggles(): array
+{
+    return [
+        'smokes' => false,
+        'is_quran_memorizer' => false,
+        'has_documented_condition' => false,
+        'has_certificate' => false,
+        'can_teach_quran' => false,
+        'is_orphan' => false,
+    ];
+}
+
+/** One household-member row as the form would send it.
+ *
+ * @param  array<string,mixed>  $overrides
+ * @return array<string,mixed>
+ */
+function memberRow(array $overrides = []): array
+{
+    return array_merge([
+        'name_ar' => 'فرد',
+        'relation' => 'brother',
+        'gender' => 'male',
+        'birth_year' => 1990,
+        'person_class' => 'adult',
+    ], memberToggles(), $overrides);
+}

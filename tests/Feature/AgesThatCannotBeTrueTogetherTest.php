@@ -12,24 +12,6 @@ use Filament\Facades\Filament;
  | تكون الام ارملة وعمره تحت 15», 29 October.
  */
 
-/**
- * A new row in the browser carries the toggles' own default, which is false.
- * fillForm() replaces the state wholesale, so the defaults are written here.
- *
- * @return array<string,bool>
- */
-function memberToggles(): array
-{
-    return [
-        'smokes' => false,
-        'is_quran_memorizer' => false,
-        'has_documented_condition' => false,
-        'has_certificate' => false,
-        'can_teach_quran' => false,
-        'is_orphan' => false,
-    ];
-}
-
 beforeEach(function () {
     seedCore();
     $this->region = regionWithRates();
