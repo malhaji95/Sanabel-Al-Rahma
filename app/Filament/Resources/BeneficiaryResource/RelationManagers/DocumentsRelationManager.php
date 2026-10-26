@@ -31,6 +31,24 @@ class DocumentsRelationManager extends RelationManager
         return __('sanabel.document.plural');
     }
 
+    /*
+     | T-166 — found while photographing the file for the report: the empty
+     | table read «لا توجد media». Filament names an empty table after the
+     | model behind it, and the model is `Media`, so an Arabic screen was
+     | printing an English class name. The heading is the association's own
+     | word for the thing, and §5 of CLAUDE.md says a hardcoded string is a
+     | bug — an untranslated one doubly so.
+     */
+    public static function getModelLabel(): ?string
+    {
+        return __('sanabel.document.singular');
+    }
+
+    public static function getPluralModelLabel(): ?string
+    {
+        return __('sanabel.document.plural');
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -116,6 +134,8 @@ class DocumentsRelationManager extends RelationManager
                     ->label(__('sanabel.document.archive'))
                     ->visible(fn () => auth()->user()?->can_('upload_media')),
             ])
+            ->emptyStateHeading(__('sanabel.document.none'))
+            ->emptyStateDescription(__('sanabel.document.none_help'))
             ->paginated([10, 25, 50]);
     }
 }
