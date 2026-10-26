@@ -306,6 +306,25 @@
     {{-- ---------- ways to give, second half -------------------------------- --}}
     <x-home.tiles :tiles="$tiles->slice(4)" class="mt-6" />
 
+    {{-- ---------- the health path ------------------------------------------ --}}
+    {{-- T-150 — «هذا البنر الرئيسي للمسار الصحي … ممكن يكون فوق من نحن على عرض
+         الشاشة», so: full width, directly above the association's own cards.
+
+         «ساهم في العلاج» opens the donation page. Money given there reaches
+         the association's fund like every other transfer, and the association
+         spends it on the path — the domain has two kinds of donation and
+         admits no third (docs/03-rules.md).
+
+         «ساهم كمزود خدمة» has no page of its own yet: a provider is entered
+         from the panel, and a public sign-up is part of the health path's
+         second and third stages, which the association's own message leaves
+         where they were. Until it is built the button opens «تواصل معنا», so
+         nothing on the banner leads nowhere. --}}
+    <x-home.health-path-banner
+        :treatment="route('donate.general')"
+        :provider="route('page', 'contact')"
+    />
+
     {{-- ---------- the association, and the news ---------------------------- --}}
     <section class="mt-10 grid gap-4 lg:grid-cols-3">
         @foreach ([$shariaBoard, $about] as $page)

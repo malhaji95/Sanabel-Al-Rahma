@@ -1273,6 +1273,13 @@ return [
         'card_code' => 'رمز بطاقتكم',
         'card_expires' => 'صالحة حتى',
         'card_help' => 'اعرضوا الرمز على الجهة المحوَّل إليها. البطاقة لمرة واحدة.',
+
+        // T-150 — the banner the association approved on 29 October, and the
+        // two doors drawn on it. No discount and no agreement is named here:
+        // «مع عدم إظهار نسب الخصومات أو تفاصيل الاتفاقيات للجمهور».
+        'banner_alt' => 'المسار الصحي — بعلمك وعطائك يكتمل الخير. للأطباء والصيدليات والمستشفيات دور في تخفيف أعباء العلاج.',
+        'give_treatment' => 'ساهم في العلاج',
+        'join_provider' => 'ساهم كمزود خدمة',
     ],
 
     'referral' => [
