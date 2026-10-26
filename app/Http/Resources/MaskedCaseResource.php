@@ -346,9 +346,7 @@ class MaskedCaseResource extends JsonResource
         }
 
         return [
-            'housing_type_label' => $housing->housing_type
-                ? __('sanabel.housing_type.'.$housing->housing_type)
-                : null,
+            'housing_type_label' => $this->fromList('sanabel.housing_type', $housing->housing_type),
             'rooms' => $housing->habitable_rooms,
             'bathrooms' => $housing->bathrooms,
             'has_kitchen' => $housing->has_kitchen,
@@ -396,7 +394,8 @@ class MaskedCaseResource extends JsonResource
             ->pluck('condition')
             ->filter()
             ->unique()
-            ->map(fn (string $condition) => __('sanabel.health.conditions.'.$condition))
+            ->map(fn (string $condition) => $this->fromList('sanabel.health.conditions', $condition))
+            ->filter()
             ->values()
             ->all();
     }
@@ -550,10 +549,28 @@ class MaskedCaseResource extends JsonResource
             ->filter()
             ->flatten()
             ->unique()
-            ->filter(fn (string $kind) => array_key_exists($kind, __('sanabel.medicine_kinds')))
-            ->map(fn (string $kind) => __('sanabel.medicine_kinds.'.$kind))
+            ->map(fn (string $kind) => $this->fromList('sanabel.medicine_kinds', $kind))
+            ->filter()
             ->values()
             ->all();
+    }
+
+    /**
+     * T-165 — a label out of a list, or nothing.
+     *
+     * Every donor-facing label on this page is a key looked up in lang/ar. A
+     * key that is not in the list comes back as the key itself, so a value
+     * that reached the column from an import, an older list or a hand at a
+     * console would print «sanabel.housing_type.rented» on the open internet.
+     * It says nothing instead, and the row is simply not drawn.
+     */
+    private function fromList(string $group, ?string $key): ?string
+    {
+        if (! $key) {
+            return null;
+        }
+
+        return array_key_exists($key, __($group)) ? __($group.'.'.$key) : null;
     }
 
     /** Whether anyone in the household is under continuing treatment. */
@@ -592,7 +609,8 @@ class MaskedCaseResource extends JsonResource
             ->pluck('kind')
             ->filter()
             ->unique()
-            ->map(fn (string $kind) => __('sanabel.asset.kinds.'.$kind))
+            ->map(fn (string $kind) => $this->fromList('sanabel.asset.kinds', $kind))
+            ->filter()
             ->values()
             ->all();
 
@@ -644,7 +662,7 @@ class MaskedCaseResource extends JsonResource
                 return [
                     // T-106 — «صلة القرابة: ابن، بنت، أخ، أخت، وغيرهم».
                     'relation_label' => $member->relation
-                        ? __('sanabel.relation.'.$member->relation)
+                        ? $this->fromList('sanabel.relation', $member->relation)
                         : null,
                     'gender_label' => $member->gender ? __('sanabel.gender.'.$member->gender) : null,
                     'is_under_15' => $member->birth_year ? $member->age() < 15 : null,
@@ -667,7 +685,7 @@ class MaskedCaseResource extends JsonResource
                         : null,
                     // Where a student is, which is what «طالب» leaves open.
                     'school_stage_label' => $member->school_stage
-                        ? __('sanabel.school_stage.'.$member->school_stage)
+                        ? $this->fromList('sanabel.school_stage', $member->school_stage)
                         : null,
                     'is_quran_memorizer' => (bool) $member->is_quran_memorizer,
                     // How heavy it is, beside what it is called. Behind the
@@ -693,7 +711,7 @@ class MaskedCaseResource extends JsonResource
     private function occupation($member): ?string
     {
         if ($member->occupation) {
-            return __('sanabel.occupation.'.$member->occupation);
+            return $this->fromList('sanabel.occupation', $member->occupation);
         }
 
         return match (true) {
