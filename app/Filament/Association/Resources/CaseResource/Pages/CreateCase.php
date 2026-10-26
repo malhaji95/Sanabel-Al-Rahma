@@ -3,6 +3,7 @@
 namespace App\Filament\Association\Resources\CaseResource\Pages;
 
 use App\Filament\Association\Resources\CaseResource;
+use App\Filament\Resources\BeneficiaryResource\Pages\Concerns\AttachesCaseDocuments;
 use App\Models\Beneficiary;
 use App\Services\DuplicateService;
 use Filament\Resources\Pages\CreateRecord;
@@ -19,10 +20,13 @@ use Filament\Resources\Pages\CreateRecord;
  */
 class CreateCase extends CreateRecord
 {
+    use AttachesCaseDocuments;
+
     protected static string $resource = CaseResource::class;
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        $data = $this->pullDocuments($data);
         $data['national_id_hash'] = Beneficiary::hashNationalId((string) $data['national_id_encrypted']);
         $data['source'] = 'association';
         // A draft until the association hands it over: the field step is the
@@ -35,5 +39,8 @@ class CreateCase extends CreateRecord
     protected function afterCreate(): void
     {
         app(DuplicateService::class)->flagIfSuspicious($this->record);
+
+        // T-152 — the papers handed over while the form was being filled.
+        $this->storeDocuments();
     }
 }

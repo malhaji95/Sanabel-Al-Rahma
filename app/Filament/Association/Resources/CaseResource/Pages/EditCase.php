@@ -3,6 +3,7 @@
 namespace App\Filament\Association\Resources\CaseResource\Pages;
 
 use App\Filament\Association\Resources\CaseResource;
+use App\Filament\Resources\BeneficiaryResource\Pages\Concerns\AttachesCaseDocuments;
 use App\Models\Beneficiary;
 use App\Services\CaseService;
 use Filament\Actions;
@@ -14,6 +15,8 @@ use Filament\Resources\Pages\EditRecord;
  */
 class EditCase extends EditRecord
 {
+    use AttachesCaseDocuments;
+
     protected static string $resource = CaseResource::class;
 
     protected function mutateFormDataBeforeFill(array $data): array
@@ -27,11 +30,19 @@ class EditCase extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        $data = $this->pullDocuments($data);
+
         if (isset($data['national_id_encrypted'])) {
             $data['national_id_hash'] = Beneficiary::hashNationalId((string) $data['national_id_encrypted']);
         }
 
         return $data;
+    }
+
+    protected function afterSave(): void
+    {
+        // T-152 — the papers handed over while the form was being filled.
+        $this->storeDocuments();
     }
 
     protected function getHeaderActions(): array

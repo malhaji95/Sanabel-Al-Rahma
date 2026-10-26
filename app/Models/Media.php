@@ -45,7 +45,10 @@ class Media extends Model
         'identity', 'residence', 'lease', 'medical', 'debt', 'income',
         // T-69 — «شهادة وفاة الزوج», listed in the dossier's supporting
         // documents with no kind here to carry it.
-        'death_certificate', 'other',
+        'death_certificate',
+        // T-152 — «ولما يتم اختيار مطلقة يظهر خيار ارفاق صك الطلاق».
+        'divorce_deed',
+        'other',
     ];
 
     public function uploader()

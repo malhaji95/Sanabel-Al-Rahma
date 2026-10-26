@@ -244,8 +244,24 @@ class BeneficiaryResource extends Resource
                         ->visible(fn (Forms\Get $get) => filled($get('marital_status'))
                             && $get('marital_status') !== 'single')
                         ->schema([
+                            /*
+                             | T-152 — «الزوج لم يتم اضافته … لازم بس يسجل
+                             | متزوجه او ارمله او مطلقه يكتب اسم الزوج اجباري
+                             | مع معلوماته», 29 October.
+                             |
+                             | The block has been asked since T-128 and could
+                             | be walked past. A file that says «أرملة» and
+                             | names nobody is a file the association cannot
+                             | check against the civil registry, so the name is
+                             | required wherever the block is shown. The
+                             | identity number is not: a husband who died in
+                             | 2013 may have left none behind, and a file is
+                             | not refused over a paper that no longer exists.
+                             */
                             Forms\Components\TextInput::make('spouse_name_ar')
                                 ->label(fn (Forms\Get $get) => self::spouseNameLabel($get('gender')))
+                                ->required()
+                                ->validationMessages(['required' => __('sanabel.beneficiary.spouse_required')])
                                 ->helperText(fn (Forms\Get $get) => $get('marital_status') === 'widowed'
                                     ? __('sanabel.beneficiary.spouse_deceased_help')
                                     : __('sanabel.beneficiary.spouse_member_help')),
@@ -258,6 +274,28 @@ class BeneficiaryResource extends Resource
                                     __('sanabel.cases.national_id_digits'),
                                 ))
                                 ->dehydrateStateUsing(fn (?string $state) => IdentityFormat::digits($state)),
+
+                            /*
+                             | T-152 — «ولما يتم اختيار ارملة يتم اعطاء خيار
+                             | ارفاق شهادة وفاة ولما يتم اختيار مطلقة يظهر
+                             | خيار ارفاق صك الطلاق».
+                             |
+                             | Offered where the status is answered rather than
+                             | on the documents tab, which is a different screen
+                             | and a later day. The paper itself still goes
+                             | through the one upload path with a type and size
+                             | gate on it, and lands on «وثائق الأسرة» under its
+                             | own kind.
+                             */
+                            Forms\Components\FileUpload::make('spouse_proof')
+                                ->label(fn (Forms\Get $get) => $get('marital_status') === 'widowed'
+                                    ? __('sanabel.beneficiary.spouse_proof_death')
+                                    : __('sanabel.beneficiary.spouse_proof_divorce'))
+                                ->helperText(__('sanabel.beneficiary.spouse_proof_help'))
+                                ->visible(fn (Forms\Get $get) => in_array($get('marital_status'), ['widowed', 'divorced'], true))
+                                ->maxSize(8192)
+                                ->storeFiles(false)
+                                ->columnSpanFull(),
                         ])->columns(2)->columnSpanFull(),
 
                     /*
@@ -270,7 +308,9 @@ class BeneficiaryResource extends Resource
                      | two, and could not tell them apart.
                      */
                     Forms\Components\Select::make('work_status')
-                        ->label(__('sanabel.beneficiary.work_status'))
+                        // T-152 — asked of every marital status, and worded for
+                        // whoever is being asked.
+                        ->label(fn (Forms\Get $get) => self::workLabel($get('gender')))
                         ->options(__('sanabel.work_status'))
                         ->live()
                         /*
@@ -1721,6 +1761,20 @@ class BeneficiaryResource extends Resource
             'male' => __('sanabel.beneficiary.spouse_wife'),
             default => __('sanabel.beneficiary.spouse_either'),
         };
+    }
+
+    /**
+     * T-152 — the work question, worded for whoever is being asked.
+     *
+     * It is asked of every marital status and always was; what it was not
+     * doing was following the head's gender, the way every other word on this
+     * form has since T-121.
+     */
+    public static function workLabel(?string $gender): string
+    {
+        return $gender === 'female'
+            ? __('sanabel.beneficiary.work_status_f')
+            : __('sanabel.beneficiary.work_status');
     }
 
     public static function spouseNameLabel(?string $gender): string

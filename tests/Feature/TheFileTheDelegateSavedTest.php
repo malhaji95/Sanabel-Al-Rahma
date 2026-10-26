@@ -38,6 +38,8 @@ function identityOnly(Region $locality): array
         'national_id_encrypted' => '12345678901',
         'gender' => 'male',
         'marital_status' => 'married',
+        // T-152 — a file that is not single names the spouse.
+        'spouse_name_ar' => 'سعاد',
         'region_area_id' => $locality->parent_id,
         'region_id' => $locality->id,
         'support_type' => array_key_first(__('sanabel.masked.need_type')),

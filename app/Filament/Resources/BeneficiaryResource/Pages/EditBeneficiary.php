@@ -8,6 +8,7 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditBeneficiary extends EditRecord
 {
+    use Concerns\AttachesCaseDocuments;
     use Concerns\CaseDecisionActions;
 
     protected static string $resource = BeneficiaryResource::class;
@@ -29,11 +30,19 @@ class EditBeneficiary extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        $data = $this->pullDocuments($data);
+
         if (isset($data['national_id_encrypted'])) {
             $data['national_id_hash'] = Beneficiary::hashNationalId((string) $data['national_id_encrypted']);
         }
 
         return $data;
+    }
+
+    protected function afterSave(): void
+    {
+        // T-152 — the papers handed over while the form was being filled.
+        $this->storeDocuments();
     }
 
     protected function getHeaderActions(): array

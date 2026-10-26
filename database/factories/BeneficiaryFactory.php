@@ -25,6 +25,10 @@ class BeneficiaryFactory extends Factory
             'phone_encrypted' => '09'.fake()->numerify('########'),
             'region_id' => Region::factory(),
             'marital_status' => 'married',
+            // T-152 — a file that is not single names the spouse, so the
+            // factory makes one that the form would accept. Synthetic, like
+            // every other name here (rule 11).
+            'spouse_name_ar' => 'زوج'.fake()->numberBetween(1, 999),
             'support_type' => 'monthly',
             'status' => 'draft',
             'source' => 'delegate',
