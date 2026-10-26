@@ -28,11 +28,15 @@
                     </div>
                 @endif
 
-                <div class="flex flex-1 flex-col gap-2 p-3 sm:p-4">
+                {{-- T-149 — «نحتاج توسط العبارة تكون بالوسط», 29 October. The
+                     name sat at the start of the card while the button under
+                     it was centred, so the two read as two columns inside one
+                     small tile. The whole block is centred now. --}}
+                <div class="flex flex-1 flex-col items-center gap-2 p-3 text-center sm:p-4">
                     {{-- The icon sits beside the name only when a picture
                          filled the frame above; without one it is already
                          drawn there, and twice is once too many. --}}
-                    <h3 class="inline-flex items-center gap-2 text-sm sm:text-base">
+                    <h3 class="inline-flex items-center justify-center gap-2 text-sm sm:text-base">
                         @if ($tile->icon && $tile->imageUrl())
                             <x-brand.icon :name="$tile->icon" class="h-5 w-5" style="color: var(--accent);" />
                         @endif
@@ -44,7 +48,7 @@
                     @endif
 
                     @if ($tile->link)
-                        <a href="{{ $tile->link }}" class="btn-secondary mt-auto w-full justify-center no-underline">
+                        <a href="{{ $tile->link }}" class="btn-secondary mt-auto w-full justify-center text-center no-underline">
                             {{ __('sanabel.public.donate_now') }}
                         </a>
                     @endif
