@@ -56,6 +56,24 @@ class BeneficiaryResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
+            /*
+             | T-159 — «لازم يتم ذكر التعديل انه تم بواسطة مشرف المنطقة مع
+             | اسم المستخدم, اي ان كل التعديلات يجب ان تكون مسجلة», 29 Oct.
+             |
+             | Every write has been logged since the beginning (rule 4), and
+             | the log is deliberately narrow: it names who did what to which
+             | family's file, so only the accounts that oversee may read it
+             | whole. What was missing is the one line everybody working the
+             | file needs — who touched it last, in what capacity, and when.
+             | It is read from that same log, and it is not a field anybody
+             | can type into.
+             */
+            Forms\Components\Placeholder::make('last_edit')
+                ->label(__('sanabel.beneficiary.last_edit'))
+                ->content(fn (?Beneficiary $record) => self::lastEditLine($record))
+                ->visible(fn (?Beneficiary $record) => filled(self::lastEditLine($record)))
+                ->columnSpanFull(),
+
             Forms\Components\Wizard::make([
                 Forms\Components\Wizard\Step::make(__('sanabel.beneficiary.step_identity'))->schema([
                     Forms\Components\TextInput::make('file_number')
@@ -2051,6 +2069,40 @@ class BeneficiaryResource extends Resource
             ->searchable()
             // The place the file is in, under the family it belongs to.
             ->description(fn (Beneficiary $record) => $record->region?->name_ar);
+    }
+
+    /**
+     * T-159 — who last wrote to this file, in what capacity, and when.
+     *
+     * Read from the audit log rather than from a column, so it cannot say
+     * anything the log does not: there is no field to set and nothing to
+     * forget to set.
+     */
+    public static function lastEditLine(?Beneficiary $record): ?string
+    {
+        if (! $record?->exists) {
+            return null;
+        }
+
+        $entry = $record->auditEntries()->with('actor')->latest('id')->first();
+
+        if (! $entry) {
+            return null;
+        }
+
+        if (! $entry->actor_id) {
+            return __('sanabel.beneficiary.last_edit_system', [
+                'action' => __('sanabel.audit.actions.'.$entry->action),
+                'at' => $entry->created_at->translatedFormat('Y-m-d H:i'),
+            ]);
+        }
+
+        return __('sanabel.beneficiary.last_edit_line', [
+            'action' => __('sanabel.audit.actions.'.$entry->action),
+            'role' => AuditLogResource::roleNames()[$entry->actor_role] ?? __('sanabel.audit.system'),
+            'name' => $entry->actor?->name ?? __('sanabel.audit.system'),
+            'at' => $entry->created_at->translatedFormat('Y-m-d H:i'),
+        ]);
     }
 
     /** Years old, from a date of birth, or null when there is none. */

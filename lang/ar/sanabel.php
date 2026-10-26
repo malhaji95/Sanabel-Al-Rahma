@@ -540,6 +540,13 @@ return [
         'spouse_husband_name' => 'اسم الزوج',
         'spouse_either_name' => 'اسم الزوج أو الزوجة',
         'spouse_national_id' => 'الرقم الوطني',
+        // T-159 — «لازم يتم ذكر التعديل انه تم بواسطة مشرف المنطقة مع اسم
+        // المستخدم».
+        'last_edit' => 'آخر تعديل على الملف',
+        'last_edit_line' => ':action بواسطة :role — :name، بتاريخ :at',
+        // A seeder or an import writes with nobody behind it; saying «النظام»
+        // twice in one line reads like a fault rather than an answer.
+        'last_edit_system' => ':action من النظام، بتاريخ :at',
         /*
          | T-156 — «بالبداية يتم تفعيل متل Radio button هل يوجد دخل, اذا كان
          | نعم يظهر باقي تفاصيل الادخال واذا كان لا يتم اخفاء تفاصيل الادخال
