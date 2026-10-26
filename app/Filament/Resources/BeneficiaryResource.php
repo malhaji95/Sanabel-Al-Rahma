@@ -11,6 +11,7 @@ use App\Models\Scopes\RegionScope;
 use App\Models\User;
 use App\Services\CoverageService;
 use App\Services\DependencyRules;
+use App\Services\FamilyAges;
 use App\Services\IdentityFormat;
 use App\Services\Money;
 use App\Services\RankingService;
@@ -535,6 +536,10 @@ class BeneficiaryResource extends Resource
                                 ->label(__('sanabel.household_member.birth_date'))
                                 ->helperText(__('sanabel.household_member.birth_date_help'))
                                 ->maxDate(now())
+                                // T-153 — the same refusal wherever the year
+                                // was typed: the date fills the year, so one
+                                // of the two is always the answer given.
+                                ->rule(fn (Forms\Get $get) => self::ageAgainstHead($get))
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
                                     if (! $state) {
@@ -561,6 +566,8 @@ class BeneficiaryResource extends Resource
                                 ->label(__('sanabel.household_member.birth_year'))
                                 ->numeric()->minValue(1900)->maxValue((int) date('Y'))
                                 ->required()
+                                // T-153 — a son born before his mother.
+                                ->rule(fn (Forms\Get $get) => self::ageAgainstHead($get))
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(function ($state, Forms\Get $get, Forms\Set $set) {
                                     if ($state) {
@@ -617,8 +624,19 @@ class BeneficiaryResource extends Resource
                             // T-69 — «تصنيف اليتم», asked of each dependant.
                             // T-129 — and asked here rather than in the status
                             // list: an orphan is also a student or a child.
+                            /*
+                             | T-153 — «شرط تفعيل اليتيم تكون الام ارملة وعمره
+                             | تحت 15», 29 October. Asked only where it can be
+                             | true: a household headed by a widow or a widower,
+                             | and a child under the age this form starts
+                             | answering as an adult.
+                             */
                             Forms\Components\Toggle::make('is_orphan')
-                                ->label(__('sanabel.household_member.is_orphan')),
+                                ->label(__('sanabel.household_member.is_orphan'))
+                                ->visible(fn (Forms\Get $get) => FamilyAges::orphanMayBeAsked(
+                                    self::memberAge($get),
+                                    $get('../../marital_status'),
+                                )),
 
                             /*
                              | T-129 — the status decides what is asked next.
@@ -1784,6 +1802,36 @@ class BeneficiaryResource extends Resource
             'male' => __('sanabel.beneficiary.spouse_wife_name'),
             default => __('sanabel.beneficiary.spouse_either_name'),
         };
+    }
+
+    /**
+     * T-153 — the rule that reads one member's year against the head's.
+     *
+     * Both boxes carry it, because the date fills the year and either may be
+     * the one the researcher typed into.
+     */
+    public static function ageAgainstHead(Forms\Get $get): \Closure
+    {
+        return function ($attribute, $value, $fail) use ($get) {
+            $relation = $get('relation');
+
+            $memberYear = self::yearOf($get('birth_date')) ?? ((int) $get('birth_year') ?: null);
+            $headYear = self::yearOf($get('../../birth_date'));
+
+            if (FamilyAges::birthYearFits($relation, $memberYear, $headYear)) {
+                return;
+            }
+
+            $fail(in_array($relation, FamilyAges::BORN_AFTER_HEAD, true)
+                ? __('sanabel.cases.child_born_before_head')
+                : __('sanabel.cases.parent_born_after_head'));
+        };
+    }
+
+    /** The year in a date, or null where there is no date. */
+    private static function yearOf(mixed $date): ?int
+    {
+        return filled($date) ? (int) Carbon::parse($date)->year : null;
     }
 
     /** Years old, from a date of birth, or null when there is none. */
