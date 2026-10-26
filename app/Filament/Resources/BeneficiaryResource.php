@@ -1745,11 +1745,18 @@ class BeneficiaryResource extends Resource
                     ->badge()
                     ->formatStateUsing(fn (?string $state) => $state ? __('sanabel.case_classification.'.$state) : '—')
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('family_name')
-                    ->label(__('sanabel.beneficiary.family_name'))
-                    ->searchable()
-                    // The place the file is in, under the family it belongs to.
-                    ->description(fn (Beneficiary $record) => $record->region?->name_ar),
+                /*
+                 | T-157 — «بصفحة مدير المنطقة ما نحتاج اظهار الكنية ممكن فقط
+                 | الاسم الاول», 29 October.
+                 |
+                 | A supervisor reads this list to see how their area is
+                 | moving, not to know which family is which: the file number
+                 | names the file and the area names the place. So the column
+                 | is the first name for them, and the surname is not on the
+                 | screen and not searchable from it — a name that cannot be
+                 | typed into a box cannot be fished out of one.
+                 */
+                self::nameColumn(),
                 Tables\Columns\TextColumn::make('region.name_ar')
                     ->label(__('sanabel.beneficiary.region'))
                     ->sortable()
@@ -2021,6 +2028,29 @@ class BeneficiaryResource extends Resource
         }
 
         return $record->{$relation}()->exists() ? 'yes' : 'no';
+    }
+
+    /**
+     * T-157 — the name column, as much of it as the account needs.
+     *
+     * An area supervisor is shown the first name alone. Everybody else who
+     * can open this list works the file itself — the researcher who visits,
+     * the case officer who assesses, the director who approves — and reads
+     * the family's name.
+     */
+    public static function nameColumn(): Tables\Columns\TextColumn
+    {
+        if (auth()->user()?->role?->key === 'area_supervisor') {
+            return Tables\Columns\TextColumn::make('first_name')
+                ->label(__('sanabel.beneficiary.first_name'))
+                ->description(fn (Beneficiary $record) => $record->region?->name_ar);
+        }
+
+        return Tables\Columns\TextColumn::make('family_name')
+            ->label(__('sanabel.beneficiary.family_name'))
+            ->searchable()
+            // The place the file is in, under the family it belongs to.
+            ->description(fn (Beneficiary $record) => $record->region?->name_ar);
     }
 
     /** Years old, from a date of birth, or null when there is none. */
