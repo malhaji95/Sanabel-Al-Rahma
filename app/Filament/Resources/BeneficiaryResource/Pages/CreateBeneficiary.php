@@ -30,5 +30,6 @@ class CreateBeneficiary extends CreateRecord
 
         // T-152 — the papers handed over while the form was being filled.
         $this->storeDocuments();
+        $this->applyGates();
     }
 }

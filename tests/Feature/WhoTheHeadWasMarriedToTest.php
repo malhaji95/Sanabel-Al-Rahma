@@ -46,7 +46,7 @@ function fileForm(Region $village, array $overrides = []): array
         'gender' => 'female',
         'region_id' => $village->id,
         'support_type' => 'monthly',
-    ], $overrides);
+    ], gatesAnsweredNo(), $overrides);
 }
 
 it('refuses a widow’s file that names nobody', function () {

@@ -825,7 +825,47 @@ class BeneficiaryResource extends Resource
                 ]),
 
                 Forms\Components\Wizard\Step::make(__('sanabel.beneficiary.step_income'))->schema([
+                    /*
+                     | T-156 — «بالبداية يتم تفعيل متل Radio button هل يوجد
+                     | دخل: اذا كان نعم يظهر باقي تفاصيل الادخال واذا كان لا
+                     | يتم اخفاء تفاصيل الادخال للانتقال للصفحة التالية», 29
+                     | October.
+                     |
+                     | T-130 made an empty table mean «لا», which stopped the
+                     | form refusing a file over a blank row nobody asked for.
+                     | It also left the researcher with no way to say they had
+                     | asked: an empty table and an unasked question looked
+                     | identical. The question is asked outright now, and it
+                     | must be answered before the page turns.
+                     |
+                     | Answering «لا» empties the table, so the file cannot say
+                     | «لا» while holding rows that say otherwise.
+                     */
+                    Forms\Components\Radio::make('has_income')
+                        ->label(__('sanabel.beneficiary.has_income_q'))
+                        ->options([
+                            'yes' => __('sanabel.beneficiary.answer_yes'),
+                            'no' => __('sanabel.beneficiary.answer_no'),
+                        ])
+                        ->inline()
+                        ->inlineLabel(false)
+                        ->required()
+                        ->validationMessages(['required' => __('sanabel.beneficiary.answer_required')])
+                        ->live()
+                        // Kept in the submitted data and taken out by the page:
+                        // «لا» has to empty the table it answers for.
+                        ->afterStateHydrated(fn (Forms\Components\Radio $component, ?Beneficiary $record) => $component
+                            ->state(self::gateAnswer($record, 'incomes')))
+                        ->afterStateUpdated(function ($state, Forms\Set $set) {
+                            if ($state === 'no') {
+                                $set('incomes', []);
+                            }
+                        })
+                        ->helperText(__('sanabel.beneficiary.answered_no_clears'))
+                        ->columnSpanFull(),
+
                     Forms\Components\Repeater::make('incomes')
+                        ->visible(fn (Forms\Get $get) => $get('has_income') === 'yes')
                         ->relationship()
                         ->label(__('sanabel.beneficiary.incomes'))
                         // T-130 — a repeater that opens with a blank row asks a
@@ -991,7 +1031,47 @@ class BeneficiaryResource extends Resource
                 ]),
 
                 Forms\Components\Wizard\Step::make(__('sanabel.beneficiary.step_health'))->schema([
+                    /*
+                     | T-156 — «بالبداية يتم تفعيل متل Radio button هل يوجد
+                     | دخل: اذا كان نعم يظهر باقي تفاصيل الادخال واذا كان لا
+                     | يتم اخفاء تفاصيل الادخال للانتقال للصفحة التالية», 29
+                     | October.
+                     |
+                     | T-130 made an empty table mean «لا», which stopped the
+                     | form refusing a file over a blank row nobody asked for.
+                     | It also left the researcher with no way to say they had
+                     | asked: an empty table and an unasked question looked
+                     | identical. The question is asked outright now, and it
+                     | must be answered before the page turns.
+                     |
+                     | Answering «لا» empties the table, so the file cannot say
+                     | «لا» while holding rows that say otherwise.
+                     */
+                    Forms\Components\Radio::make('has_health')
+                        ->label(__('sanabel.beneficiary.has_health_q'))
+                        ->options([
+                            'yes' => __('sanabel.beneficiary.answer_yes'),
+                            'no' => __('sanabel.beneficiary.answer_no'),
+                        ])
+                        ->inline()
+                        ->inlineLabel(false)
+                        ->required()
+                        ->validationMessages(['required' => __('sanabel.beneficiary.answer_required')])
+                        ->live()
+                        // Kept in the submitted data and taken out by the page:
+                        // «لا» has to empty the table it answers for.
+                        ->afterStateHydrated(fn (Forms\Components\Radio $component, ?Beneficiary $record) => $component
+                            ->state(self::gateAnswer($record, 'healthRecords')))
+                        ->afterStateUpdated(function ($state, Forms\Set $set) {
+                            if ($state === 'no') {
+                                $set('healthRecords', []);
+                            }
+                        })
+                        ->helperText(__('sanabel.beneficiary.answered_no_clears'))
+                        ->columnSpanFull(),
+
                     Forms\Components\Repeater::make('healthRecords')
+                        ->visible(fn (Forms\Get $get) => $get('has_health') === 'yes')
                         ->relationship(modifyQueryUsing: fn ($query) => self::unhide(
                             $query,
                             ['description_ar', 'doctor_phone_encrypted'],
@@ -1080,7 +1160,47 @@ class BeneficiaryResource extends Resource
                 // association answered on 11 October are asked here, and
                 // nothing is inferred from a row without them.
                 Forms\Components\Wizard\Step::make(__('sanabel.beneficiary.step_assets'))->schema([
+                    /*
+                     | T-156 — «بالبداية يتم تفعيل متل Radio button هل يوجد
+                     | دخل: اذا كان نعم يظهر باقي تفاصيل الادخال واذا كان لا
+                     | يتم اخفاء تفاصيل الادخال للانتقال للصفحة التالية», 29
+                     | October.
+                     |
+                     | T-130 made an empty table mean «لا», which stopped the
+                     | form refusing a file over a blank row nobody asked for.
+                     | It also left the researcher with no way to say they had
+                     | asked: an empty table and an unasked question looked
+                     | identical. The question is asked outright now, and it
+                     | must be answered before the page turns.
+                     |
+                     | Answering «لا» empties the table, so the file cannot say
+                     | «لا» while holding rows that say otherwise.
+                     */
+                    Forms\Components\Radio::make('has_assets')
+                        ->label(__('sanabel.beneficiary.has_assets_q'))
+                        ->options([
+                            'yes' => __('sanabel.beneficiary.answer_yes'),
+                            'no' => __('sanabel.beneficiary.answer_no'),
+                        ])
+                        ->inline()
+                        ->inlineLabel(false)
+                        ->required()
+                        ->validationMessages(['required' => __('sanabel.beneficiary.answer_required')])
+                        ->live()
+                        // Kept in the submitted data and taken out by the page:
+                        // «لا» has to empty the table it answers for.
+                        ->afterStateHydrated(fn (Forms\Components\Radio $component, ?Beneficiary $record) => $component
+                            ->state(self::gateAnswer($record, 'assets')))
+                        ->afterStateUpdated(function ($state, Forms\Set $set) {
+                            if ($state === 'no') {
+                                $set('assets', []);
+                            }
+                        })
+                        ->helperText(__('sanabel.beneficiary.answered_no_clears'))
+                        ->columnSpanFull(),
+
                     Forms\Components\Repeater::make('assets')
+                        ->visible(fn (Forms\Get $get) => $get('has_assets') === 'yes')
                         ->relationship()
                         ->label(__('sanabel.asset.plural'))
                         // T-130 — a repeater that opens with a blank row asks a
@@ -1885,6 +2005,22 @@ class BeneficiaryResource extends Resource
         }
 
         return false;
+    }
+
+    /**
+     * T-156 — what the yes/no question opens with.
+     *
+     * A file that already carries rows has answered it; one being written for
+     * the first time has not, and is asked. A saved file with an empty table
+     * is «لا», which is what T-130 decided an empty table means.
+     */
+    public static function gateAnswer(?Beneficiary $record, string $relation): ?string
+    {
+        if (! $record?->exists) {
+            return null;
+        }
+
+        return $record->{$relation}()->exists() ? 'yes' : 'no';
     }
 
     /** Years old, from a date of birth, or null when there is none. */

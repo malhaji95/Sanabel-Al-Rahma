@@ -7,7 +7,7 @@ use Filament\Notifications\Notification;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 /**
- * T-152 and T-154 — the papers the form asks for while it is being filled.
+ * T-152, T-154 and T-156 — the answers on the form that carry no column.
  *
  * The store itself is unchanged: the file goes to the private disk through
  * MediaService, with its type and size gate, and lands on the family's own
@@ -22,8 +22,21 @@ use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
  */
 trait AttachesCaseDocuments
 {
+    /**
+     * T-156 — the yes/no question in front of each table, and the table it
+     * answers for.
+     */
+    protected const GATES = [
+        'has_income' => 'incomes',
+        'has_health' => 'healthRecords',
+        'has_assets' => 'assets',
+    ];
+
     /** Uploads waiting for a record to belong to, as kind => file. */
     protected array $pendingDocuments = [];
+
+    /** Gate answers waiting for the record to be saved, as relation => answer. */
+    protected array $pendingGates = [];
 
     /**
      * The upload fields on the form, and the kind each one is filed under.
@@ -41,9 +54,19 @@ trait AttachesCaseDocuments
         ];
     }
 
-    /** Takes the uploads out of the data, so no column is written for them. */
+    /**
+     * Takes the uploads and the gate answers out of the data, so no column is
+     * written for either.
+     */
     protected function pullDocuments(array $data): array
     {
+        foreach (self::GATES as $field => $relation) {
+            if (array_key_exists($field, $data)) {
+                $this->pendingGates[$relation] = $data[$field];
+                unset($data[$field]);
+            }
+        }
+
         foreach ($this->documentFields($data) as $field => $kind) {
             if (! array_key_exists($field, $data)) {
                 continue;
@@ -82,5 +105,24 @@ trait AttachesCaseDocuments
         }
 
         $this->pendingDocuments = [];
+    }
+
+    /**
+     * T-156 — «لا» empties the table it answers for.
+     *
+     * The table is hidden the moment the answer turns, so it is not saved and
+     * cannot delete its own rows. Without this a file would say «لا يوجد دخل»
+     * while holding the income rows that say otherwise, and the need engine
+     * would go on reading them.
+     */
+    protected function applyGates(): void
+    {
+        foreach ($this->pendingGates as $relation => $answer) {
+            if ($answer === 'no') {
+                $this->record->{$relation}()->delete();
+            }
+        }
+
+        $this->pendingGates = [];
     }
 }

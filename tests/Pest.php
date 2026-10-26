@@ -273,3 +273,14 @@ function memberRow(array $overrides = []): array
         'person_class' => 'adult',
     ], memberToggles(), $overrides);
 }
+
+/**
+ * T-156 — the three yes/no questions in front of the income, health and asset
+ * tables. A file saved through the form answers them, so a fixture does too.
+ *
+ * @return array<string,string>
+ */
+function gatesAnsweredNo(): array
+{
+    return ['has_income' => 'no', 'has_health' => 'no', 'has_assets' => 'no'];
+}

@@ -43,6 +43,7 @@ class EditBeneficiary extends EditRecord
     {
         // T-152 — the papers handed over while the form was being filled.
         $this->storeDocuments();
+        $this->applyGates();
     }
 
     protected function getHeaderActions(): array

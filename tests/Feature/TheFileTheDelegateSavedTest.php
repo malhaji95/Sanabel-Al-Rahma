@@ -43,6 +43,10 @@ function identityOnly(Region $locality): array
         'region_area_id' => $locality->parent_id,
         'region_id' => $locality->id,
         'support_type' => array_key_first(__('sanabel.masked.need_type')),
+        // T-156 — the three questions in front of the income, health and
+        // asset tables. «لا» is still «لا»; it is now said rather than
+        // inferred from an empty table.
+        ...gatesAnsweredNo(),
     ];
 }
 
