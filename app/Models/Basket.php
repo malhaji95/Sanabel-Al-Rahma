@@ -28,6 +28,12 @@ class Basket extends Model
         return $this->hasMany(BasketItem::class);
     }
 
+    /** The transfers recorded against this basket, usually one. */
+    public function donations(): HasMany
+    {
+        return $this->hasMany(Donation::class);
+    }
+
     public function total(): int
     {
         return (int) $this->items()->sum('amount');

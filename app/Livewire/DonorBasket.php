@@ -7,9 +7,11 @@ use App\Exceptions\ReservationUnavailable;
 use App\Http\Resources\MaskedCaseResource;
 use App\Models\Basket;
 use App\Models\BasketItem;
+use App\Models\Donation;
 use App\Models\Setting;
 use App\Payments\PaymentGateway;
 use App\Services\BasketService;
+use App\Services\CoverageService;
 use App\Services\MediaService;
 use App\Services\TransferRouting;
 use Livewire\Attributes\On;
@@ -37,10 +39,83 @@ class DonorBasket extends Component
     /** T-123 — an image or a PDF of the transfer, optional. */
     public $receipt = null;
 
+    /**
+     * T-147 — «يكفي يظهر رقم الملف المبلغ المتبرع به مع الاستطاعه انه يخفض
+     * المبلغ او يزيده مع نسبة التغطيه», 29 October.
+     *
+     * One amount per line, keyed by basket item id, so the donor changes what
+     * they are giving where they are reading it. Kept in its own array rather
+     * than on the item rows the view receives: the view's rows are masked
+     * output, and this is an input.
+     *
+     * @var array<int,int|string|null>
+     */
+    public array $amounts = [];
+
     #[On('basket-updated')]
     public function refreshBasket(): void
     {
         //
+    }
+
+    /**
+     * A typed amount, saved on the line it was typed on.
+     *
+     * The ceiling is the family's remaining need for the month this line
+     * answers — the same figure the hold is checked against — so a line that
+     * would be refused at confirmation is refused here, where it can still be
+     * corrected. A refused amount is put back rather than left on screen.
+     */
+    public function updatedAmounts(mixed $value, string $key): void
+    {
+        $this->error = $this->notice = null;
+
+        $item = $this->ownedItem((int) $key);
+
+        if (! $item) {
+            return;
+        }
+
+        $amount = (int) $value;
+        $ceiling = $this->ceilingFor($item);
+
+        if ($amount < 1 || $amount > $ceiling) {
+            $this->amounts[$item->getKey()] = $item->amount;
+            $this->error = $item->campaign_id
+                ? __('sanabel.basket.exceeds_goal')
+                : __('sanabel.basket.exceeds_remaining');
+
+            return;
+        }
+
+        $item->forceFill(['amount' => $amount])->save();
+
+        $this->notice = __('sanabel.public.amount_updated');
+    }
+
+    /** The most this line may hold: a campaign's remainder, or the family's. */
+    private function ceilingFor(BasketItem $item): int
+    {
+        $coverage = app(CoverageService::class);
+
+        if ($item->campaign) {
+            return $coverage->campaignRemaining($item->campaign);
+        }
+
+        return $coverage->remainingNeed(
+            $item->beneficiary,
+            month: $item->coverage_month ?? $coverage->currentMonth(),
+        );
+    }
+
+    /** A line of this donor's own basket, or nothing. */
+    private function ownedItem(int $itemId): ?BasketItem
+    {
+        return BasketItem::query()
+            ->with(['beneficiary', 'campaign'])
+            ->whereKey($itemId)
+            ->whereHas('basket', fn ($q) => $q->where('donor_id', auth()->user()->donor?->id))
+            ->first();
     }
 
     public function removeItem(int $itemId): void
@@ -123,7 +198,7 @@ class DonorBasket extends Component
      * made: the donation is recorded either way and the screen says what
      * happened to the picture.
      */
-    private function attachReceipt(\App\Models\Donation $donation): void
+    private function attachReceipt(Donation $donation): void
     {
         if (! $this->receipt instanceof TemporaryUploadedFile) {
             return;
@@ -164,9 +239,15 @@ class DonorBasket extends Component
             ? $basket->items()->with(['beneficiary', 'campaign'])->get()
             : collect();
 
+        // The boxes read what is stored. A refused amount has already been put
+        // back by updatedAmounts(), so this never overwrites what the donor is
+        // still typing — and a line removed elsewhere leaves no box behind.
+        $this->amounts = $items->mapWithKeys(fn (BasketItem $item) => [$item->getKey() => $item->amount])->all();
+
         return view('livewire.donor-basket', [
             'basket' => $basket,
             'items' => $items->map(fn (BasketItem $item) => [
+                'ceiling' => $this->ceilingFor($item),
                 'id' => $item->id,
                 'amount' => $item->amount,
                 // A campaign is published under its own title, so naming it

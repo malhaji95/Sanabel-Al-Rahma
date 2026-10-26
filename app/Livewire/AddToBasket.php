@@ -29,6 +29,16 @@ class AddToBasket extends Component
     // Named `notice`, not `message`: Blade's @error directive binds $message.
     public ?string $notice = null;
 
+    /**
+     * T-147 — «المفروض عند اضافة اي مبلغ للسله يضل بنفس المكان مع اعطاءه
+     * خيار مواصلة التبرع او اتمام عملية التبرع», 29 October.
+     *
+     * The box stays where it is and offers the two ways on. Nothing is decided
+     * for the donor: the page does not move, and neither choice is taken until
+     * it is clicked.
+     */
+    public bool $added = false;
+
     public function mount(
         string $fileNumber,
         int $remaining,
@@ -102,7 +112,15 @@ class AddToBasket extends Component
         );
 
         $this->notice = __('sanabel.public.added_to_basket');
+        $this->added = true;
         $this->dispatch('basket-updated');
+    }
+
+    /** «مواصلة التبرع» — puts the box back without leaving the list. */
+    public function keepGiving(): void
+    {
+        $this->added = false;
+        $this->notice = null;
     }
 
     public function render()

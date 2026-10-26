@@ -40,27 +40,80 @@
             </a>
         </x-empty-state>
     @else
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            @foreach ($items as $item)
-                <x-masked-case-card :case="$item['case']" :show-note="$showSufficiencyNote">
-                    @if ($item['campaign'])
-                        <p class="mb-2 text-sm font-medium" style="color: var(--accent);">
-                            {{ $item['campaign'] }}
-                        </p>
-                    @endif
+        {{-- T-147 — «ومانحتاح في السلة تظهر كامل الحاله، يكفي يظهر رقم الملف
+             المبلغ المتبرع به مع الاستطاعه انه يخفض المبلغ او يزيده مع نسبة
+             التغطيه … مثل سلة المشتريات», 29 October.
 
-                    <div class="flex items-center justify-between gap-2">
-                        <span class="tabular font-semibold">
-                            {{ number_format($item['amount']) }}
-                            <span class="text-xs font-normal" style="color: var(--text-muted);">{{ \App\Services\Money::label() }}</span>
-                        </span>
-                        <button
-                            type="button"
-                            wire:click="removeItem({{ $item['id'] }})"
-                            class="btn-ghost !px-2 !py-1 text-sm hover:!text-red-600"
-                        >{{ __('sanabel.public.remove') }}</button>
+             So a line, not a card: the file's number, what is being given to
+             it, and how far its month has come. The family's own page is one
+             click away for anyone who wants the rest of it. --}}
+        <div class="card">
+            @foreach ($items as $item)
+                <div
+                    class="flex flex-wrap items-center gap-x-6 gap-y-3 border-t py-4 first:border-t-0 first:pt-0 last:pb-0"
+                    style="border-color: var(--border);"
+                >
+                    <div class="min-w-48 flex-1">
+                        @if ($item['campaign'])
+                            <p class="font-semibold" style="color: var(--accent);">{{ $item['campaign'] }}</p>
+                        @endif
+
+                        <a href="{{ route('opportunity', $item['case']['file_number']) }}"
+                           class="font-semibold no-underline hover:underline">
+                            {{ __('sanabel.beneficiary.file_number') }}
+                            <span class="tabular" dir="ltr">{{ $item['case']['file_number'] }}</span>
+                        </a>
+
+                        <p class="mt-0.5 text-xs" style="color: var(--text-muted);">
+                            {{ __('sanabel.funding.covers_month', ['month' => $item['case']['coverage_month_label']]) }}
+                        </p>
                     </div>
-                </x-masked-case-card>
+
+                    <div class="w-36">
+                        <label class="field-label !mb-1 text-xs" for="amount-{{ $item['id'] }}">
+                            {{ __('sanabel.public.amount') }}
+                        </label>
+                        <input
+                            id="amount-{{ $item['id'] }}"
+                            type="number"
+                            wire:model.live.debounce.600ms="amounts.{{ $item['id'] }}"
+                            min="1"
+                            max="{{ $item['ceiling'] }}"
+                            inputmode="numeric"
+                            class="field tabular"
+                        >
+                        <p class="mt-1 text-xs" style="color: var(--text-muted);">{{ \App\Services\Money::label() }}</p>
+                    </div>
+
+                    <div class="w-40">
+                        <p class="text-xs" style="color: var(--text-muted);">
+                            {{ __('sanabel.beneficiary.coverage') }}
+                            <span class="tabular font-semibold" style="color: var(--text);">{{ $item['case']['coverage_percent'] }}%</span>
+                        </p>
+
+                        <div
+                            class="meter mt-1.5"
+                            role="progressbar"
+                            aria-valuenow="{{ $item['case']['coverage_percent'] }}"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                            aria-label="{{ __('sanabel.beneficiary.coverage') }}"
+                        >
+                            @if ($item['case']['coverage_percent'] > 0)
+                                <div
+                                    class="meter-fill meter-fill-{{ \App\Services\ProgressBand::of($item['case']['coverage_percent']) }}"
+                                    style="width: {{ $item['case']['coverage_percent'] }}%"
+                                ></div>
+                            @endif
+                        </div>
+                    </div>
+
+                    <button
+                        type="button"
+                        wire:click="removeItem({{ $item['id'] }})"
+                        class="btn-ghost !px-2 !py-1 text-sm hover:!text-red-600"
+                    >{{ __('sanabel.public.remove') }}</button>
+                </div>
             @endforeach
         </div>
 

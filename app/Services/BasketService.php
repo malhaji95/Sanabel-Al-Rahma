@@ -9,7 +9,6 @@ use App\Models\Beneficiary;
 use App\Models\Campaign;
 use App\Models\Donor;
 use App\Models\Setting;
-use App\Services\NotificationService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -39,14 +38,44 @@ class BasketService
      */
     public function currentFor(Donor $donor): Basket
     {
-        $reserved = Basket::query()
+        return $this->existingFor($donor) ?? $this->openFor($donor);
+    }
+
+    /**
+     * The same basket, but nothing is created when there is none.
+     *
+     * The count in the top bar asks this on every page a donor opens, and a
+     * reading question must not write a row.
+     */
+    public function existingFor(Donor $donor): ?Basket
+    {
+        return $this->liveReservation($donor) ?? Basket::query()
+            ->where('donor_id', $donor->getKey())
+            ->where('status', 'open')
+            ->latest('id')
+            ->first();
+    }
+
+    /**
+     * A hold that is still the donor's to fill.
+     *
+     * T-147 — once the transfer for a held basket has been recorded, that
+     * basket is waiting on the finance desk and not on the donor. It stops
+     * being the basket they are filling, so the next family they add lands in
+     * one they can see, rather than behind a basket they have already paid.
+     * Before this, an addition made in that window went into a new open basket
+     * while the screen kept showing the paid one: «موجود بالسلة منتج ولكنه ما
+     * يظهر شي».
+     */
+    private function liveReservation(Donor $donor): ?Basket
+    {
+        return Basket::query()
             ->where('donor_id', $donor->getKey())
             ->where('status', 'reserved')
             ->where('reserved_until', '>', now())
+            ->whereDoesntHave('donations')
             ->latest('id')
             ->first();
-
-        return $reserved ?? $this->openFor($donor);
     }
 
     /**

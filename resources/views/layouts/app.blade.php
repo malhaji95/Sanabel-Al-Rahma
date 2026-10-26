@@ -76,6 +76,13 @@
                     >{{ $link->title_ar }}</a>
                 @endforeach
 
+                {{-- T-147 — the basket says how many families are in it, the
+                     way a shop's does. Signed-in donors only; it draws nothing
+                     when the basket is empty. --}}
+                @auth
+                    <livewire:basket-count />
+                @endauth
+
                 <x-theme-toggle />
 
                 <x-account-menu />
