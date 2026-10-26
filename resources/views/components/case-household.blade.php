@@ -165,11 +165,34 @@
                             {{-- T-106 — «صلة القرابة» and «الصفة»، asked for
                                  by name on 16 October, beside the marital
                                  status that was already here. --}}
-                            @foreach ([$dependent['marital_label'] ?? null, $dependent['occupation_label'] ?? null] as $label)
+                            {{-- T-162 — «معلومات المعالين كاملة»: the age class,
+                                 the school stage behind «طالب», and the rest.
+                                 Each is a label out of a list, like the two
+                                 T-106 added. --}}
+                            @foreach ([
+                                $dependent['age_band_label'] ?? null,
+                                $dependent['marital_label'] ?? null,
+                                $dependent['occupation_label'] ?? null,
+                                $dependent['school_stage_label'] ?? null,
+                            ] as $label)
                                 @if ($label)
                                     <span class="badge" style="color: var(--text-muted);">{{ $label }}</span>
                                 @endif
                             @endforeach
+
+                            @if ($dependent['is_quran_memorizer'] ?? false)
+                                <span class="badge" style="color: var(--accent);">
+                                    {{ __('sanabel.masked.quran_memorizer') }}
+                                </span>
+                            @endif
+
+                            {{-- T-162 — how heavy the illness is, beside what it
+                                 is called. --}}
+                            @if ($dependent['severity_label'] ?? null)
+                                <span class="badge bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200">
+                                    {{ $dependent['severity_label'] }}
+                                </span>
+                            @endif
 
                             @if (($dependent['conditions'] ?? []) !== [])
                                 @foreach ($dependent['conditions'] as $condition)

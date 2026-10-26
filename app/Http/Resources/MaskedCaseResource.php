@@ -104,6 +104,15 @@ class MaskedCaseResource extends JsonResource
     public const DEPENDENT_KEYS = [
         'relation_label', 'gender_label', 'is_under_15', 'is_orphan',
         'marital_label', 'occupation_label', 'has_condition', 'conditions',
+        /*
+         | T-162 — «نحتاج اضافة معلومات المعالين كاملة», 30 October. Four more
+         | answers the survey already holds about each dependant, every one of
+         | them a band or a label out of a list: which age class they fall in,
+         | where a student is in school, whether they memorise the Qur'an, and
+         | how heavy their illness is. Still no name, no birth year, no age in
+         | years, and not one sentence anybody wrote.
+         */
+        'age_band_label', 'school_stage_label', 'is_quran_memorizer', 'severity_label',
     ];
 
     /**
@@ -597,6 +606,23 @@ class MaskedCaseResource extends JsonResource
                         ? $theirs->where('severity_band', '>', 0)->isNotEmpty()
                         : null,
                     'conditions' => $this->conditions($theirs),
+                    // T-162 — the class they are priced in, which is the band
+                    // the household counts are made of: a child, an adult, a
+                    // wife, an elderly person.
+                    'age_band_label' => $member->person_class
+                        ? __('sanabel.masked.age_band.'.$member->person_class)
+                        : null,
+                    // Where a student is, which is what «طالب» leaves open.
+                    'school_stage_label' => $member->school_stage
+                        ? __('sanabel.school_stage.'.$member->school_stage)
+                        : null,
+                    'is_quran_memorizer' => (bool) $member->is_quran_memorizer,
+                    // How heavy it is, beside what it is called. Behind the
+                    // same switch as the naming, and silent when it is closed.
+                    'severity_label' => $this->switched('show_health_condition')
+                        && ($band = $theirs->max('severity_band')) !== null
+                            ? __('sanabel.bands.severity.'.(int) $band)
+                            : null,
                 ];
             })
             ->values()
