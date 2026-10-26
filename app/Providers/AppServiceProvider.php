@@ -10,15 +10,17 @@ use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Route;
-use Livewire\Livewire;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Events\LocaleUpdated;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\ServiceProvider;
 use Illuminate\View\View as ViewView;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -42,7 +44,24 @@ class AppServiceProvider extends ServiceProvider
     {
         // Every page is right-to-left Arabic, with the months written the way
         // they are written in Syria — see config('sanabel.date_locale').
-        Carbon::setLocale(config('sanabel.date_locale', config('app.locale')));
+        $dateLocale = fn () => Carbon::setLocale(config('sanabel.date_locale', config('app.locale')));
+
+        $dateLocale();
+
+        /*
+         | T-148 — and again whenever the application's locale is set.
+         |
+         | Setting it moves Carbon with it, and Livewire sets it on every
+         | update: it carries the locale in the component's memo and restores
+         | it before the component runs. So the first paint of a page said
+         | «تشرين الأول» and everything after the donor's first click said
+         | «أكتوبر» — two names for one month on one screen, neither of them
+         | chosen here.
+         |
+         | The interface locale and the month names are two settings, and this
+         | keeps them two: `ar` for the strings, `ar_SY` for the calendar.
+         */
+        Event::listen(LocaleUpdated::class, $dateLocale);
 
         // A native date input is rendered by the browser, in the browser's own
         // locale and direction: an Arabic page showed 'mm/dd/yyyy'. Filament's
