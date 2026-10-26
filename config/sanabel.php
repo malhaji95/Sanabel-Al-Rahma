@@ -391,6 +391,17 @@ return [
         'show_visit_consent' => true,
 
         /*
+         | T-161 — «نحتاج نكتب عبارة: تم التأكد من عدم تكرار الرقم الوطني
+         | للعائلة», 30 October.
+         |
+         | The line is a claim about this file, so it is only made where it is
+         | true: the number was stored and hashed, and rule 11's unique index
+         | refused any second file carrying it. A file whose personal data has
+         | been destroyed no longer holds one, and says nothing.
+         */
+        'show_duplicate_check' => true,
+
+        /*
          | T-106 — «وضروري شرح»، 16 October. A paragraph written for the
          | donor, which no family has until somebody writes one and somebody
          | who may approve a file signs it off. The switch closes it again

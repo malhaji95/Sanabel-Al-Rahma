@@ -112,6 +112,18 @@
     <section class="card mt-5">
         <h2 class="text-base font-bold">{{ __('sanabel.masked.household') }}</h2>
 
+        {{-- T-161 — «نحتاج نكتب عبارة: تم التأكد من عدم تكرار الرقم الوطني
+             للعائلة». The line says that the check was made; the number it was
+             made on is not on this page and never is. --}}
+        @if ($case['duplicate_checked'] ?? false)
+            <p class="mt-2 inline-flex items-center gap-1.5 text-xs" style="color: var(--accent);">
+                <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="m5 13 4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                {{ __('sanabel.masked.duplicate_checked') }}
+            </p>
+        @endif
+
         @if ($rows->isNotEmpty() || $owned->isNotEmpty())
             <dl class="mt-4 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
                 @foreach ($rows->merge($owned) as $label => $value)

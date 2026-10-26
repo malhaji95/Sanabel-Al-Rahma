@@ -84,6 +84,8 @@ class MaskedCaseResource extends JsonResource
         'illness_severity_label', 'monthly_medical_cost', 'eviction_label', 'has_breadwinner',
         // T-160 — whether the family will receive a donor, and nothing about when.
         'accepts_visit',
+        // T-161 — that the identity number was checked, never the number.
+        'duplicate_checked',
         'has_vehicle', 'vehicles', 'has_livestock', 'livestock', 'has_property', 'property',
         'dependents',
         // T-106 — the paragraph, and the heading the association chose for it.
@@ -237,6 +239,8 @@ class MaskedCaseResource extends JsonResource
             'has_breadwinner' => $this->hasBreadwinner($case),
             // T-160 — «يقبل الزيارة نعم لا».
             'accepts_visit' => $this->acceptsVisit($case),
+            // T-161 — that the number was checked, never the number.
+            'duplicate_checked' => $this->duplicateChecked($case),
             /*
              | T-102 — «علاج دائم», asked for on 15 October beside the illness.
              | It is the one health answer that changes what a donation is
@@ -468,6 +472,26 @@ class MaskedCaseResource extends JsonResource
         }
 
         return $case->acceptsDonorVisit();
+    }
+
+    /**
+     * T-161 — «تم التأكد من عدم تكرار الرقم الوطني للعائلة».
+     *
+     * A claim about this file, so it is made only where it is true: the
+     * number reached the file and was hashed, and the unique index on that
+     * hash is what refused any second file carrying it (rule 11). A file
+     * whose personal data has been destroyed holds no number any more, and
+     * says nothing rather than claiming a check it cannot stand behind.
+     *
+     * The number itself never travels, hashed or otherwise.
+     */
+    private function duplicateChecked(Beneficiary $case): bool
+    {
+        if (! $this->switched('show_duplicate_check')) {
+            return false;
+        }
+
+        return ! $case->isAnonymised() && filled($case->national_id_hash);
     }
 
     /** Whether anyone in the household is under continuing treatment. */

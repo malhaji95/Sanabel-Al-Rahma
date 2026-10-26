@@ -268,10 +268,11 @@ it('draws the household on the family page, and the researcher text on none of i
 })->group('AUTH-03');
 
 it('empties the block from the page when the association closes every switch', function () {
-    foreach ([
-        'show_household_profile', 'show_housing_detail', 'show_debt_amount',
-        'show_health_condition', 'show_possessions', 'show_dependents',
-    ] as $switch) {
+    // Every switch over what a donor is shown, read from the defaults rather
+    // than listed here: a switch added later is closed by this test too.
+    foreach (array_keys(collect(config('sanabel.setting_defaults'))
+        ->filter(fn ($default, $key) => is_bool($default) && str_starts_with($key, 'show_'))
+        ->all()) as $switch) {
         Setting::put($switch, false);
     }
 
