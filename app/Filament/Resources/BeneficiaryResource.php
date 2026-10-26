@@ -24,6 +24,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
 
 /**
@@ -1752,6 +1753,19 @@ class BeneficiaryResource extends Resource
                         : null),
                 // T-65 — a file whose personal data has been destroyed, and
                 // one with a request standing against it.
+                /*
+                 | T-163 — a file whose story is written and not yet signed.
+                 | Nothing on this list used to say so, so nobody signed it.
+                 */
+                Tables\Columns\TextColumn::make('story_approved_at')
+                    ->label(__('sanabel.beneficiary.story_awaiting'))
+                    ->badge()->color('warning')
+                    ->state(fn (Beneficiary $record) => filled($record->story_ar)
+                        && $record->story_approved_at === null
+                            ? __('sanabel.beneficiary.story_awaiting')
+                            : null)
+                    ->placeholder('')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('anonymised_at')
                     ->label(__('sanabel.anonymise.badge'))
                     ->badge()->color('gray')
@@ -1921,10 +1935,65 @@ class BeneficiaryResource extends Resource
                     ->label(__('sanabel.beneficiary.mine'))
                     ->toggle()
                     ->query(fn (Builder $query) => $query->where('created_by', auth()->id())),
+
+                /*
+                 | T-163 — «القصة غير ظاهرة, لازم تكون ظاهرة بالصفحة»,
+                 | 30 October.
+                 |
+                 | It was written and never signed. A story reaches the open
+                 | internet only once an account that may approve a file puts
+                 | its name to it (T-106), and that is the one guard between a
+                 | paragraph about a household and a stranger reading it — so
+                 | it stays. What was missing was any way to see which files
+                 | were waiting: the button is inside the file, and nothing on
+                 | the list said which files had one.
+                 */
+                Tables\Filters\Filter::make('story_awaiting')
+                    ->label(__('sanabel.beneficiary.story_awaiting'))
+                    ->toggle()
+                    ->query(fn (Builder $query) => $query
+                        ->whereNotNull('story_ar')
+                        ->whereNull('story_approved_at')),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
+            ])
+            ->bulkActions([
+                /*
+                 | T-163 — and signing them one at a time, through ten screens,
+                 | is why nine of them were still waiting. The signature is the
+                 | same one the button inside the file writes, and it is the
+                 | same authority: `approve_case`, and the policy on each file.
+                 */
+                Tables\Actions\BulkAction::make('approveStories')
+                    ->label(__('sanabel.actions.approve_stories'))
+                    ->icon('heroicon-o-check-badge')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalDescription(__('sanabel.actions.approve_stories_help'))
+                    ->visible(fn () => auth()->user()?->can_('approve_case'))
+                    ->action(function (Collection $records) {
+                        $signed = $records
+                            ->filter(fn (Beneficiary $record) => filled($record->story_ar)
+                                && $record->story_approved_at === null
+                                // The authority that signs a story is the one
+                                // that approves the file, not the one that
+                                // edits it: the executive director approves
+                                // and does not edit, which is the whole shape
+                                // of these two permissions.
+                                && auth()->user()->can('approve', $record))
+                            ->each(fn (Beneficiary $record) => $record->forceFill([
+                                'story_approved_by' => auth()->id(),
+                                'story_approved_at' => now(),
+                            ])->save());
+
+                        Notification::make()
+                            ->title(__('sanabel.actions.stories_approved', ['count' => $signed->count()]))
+                            ->success()
+                            ->send();
+                    })
+                    ->deselectRecordsAfterCompletion(),
             ])
             ->defaultSort('id', 'desc')
             ->paginated([25, 50, 100]);
