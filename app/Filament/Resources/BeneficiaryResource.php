@@ -1038,6 +1038,30 @@ class BeneficiaryResource extends Resource
 
                             Forms\Components\Textarea::make('description_ar')->label(__('sanabel.health.description'))->columnSpanFull(),
                         ])->columns(2),
+
+                    /*
+                     | T-154 — «في حال اختيار حالة تمنع العمل لازم يتم تفعيل
+                     | خيار ارفاق تقرير طبي», 29 October.
+                     |
+                     | The claim that somebody cannot work is the heaviest
+                     | single answer on this form: it moves the person out of
+                     | the earning class and into the need. The paper that
+                     | carries it was asked for in words under the member's own
+                     | row — «يُرفع التقرير ضمن الوثائق» — and uploaded from
+                     | another screen on another day, if at all.
+                     |
+                     | It appears the moment the household says somebody cannot
+                     | work, and files itself as a medical paper on «وثائق
+                     | الأسرة». It is offered, not demanded: a family that has
+                     | not been to a doctor yet still has to be registered.
+                     */
+                    Forms\Components\FileUpload::make('medical_report')
+                        ->label(__('sanabel.beneficiary.medical_report'))
+                        ->helperText(__('sanabel.beneficiary.medical_report_help'))
+                        ->visible(fn (Forms\Get $get) => self::claimsUnableToWork($get))
+                        ->maxSize(8192)
+                        ->storeFiles(false)
+                        ->columnSpanFull(),
                 ]),
 
                 // T-55 — what the family owns and what they owe. Each row is
@@ -1832,6 +1856,24 @@ class BeneficiaryResource extends Resource
     private static function yearOf(mixed $date): ?int
     {
         return filled($date) ? (int) Carbon::parse($date)->year : null;
+    }
+
+    /**
+     * T-154 — whether anybody on this file is said to be unable to work.
+     *
+     * Either of the two ways the form can say it: a member whose status is
+     * «غير قادر على العمل», or one carrying the documented-condition flag.
+     */
+    public static function claimsUnableToWork(Forms\Get $get): bool
+    {
+        foreach ((array) $get('members') as $member) {
+            if (($member['occupation'] ?? null) === 'unable'
+                || ($member['has_documented_condition'] ?? false)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** Years old, from a date of birth, or null when there is none. */
