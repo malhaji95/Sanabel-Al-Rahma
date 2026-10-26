@@ -27,6 +27,8 @@
             : null,
         __('sanabel.masked.home_safety') => $case['home_safety_label'] ?? null,
         __('sanabel.masked.home_services') => $case['home_services_label'] ?? null,
+        // T-164 — «وضع فرش المنزل», the grade and not the sentence.
+        __('sanabel.masked.furnishing') => $case['furnishing_label'] ?? null,
         // T-158 — «خطر الاخلاء», the band the housing sheet already grades. It
         // travels with the rest of the house, so the switch that closes the
         // house closes it too.
@@ -71,6 +73,10 @@
         // T-158 — «المرض شدة الحالة» و«تكلفة الطبية للعلاج», both behind the
         // health switch like the two rows above them.
         __('sanabel.masked.illness_severity') => $case['illness_severity_label'] ?? null,
+        // T-164 — «نوع الأدوية», the kinds and not the prescription.
+        __('sanabel.masked.medicine_kinds') => ($case['medicine_kinds'] ?? []) !== []
+            ? implode('، ', $case['medicine_kinds'])
+            : null,
         __('sanabel.masked.monthly_medical_cost') => isset($case['monthly_medical_cost'])
             ? number_format((int) $case['monthly_medical_cost']) . ' ' . \App\Services\Money::label()
             : null,

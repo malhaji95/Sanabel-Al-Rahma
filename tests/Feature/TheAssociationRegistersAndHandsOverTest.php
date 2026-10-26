@@ -43,6 +43,9 @@ it('registers a household from the association own screen', function () {
             'region_area_id' => $this->village->parent_id,
             'region_id' => $this->village->id,
             'support_type' => array_key_first(__('sanabel.masked.need_type')),
+            // T-156 — the three questions in front of the income, health and
+            // asset tables are answered on the way through the form.
+            ...gatesAnsweredNo(),
         ])
         ->call('create')
         ->assertHasNoFormErrors();

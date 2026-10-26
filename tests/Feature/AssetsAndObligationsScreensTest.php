@@ -33,7 +33,7 @@ beforeEach(function () {
 
 it('records an asset with every question answered on it', function () {
     livewire(EditBeneficiary::class, ['record' => $this->case->getRouteKey()])
-        ->fillForm(['assets' => [[
+        ->fillForm(['has_assets' => 'yes', 'assets' => [[
             'kind' => 'tractor',
             'necessity' => 'essential',
             'necessity_reason_ar' => 'يعمل عليه صاحبه',
@@ -61,7 +61,7 @@ it('refuses an asset with no note on it', function () {
     // T-64 — the committee judges by hand, so its only material is what the
     // researcher wrote. An asset with no description is of no use to them.
     livewire(EditBeneficiary::class, ['record' => $this->case->getRouteKey()])
-        ->fillForm(['assets' => [[
+        ->fillForm(['has_assets' => 'yes', 'assets' => [[
             'kind' => 'land',
             'necessity' => 'surplus',
             'estimated_value' => 9_000_000,

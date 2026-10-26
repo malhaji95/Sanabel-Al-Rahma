@@ -3,6 +3,7 @@
 use App\Filament\Resources\BeneficiaryResource\Pages\EditBeneficiary;
 use App\Models\Beneficiary;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Wizard;
 use Filament\Forms\Components\Wizard\Step;
 use Filament\Notifications\Notification;
 use Filament\Support\Exceptions\Halt;
@@ -16,6 +17,19 @@ use Filament\Support\Exceptions\Halt;
  | That is the hard stop, and it arrives at the end. This is the page where
  | the two questions are asked refusing to hand over until they are answered.
  */
+
+/**
+ * The wizard on the case form, found rather than counted to.
+ *
+ * T-159 put a line above it saying who wrote to the file last, so the wizard
+ * is no longer the first component and a test that assumes it is breaks on
+ * the next thing added over it.
+ */
+function wizardOf($page): Wizard
+{
+    return collect($page->instance()->form->getComponents())
+        ->first(fn ($component) => $component instanceof Wizard);
+}
 
 beforeEach(function () {
     seedCore();
@@ -41,7 +55,7 @@ function leaveConsents(Beneficiary $case, array $answers): ?Throwable
         $page->set("data.{$field}", $value);
     }
 
-    $step = collect($page->instance()->form->getComponents()[0]->getChildComponents())
+    $step = collect(wizardOf($page)->getChildComponents())
         ->first(fn (Step $step) => $step->getLabel() === __('sanabel.beneficiary.step_consents'));
 
     expect($step)->not->toBeNull();
@@ -73,14 +87,14 @@ function pressNext(Beneficiary $case, array $answers): int
         $page->set("data.{$field}", $value);
     }
 
-    $wizard = $page->instance()->form->getComponents()[0];
+    $wizard = wizardOf($page);
 
     $steps = collect($wizard->getChildComponents());
     $index = $steps->search(fn (Step $step) => $step->getLabel() === __('sanabel.beneficiary.step_consents'));
 
     $page->call('dispatchFormEvent', 'wizard::nextStep', $wizard->getStatePath(), $index);
 
-    return $page->instance()->form->getComponents()[0]->getCurrentStepIndex();
+    return wizardOf($page)->getCurrentStepIndex();
 }
 
 /** The last thing the screen said. */
@@ -113,9 +127,8 @@ it('stays on the page when «التالي» is pressed, which is what the screen
      */
     $case = familyOf($this->region);
 
-    $consentsStep = collect(Livewire\Livewire::actingAs(userWithRole('case_officer'))
-        ->test(EditBeneficiary::class, ['record' => $case->getRouteKey()])
-        ->instance()->form->getComponents()[0]->getChildComponents())
+    $consentsStep = collect(wizardOf(Livewire\Livewire::actingAs(userWithRole('case_officer'))
+        ->test(EditBeneficiary::class, ['record' => $case->getRouteKey()]))->getChildComponents())
         ->search(fn (Step $step) => $step->getLabel() === __('sanabel.beneficiary.step_consents'));
 
     // Neither answer given: the form does not move off the consents step.
@@ -132,8 +145,9 @@ it('is a wizard that is walked, so every step is validated on the way', function
     $case = familyOf($this->region);
 
     $wizard = Livewire\Livewire::actingAs(userWithRole('case_officer'))
-        ->test(EditBeneficiary::class, ['record' => $case->getRouteKey()])
-        ->instance()->form->getComponents()[0];
+        ->test(EditBeneficiary::class, ['record' => $case->getRouteKey()]);
+
+    $wizard = wizardOf($wizard);
 
     expect($wizard->isSkippable())->toBeFalse();
 });

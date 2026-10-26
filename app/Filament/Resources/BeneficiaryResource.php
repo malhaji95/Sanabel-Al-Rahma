@@ -972,6 +972,22 @@ class BeneficiaryResource extends Resource
                             Forms\Components\Select::make('services_band')->label(__('sanabel.housing.services'))->options(__('sanabel.bands.services'))->default(0)->required(),
                             Forms\Components\Select::make('eviction_band')->label(__('sanabel.housing.eviction'))->options(__('sanabel.bands.eviction'))->default(0)->required(),
 
+                            /*
+                             | T-164 — «وضع فرش المنزل» as a grade.
+                             |
+                             | The association asked on 30 October for it on
+                             | the donor's page, and the sentence beside it
+                             | cannot go there: a sentence may carry a
+                             | neighbour's name or an address, and nothing
+                             | reads it before it is published. The grade is a
+                             | row in lang/ar, so the wording is theirs to
+                             | change without a release.
+                             */
+                            Forms\Components\Select::make('furnishing_band')
+                                ->label(__('sanabel.housing.furnishing_band'))
+                                ->helperText(__('sanabel.housing.furnishing_band_help'))
+                                ->options(__('sanabel.bands.furnishing')),
+
                             Forms\Components\TextInput::make('landlord_name_ar')->label(__('sanabel.housing.landlord_name')),
                             Forms\Components\TextInput::make('landlord_phone_encrypted')
                                 ->label(__('sanabel.housing.landlord_phone'))
@@ -1144,6 +1160,19 @@ class BeneficiaryResource extends Resource
                             Forms\Components\Textarea::make('medicines_ar')
                                 ->label(__('sanabel.health.medicines_ar'))
                                 ->rows(2)
+                                ->columnSpanFull(),
+
+                            /*
+                             | T-164 — «نوع الأدوية» out of a list, which is
+                             | what travels to the donor's page. The names of
+                             | the medicines stay in the box above, for the
+                             | committee. More than one may be true at once.
+                             */
+                            Forms\Components\CheckboxList::make('medicine_kinds')
+                                ->label(__('sanabel.health.medicine_kinds'))
+                                ->helperText(__('sanabel.health.medicine_kinds_help'))
+                                ->options(__('sanabel.medicine_kinds'))
+                                ->columns(2)
                                 ->columnSpanFull(),
 
                             Forms\Components\Textarea::make('description_ar')->label(__('sanabel.health.description'))->columnSpanFull(),

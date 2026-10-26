@@ -288,6 +288,9 @@ return [
         'duplicate_checked' => 'تم التأكد من عدم تكرار الرقم الوطني للعائلة',
         // T-162 — ما أُضيف إلى سطر كل فرد معال.
         'quran_memorizer' => 'حافظ للقرآن',
+        // T-164 — ما يُعرض على صفحة الحالة بدل الجملتين.
+        'furnishing' => 'وضع فرش المنزل',
+        'medicine_kinds' => 'نوع الأدوية',
         // T-106 — «قيمة الديون». السطر نفسه يقول «لا» حين لا يوجد دين، ويقول
         // قيمته حين يوجد، فلا يُقرأ «قيمة الديون: لا».
         'debt_amount_row' => 'قيمة الديون',
@@ -433,6 +436,15 @@ return [
         'economic_impact' => [
             0 => 'لا يوجد', 25 => 'محدود أو مؤقت', 50 => 'انخفاض واضح',
             75 => 'اضطراب كبير', 100 => 'فقدان كامل للدخل',
+        ],
+        /*
+         | T-164 — «وضع فرش المنزل», asked as a grade instead of a sentence so
+         | that it can be shown to a donor at all. The wordings are rows in
+         | this file: change one and the form and the page change with it.
+         */
+        'furnishing' => [
+            0 => 'مؤثّث بالكافي', 25 => 'ينقصه بعض الأساسيات',
+            50 => 'متهالك', 75 => 'شبه خالٍ من الفرش',
         ],
         'care_burden' => [
             0 => 'لا يوجد', 25 => 'أحياناً', 50 => 'يومي منتظم',
@@ -690,6 +702,20 @@ return [
     ],
 
     // T-129 — «بأي مرحلة وأي صف»: المرحلة من قائمة، والصف نصّ يُقرأ عليها.
+    /*
+     | T-164 — «نوع الأدوية», as a list rather than the researcher's sentence.
+     | More than one may be true of one household, and the sentence beside it
+     | stays where it was, for the committee.
+     */
+    'medicine_kinds' => [
+        'chronic' => 'أدوية مزمنة دائمة',
+        'painkiller' => 'مسكّنات',
+        'antibiotic' => 'مضادات حيوية',
+        'imported' => 'دواء مستورد غير متوفّر محليًّا',
+        'infant_formula' => 'حليب أطفال',
+        'supplies' => 'مستلزمات طبية ومستهلكات',
+    ],
+
     'school_stage' => [
         'kindergarten' => 'روضة',
         'primary' => 'ابتدائي',
@@ -726,7 +752,10 @@ return [
         'rent_period' => 'دورية الإيجار',
         'bathrooms' => 'عدد الحمامات',
         'has_kitchen' => 'هل يوجد مطبخ',
-        'furnishing_ar' => 'وضع فرش المنزل',
+        'furnishing_ar' => 'وصف فرش المنزل بالتفصيل',
+        // T-164 — الدرجة التي تُعرض على المتبرّع. والوصف أعلاه يبقى للّجنة.
+        'furnishing_band' => 'وضع فرش المنزل',
+        'furnishing_band_help' => 'هذه الدرجة هي ما يُعرض على صفحة الحالة. والوصف التفصيلي يبقى داخليًّا ولا يراه متبرّع.',
     ],
 
     'rent_period' => [
@@ -769,6 +798,9 @@ return [
         'ongoing_treatment' => 'هل يتلقى علاجاً دائماً',
         'treatment_place_ar' => 'جهة العلاج',
         'medicines_ar' => 'أنواع الأدوية',
+        // T-164 — نوع الدواء من قائمة، وهو ما يُعرض. والنصّ بجانبه للّجنة.
+        'medicine_kinds' => 'نوع الأدوية',
+        'medicine_kinds_help' => 'اختر ما ينطبق. هذه القائمة هي ما يُعرض على صفحة الحالة؛ وأسماء الأدوية في الخانة أعلاه تبقى داخلية.',
         'doctor_name_ar' => 'اسم الطبيب',
         'doctor_phone' => 'هاتف الطبيب',
     ],

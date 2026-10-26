@@ -86,6 +86,9 @@ class MaskedCaseResource extends JsonResource
         'accepts_visit',
         // T-161 — that the identity number was checked, never the number.
         'duplicate_checked',
+        // T-164 — a grade for the furnishing and the kinds of medicine, both
+        // out of a list. The sentences they replace are not here.
+        'furnishing_label', 'medicine_kinds',
         'has_vehicle', 'vehicles', 'has_livestock', 'livestock', 'has_property', 'property',
         'dependents',
         // T-106 — the paragraph, and the heading the association chose for it.
@@ -250,6 +253,14 @@ class MaskedCaseResource extends JsonResource
             'accepts_visit' => $this->acceptsVisit($case),
             // T-161 — that the number was checked, never the number.
             'duplicate_checked' => $this->duplicateChecked($case),
+            /*
+             | T-164 — the association's last two of 29 October, asked again
+             | as lists on 30 October so that they could be published at all.
+             | A grade and a set of kinds; the sentences they sit beside stay
+             | where the researcher wrote them.
+             */
+            'furnishing_label' => $this->furnishingLabel($case),
+            'medicine_kinds' => $this->medicineKinds($case),
             /*
              | T-102 — «علاج دائم», asked for on 15 October beside the illness.
              | It is the one health answer that changes what a donation is
@@ -501,6 +512,48 @@ class MaskedCaseResource extends JsonResource
         }
 
         return ! $case->isAnonymised() && filled($case->national_id_hash);
+    }
+
+    /**
+     * T-164 — «وضع فرش المنزل», as the grade the researcher picked.
+     *
+     * It describes the house, so it closes with the house.
+     */
+    private function furnishingLabel(Beneficiary $case): ?string
+    {
+        if (! $this->switched('show_housing_detail')) {
+            return null;
+        }
+
+        $band = $case->housing?->furnishing_band;
+
+        return $band === null ? null : __('sanabel.bands.furnishing.'.(int) $band);
+    }
+
+    /**
+     * T-164 — «نوع الأدوية», as the kinds that were ticked.
+     *
+     * Kinds, never names: what the household takes is a list the researcher
+     * picks from, and the prescription itself stays on the file. Behind the
+     * health switch, like everything else about an illness.
+     *
+     * @return array<int,string>
+     */
+    private function medicineKinds(Beneficiary $case): array
+    {
+        if (! $this->switched('show_health_condition')) {
+            return [];
+        }
+
+        return $case->healthRecords
+            ->pluck('medicine_kinds')
+            ->filter()
+            ->flatten()
+            ->unique()
+            ->filter(fn (string $kind) => array_key_exists($kind, __('sanabel.medicine_kinds')))
+            ->map(fn (string $kind) => __('sanabel.medicine_kinds.'.$kind))
+            ->values()
+            ->all();
     }
 
     /** Whether anyone in the household is under continuing treatment. */

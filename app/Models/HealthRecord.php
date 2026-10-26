@@ -18,12 +18,15 @@ class HealthRecord extends Model
         'monthly_medical_cost', 'currency', 'description_ar', 'evidence_media_id', 'created_by',
         'ongoing_treatment', 'treatment_place_ar', 'medicines_ar', 'doctor_name_ar',
         'doctor_phone_encrypted',
+        // T-164 — the kinds a donor is shown, beside the names for the committee.
+        'medicine_kinds',
     ];
 
     // The doctor's own number is somebody's telephone number too.
     protected $hidden = ['description_ar', 'doctor_phone_encrypted'];
 
     protected $casts = [
+        'medicine_kinds' => 'array',
         'severity_band' => 'integer',
         'economic_impact_band' => 'integer',
         'care_burden_band' => 'integer',

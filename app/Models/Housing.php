@@ -20,6 +20,8 @@ class Housing extends Model
         'safety_band', 'services_band', 'eviction_band', 'landlord_name_ar',
         'landlord_phone_encrypted', 'created_by',
         'type_other_ar', 'rent_period', 'bathrooms', 'has_kitchen',
+        // T-164 — the grade a donor is shown, beside the sentence for the committee.
+        'furnishing_band',
     ];
 
     /** شهري أو سنوي، كما يسأل الاستبيان. */
