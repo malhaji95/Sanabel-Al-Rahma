@@ -59,6 +59,8 @@ class Beneficiary extends Model
         'certificate_ar', 'experience_years', 'can_teach_quran',
         // T-128 — الزوج أو الزوجة باسمه ورقمه، حتى إن كان متوفًّى.
         'spouse_name_ar', 'spouse_national_id_encrypted',
+        // T-172 — وعمله, إن كان يعمل.
+        'spouse_work_status', 'spouse_profession_ar', 'spouse_workplace_ar', 'spouse_work_income',
         'has_quran_memorizers', 'quran_memorizer_count', 'livelihood_proposal_ar',
         'proposal_skills_ar', 'proposal_cost', 'surveyed_by_ar', 'furnishing_ar',
         // T-100 — the two the survey asks and the file had no room for.
@@ -153,6 +155,7 @@ class Beneficiary extends Model
             'case_classifications' => 'array',
             'declared_monthly_income' => 'integer',
             'work_income' => 'integer',
+            'spouse_work_income' => 'integer',
             'donor_visit_consent' => 'boolean',
             'donor_visit_consent_on' => 'date',
             'zakat_recommended' => 'boolean',

@@ -66,6 +66,10 @@ class ChangeRequest extends Model
         // T-127 — the three-valued answer and the questions behind it. A
         // breadwinner who finds work after approval is corrected this way.
         'work_status', 'profession_ar', 'sought_trade_ar', 'has_certificate', 'experience_years', 'can_teach_quran',
+        // T-172 — and the same four about the spouse, for the same
+        // reason: a husband who finds work after the file is approved
+        // is corrected this way and not by reopening the file.
+        'spouse_work_status', 'spouse_profession_ar', 'spouse_workplace_ar', 'spouse_work_income',
         // The four consents (T-69). A consent is a fact about what the
         // family agreed to, so correcting one goes the same way as
         // correcting anything else on a live file.

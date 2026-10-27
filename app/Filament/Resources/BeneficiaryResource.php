@@ -331,6 +331,39 @@ class BeneficiaryResource extends Resource
                              | gate on it, and lands on «وثائق الأسرة» under its
                              | own kind.
                              */
+                            /*
+                             | T-172 — «لازم يتم أيضًا ظهور حقول إدخال بيانات
+                             | عمل الزوج إذا كان يعمل», 1 November.
+                             |
+                             | The same four questions the head is asked, in
+                             | the same order and with the same words, because
+                             | they are the same questions. Asked only of a
+                             | living spouse: a widow is not being asked what
+                             | her husband earns.
+                             */
+                            Forms\Components\Select::make('spouse_work_status')
+                                ->label(fn (Forms\Get $get) => self::spouseWorkLabel($get('gender')))
+                                ->options(__('sanabel.work_status'))
+                                ->visible(fn (Forms\Get $get) => $get('marital_status') === 'married')
+                                ->live(),
+
+                            Forms\Components\TextInput::make('spouse_profession_ar')
+                                ->label(__('sanabel.beneficiary.profession_ar'))
+                                ->visible(fn (Forms\Get $get) => $get('marital_status') === 'married'
+                                    && $get('spouse_work_status') === 'yes'),
+
+                            Forms\Components\TextInput::make('spouse_workplace_ar')
+                                ->label(__('sanabel.beneficiary.workplace_ar'))
+                                ->visible(fn (Forms\Get $get) => $get('marital_status') === 'married'
+                                    && $get('spouse_work_status') === 'yes'),
+
+                            Forms\Components\TextInput::make('spouse_work_income')
+                                ->label(__('sanabel.beneficiary.work_income'))
+                                ->helperText(__('sanabel.beneficiary.work_income_help'))
+                                ->numeric()->minValue(0)
+                                ->visible(fn (Forms\Get $get) => $get('marital_status') === 'married'
+                                    && $get('spouse_work_status') === 'yes'),
+
                             Forms\Components\FileUpload::make('spouse_proof')
                                 ->label(fn (Forms\Get $get) => $get('marital_status') === 'widowed'
                                     ? __('sanabel.beneficiary.spouse_proof_death')
