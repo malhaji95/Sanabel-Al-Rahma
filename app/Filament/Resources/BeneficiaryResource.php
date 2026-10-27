@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\CoverageService;
 use App\Services\DependencyRules;
 use App\Services\FamilyAges;
+use App\Services\FamilyNames;
 use App\Services\IdentityFormat;
 use App\Services\Money;
 use App\Services\RankingService;
@@ -114,15 +115,34 @@ class BeneficiaryResource extends Resource
                             }
                         }),
 
-                    Forms\Components\TextInput::make('first_name')->label(__('sanabel.beneficiary.first_name'))->required(),
+                    /*
+                     | T-175 — the three boxes a child's row reads from. Each
+                     | one pushes the correction down into the rows the moment
+                     | it is made, so «يتم تعبئة اسم الأم مباشر بعد تعبئة
+                     | معلومات أمه» is true in the same sitting and not only
+                     | after a save and a reload.
+                     */
+                    Forms\Components\TextInput::make('first_name')
+                        ->label(__('sanabel.beneficiary.first_name'))
+                        ->required()
+                        ->live(onBlur: true)
+                        ->afterStateUpdated(fn (Forms\Get $get, Forms\Set $set) => self::refreshInheritedNames($get, $set)),
+
                     Forms\Components\TextInput::make('father_name')->label(__('sanabel.beneficiary.father_name'))->required(),
-                    Forms\Components\TextInput::make('family_name')->label(__('sanabel.beneficiary.family_name'))->required(),
+
+                    Forms\Components\TextInput::make('family_name')
+                        ->label(__('sanabel.beneficiary.family_name'))
+                        ->required()
+                        ->live(onBlur: true)
+                        ->afterStateUpdated(fn (Forms\Get $get, Forms\Set $set) => self::refreshInheritedNames($get, $set)),
 
                     Forms\Components\Select::make('gender')
                         ->label(__('sanabel.beneficiary.gender'))
                         ->options(__('sanabel.gender'))
                         // T-121 — the marital states below are written to match.
-                        ->live(),
+                        // T-175 — and which parent a child's row reads from.
+                        ->live()
+                        ->afterStateUpdated(fn (Forms\Get $get, Forms\Set $set) => self::refreshInheritedNames($get, $set)),
 
                     Forms\Components\DatePicker::make('birth_date')
                         ->label(__('sanabel.beneficiary.birth_date'))
@@ -284,7 +304,11 @@ class BeneficiaryResource extends Resource
                                 ->validationMessages(['required' => __('sanabel.beneficiary.spouse_required')])
                                 ->helperText(fn (Forms\Get $get) => $get('marital_status') === 'widowed'
                                     ? __('sanabel.beneficiary.spouse_deceased_help')
-                                    : __('sanabel.beneficiary.spouse_member_help')),
+                                    : __('sanabel.beneficiary.spouse_member_help'))
+                                // T-175 — the other parent of every child in
+                                // the household is named in this one box.
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(fn (Forms\Get $get, Forms\Set $set) => self::refreshInheritedNames($get, $set)),
 
                             Forms\Components\TextInput::make('spouse_national_id_encrypted')
                                 ->label(__('sanabel.beneficiary.spouse_national_id'))
@@ -523,7 +547,81 @@ class BeneficiaryResource extends Resource
                         ->defaultItems(0)
                         ->addActionLabel(__('sanabel.repeater.add_members'))
                         ->schema([
-                            Forms\Components\TextInput::make('name_ar')->label(__('sanabel.household_member.name'))->required(),
+                            Forms\Components\TextInput::make('name_ar')
+                                ->label(__('sanabel.household_member.name'))
+                                ->helperText(__('sanabel.household_member.name_help'))
+                                ->required(),
+
+                            /*
+                             | T-175 — «فقط الأب مطلوب الكنية والابن ياخد كنية
+                             | الأب … لكن للابن يتم تعبئة اسم الأم مباشر بعد
+                             | تعبئة معلومات أمه», 1 November.
+                             |
+                             | The three names a son or a daughter does not
+                             | have to be asked for, because the file already
+                             | holds all three: the surname and one parent are
+                             | the head's own, and the other parent is the
+                             | spouse the head was required to name in T-152.
+                             | Asking again is three chances to spell one
+                             | family's name three ways.
+                             |
+                             | Filled and locked for a child; asked of anybody
+                             | else, which is the second half of the same note:
+                             | «إذا كان المعال غير الابن والبنت نحتاج اسم الأب
+                             | والكنية». A wife is asked for her surname too,
+                             | because their rule says so and because it is
+                             | hers.
+                             |
+                             | `dehydrateStateUsing` decides what is saved, so
+                             | a child's three names are read from the file at
+                             | the moment of saving however the boxes were
+                             | filled, and a head who is renamed does not leave
+                             | her children carrying the old name.
+                             */
+                            Forms\Components\TextInput::make('family_name_ar')
+                                ->label(__('sanabel.household_member.family_name'))
+                                ->helperText(fn (Forms\Get $get) => FamilyNames::inheritsFromHead($get('relation'))
+                                    ? __('sanabel.household_member.taken_from_the_file')
+                                    : __('sanabel.household_member.family_name_help'))
+                                ->disabled(fn (Forms\Get $get) => FamilyNames::inheritsFromHead($get('relation')))
+                                ->dehydrated()
+                                ->afterStateHydrated(fn (Forms\Components\TextInput $component, Forms\Get $get) => self::fillInheritedName(
+                                    $component,
+                                    FamilyNames::surnameFor($get('relation'), $get('../../family_name')),
+                                ))
+                                ->dehydrateStateUsing(fn (?string $state, Forms\Get $get) => FamilyNames::inheritsFromHead($get('relation'))
+                                    ? FamilyNames::surnameFor($get('relation'), $get('../../family_name'))
+                                    : $state),
+
+                            Forms\Components\TextInput::make('father_name_ar')
+                                ->label(__('sanabel.household_member.father_name'))
+                                ->helperText(fn (Forms\Get $get) => FamilyNames::inheritsFromHead($get('relation'))
+                                    ? __('sanabel.household_member.taken_from_the_file')
+                                    : __('sanabel.household_member.father_name_help'))
+                                ->disabled(fn (Forms\Get $get) => FamilyNames::inheritsFromHead($get('relation')))
+                                ->dehydrated()
+                                ->afterStateHydrated(fn (Forms\Components\TextInput $component, Forms\Get $get) => self::fillInheritedName(
+                                    $component,
+                                    self::parentName($get, 'father'),
+                                ))
+                                ->dehydrateStateUsing(fn (?string $state, Forms\Get $get) => FamilyNames::inheritsFromHead($get('relation'))
+                                    ? self::parentName($get, 'father')
+                                    : $state),
+
+                            Forms\Components\TextInput::make('mother_name_ar')
+                                ->label(__('sanabel.household_member.mother_name'))
+                                ->helperText(fn (Forms\Get $get) => FamilyNames::inheritsFromHead($get('relation'))
+                                    ? __('sanabel.household_member.taken_from_the_file')
+                                    : __('sanabel.household_member.mother_name_help'))
+                                ->disabled(fn (Forms\Get $get) => FamilyNames::inheritsFromHead($get('relation')))
+                                ->dehydrated()
+                                ->afterStateHydrated(fn (Forms\Components\TextInput $component, Forms\Get $get) => self::fillInheritedName(
+                                    $component,
+                                    self::parentName($get, 'mother'),
+                                ))
+                                ->dehydrateStateUsing(fn (?string $state, Forms\Get $get) => FamilyNames::inheritsFromHead($get('relation'))
+                                    ? self::parentName($get, 'mother')
+                                    : $state),
 
                             // Somebody else's identity number is still an
                             // identity number: encrypted at rest like the head
@@ -564,6 +662,16 @@ class BeneficiaryResource extends Resource
                                         (int) date('Y') - (int) ($get('birth_year') ?: date('Y')),
                                         $state,
                                     ));
+
+                                    // T-175 — the three shared names follow the
+                                    // kinship the moment it is answered, so the
+                                    // researcher sees what the file already
+                                    // knows instead of typing it again.
+                                    if (FamilyNames::inheritsFromHead($state)) {
+                                        $set('family_name_ar', FamilyNames::surnameFor($state, $get('../../family_name')));
+                                        $set('father_name_ar', self::parentName($get, 'father', $state));
+                                        $set('mother_name_ar', self::parentName($get, 'mother', $state));
+                                    }
                                 }),
                             Forms\Components\TextInput::make('relation_other_ar')
                                 ->label(__('sanabel.household_member.relation_other_ar'))
@@ -2117,6 +2225,99 @@ class BeneficiaryResource extends Resource
         return $gender === 'female'
             ? __('sanabel.beneficiary.work_status_f')
             : __('sanabel.beneficiary.work_status');
+    }
+
+    /**
+     * T-172 — and the spouse's own work question, worded the same way.
+     *
+     * The head's gender decides it, as it decides every other word in this
+     * block: a woman is asked about her husband, a man about his wife.
+     */
+    public static function spouseWorkLabel(?string $gender): string
+    {
+        return match ($gender) {
+            'female' => __('sanabel.beneficiary.spouse_work_status_husband'),
+            'male' => __('sanabel.beneficiary.spouse_work_status_wife'),
+            default => __('sanabel.beneficiary.spouse_work_status_either'),
+        };
+    }
+
+    /**
+     * T-175 — a name the file already holds, put in the box that shows it.
+     *
+     * Only when the file holds one: a half-filled head leaves the box empty
+     * rather than blanking a name somebody typed into it before the head was
+     * finished.
+     */
+    private static function fillInheritedName(Forms\Components\TextInput $component, ?string $name): void
+    {
+        if (filled($name)) {
+            $component->state($name);
+        }
+    }
+
+    /**
+     * T-175 — the head was renamed, so every child's row is renamed with them.
+     *
+     * Called from the four boxes a child's row reads: the head's own name, the
+     * family name, the head's gender and the spouse they named. Only the rows
+     * that inherit are touched; a brother or a grandmother keeps whatever was
+     * typed into them.
+     *
+     * Reads the repeater's state rather than the record, because the names it
+     * is copying are the ones on the screen and may not be saved yet — which
+     * is the whole point of doing it here.
+     */
+    private static function refreshInheritedNames(Forms\Get $get, Forms\Set $set): void
+    {
+        $members = $get('members');
+
+        if (! is_array($members) || $members === []) {
+            return;
+        }
+
+        $gender = $get('gender');
+        $first = $get('first_name');
+        $spouse = $get('spouse_name_ar');
+        $family = $get('family_name');
+
+        foreach ($members as $key => $member) {
+            $relation = $member['relation'] ?? null;
+
+            if (! FamilyNames::inheritsFromHead($relation)) {
+                continue;
+            }
+
+            $members[$key]['family_name_ar'] = FamilyNames::surnameFor($relation, $family);
+            $members[$key]['father_name_ar'] = FamilyNames::fatherFor($relation, $gender, $first, $spouse);
+            $members[$key]['mother_name_ar'] = FamilyNames::motherFor($relation, $gender, $first, $spouse);
+        }
+
+        $set('members', $members);
+    }
+
+    /**
+     * T-175 — the father or the mother of a child in this household.
+     *
+     * Read from the head's row: the head is one of the two parents and the
+     * spouse they named is the other, and which is which follows the head's
+     * own gender. `$relation` is passed in from the kinship handler, where the
+     * new value is not yet in `$get`.
+     */
+    private static function parentName(Forms\Get $get, string $which, ?string $relation = null): ?string
+    {
+        $relation ??= $get('relation');
+
+        $arguments = [
+            $relation,
+            $get('../../gender'),
+            $get('../../first_name'),
+            $get('../../spouse_name_ar'),
+        ];
+
+        return $which === 'father'
+            ? FamilyNames::fatherFor(...$arguments)
+            : FamilyNames::motherFor(...$arguments);
     }
 
     public static function spouseNameLabel(?string $gender): string

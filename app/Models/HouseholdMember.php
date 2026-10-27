@@ -26,6 +26,10 @@ class HouseholdMember extends Model
         'is_orphan', 'spouse_national_id_encrypted',
         // T-100 — asked of every dependant on the survey, as of the head.
         'smokes',
+        // T-175 — الكنية واسم الأب واسم الأم, تُملأ من الملف للابن والبنت.
+        'family_name_ar', 'father_name_ar', 'mother_name_ar',
+        // T-176 — المرض المزمن, يُسأل عن كل فرد لا عن العاجز وحده.
+        'has_chronic_illness', 'chronic_illness_ar',
         // T-129 — ما تسأله كل صفة عن نفسها.
         'school_stage', 'sought_trade_ar', 'has_certificate', 'experience_years',
         'can_teach_quran', 'pension_income', 'condition_description_ar', 'doctor_phone_encrypted',

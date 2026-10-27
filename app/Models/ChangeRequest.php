@@ -88,6 +88,9 @@ class ChangeRequest extends Model
         'is_student', 'has_documented_condition', 'notes_ar', 'national_id_encrypted',
         'is_orphan', 'spouse_national_id_encrypted',
         'person_class', 'dependent', 'unable_to_earn',
+        // T-175 and T-176 — the shared names and the chronic illness.
+        'family_name_ar', 'father_name_ar', 'mother_name_ar',
+        'has_chronic_illness', 'chronic_illness_ar',
         // A health record.
         'severity_band', 'economic_impact_band', 'care_burden_band', 'monthly_medical_cost',
         'description_ar', 'ongoing_treatment', 'treatment_place_ar', 'medicines_ar',
