@@ -64,7 +64,7 @@ it('keeps the money an integer in the smallest unit', function () {
     ]);
 
     expect($case->fresh()->spouse_work_income)->toBeInt();
-})->group('MON-01');
+});
 
 it('lets a husband who finds work later be corrected without reopening the file', function () {
     // The head's own four are correctable (T-127); the spouse's four are the

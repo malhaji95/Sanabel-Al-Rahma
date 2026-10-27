@@ -169,4 +169,4 @@ it('never publishes a dependant’s name, however many boxes now hold one', func
         ->not->toContain('الحلبي')
         ->not->toContain('أحمد')
         ->not->toContain('سعاد');
-})->group('PRIV-01');
+});

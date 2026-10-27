@@ -127,4 +127,4 @@ it('tells no donor what anybody in the household has', function () {
     expect(json_encode(maskedOf($case->fresh()), JSON_UNESCAPED_UNICODE))
         ->not->toContain('قصور كلوي')
         ->not->toContain('chronic_illness_ar');
-})->group('PRIV-01');
+});

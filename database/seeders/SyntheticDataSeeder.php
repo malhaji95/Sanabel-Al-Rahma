@@ -514,8 +514,17 @@ class SyntheticDataSeeder extends Seeder
             'created_by' => $staff['admin']->id,
         ]);
 
+        /*
+         | T-178 — the area, not one family's village.
+         |
+         | A distribution is run over an area and its list is drawn from every
+         | locality under it. It used to be filed on `$cases[0]->region_id`,
+         | which was an area only because the seeder was filing families on
+         | areas; once they moved to their localities the list came back empty
+         | and the approval refused it.
+         */
         $distribution = Distribution::create([
-            'region_id' => $cases[0]->region_id,
+            'region_id' => $cases[0]->region?->ancestorOfType('area')?->id ?? $cases[0]->region_id,
             'title_ar' => 'سلال غذائية — الدفعة الأولى',
             'total_amount' => 100_000,
             'per_family_amount' => 20_000,

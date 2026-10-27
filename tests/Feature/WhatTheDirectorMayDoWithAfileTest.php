@@ -81,7 +81,7 @@ it('changes nothing else on the file', function () {
         ]);
 
     expect($case->fresh()->only(array_keys($before)))->toBe($before);
-});
+})->group('AUTH-03');
 
 it('offers the button to nobody who cannot approve a file', function () {
     $case = publishedCase($this->region);
@@ -102,7 +102,7 @@ it('keeps the approver’s note off every donor page', function () {
     expect(json_encode($masked, JSON_UNESCAPED_UNICODE))
         ->not->toContain('أبو خالد')
         ->and(array_key_exists('management_note_ar', $masked))->toBeFalse();
-})->group('PRIV-01');
+});
 
 it('is a field no change request can reach', function () {
     // It is the management's own note. A change request is how the data a
@@ -135,4 +135,4 @@ it('writes the note into the audit log, so a replaced note is not a lost one', f
 
     expect($written)->not->toBeEmpty()
         ->and($case->fresh()->management_note_ar)->toBe('الثانية');
-})->group('AUD-01');
+})->group('OPS-01');
