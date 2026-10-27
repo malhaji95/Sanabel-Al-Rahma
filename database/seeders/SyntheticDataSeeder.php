@@ -89,8 +89,34 @@ class SyntheticDataSeeder extends Seeder
         $this->providers($areas);
         $this->donors();
 
+        /*
+         | T-177 — a locality, never an area.
+         |
+         | Families were filed on `$areas->random()`, and a family attached to
+         | an area is a shape the screen cannot draw: the locality list under
+         | «المنطقة» holds that area's villages, the area itself is not one of
+         | them, and the box fell back to printing the stored number. The
+         | executive director's read-only file therefore said «القرية / البلدة
+         | / المدينة: 53». Twenty-six of the forty demonstration files were
+         | like this.
+         |
+         | The form has only ever offered localities (T-121 split the one list
+         | in two), so no file entered by hand can be in this shape; it was the
+         | seeder writing something the screen forbids.
+         */
+        $localities = Region::where('is_active', true)
+            ->whereIn('type', ['city', 'town', 'village'])
+            ->whereIn('parent_id', $areas->pluck('id'))
+            ->get();
+
+        // A region file with areas but no localities under them is possible;
+        // the delegate's own village is made the same way when it is missing.
+        if ($localities->isEmpty()) {
+            $localities = collect([$this->demoVillage($areas)]);
+        }
+
         foreach (range(1, 40) as $i) {
-            $this->family($i, $areas->random(), $staff);
+            $this->family($i, $localities->random(), $staff);
         }
 
         $this->changeRequests($staff);
