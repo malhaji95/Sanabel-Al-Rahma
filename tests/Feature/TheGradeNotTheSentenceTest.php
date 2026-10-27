@@ -4,7 +4,7 @@ use App\Models\HealthRecord;
 use App\Models\Setting;
 
 /*
- | T-164 — «وضع فرش المنزل» و«نوع الأدوية» على صفحة الحالة.
+ | T-164 — «نوع الأدوية» على صفحة الحالة.
  |
  | Both were asked for on 29 October and held back: both were free text the
  | researcher wrote for the committee, and a sentence may carry a neighbour's
@@ -16,24 +16,6 @@ use App\Models\Setting;
 beforeEach(function () {
     seedCore();
     $this->region = regionWithRates();
-});
-
-it('publishes the grade of the furnishing, and never the description', function () {
-    $case = publishedCase($this->region);
-
-    $case->forceFill(['furnishing_ar' => 'برّاد معطّل وفرش من عند الجيران'])->save();
-    $case->housing()->updateOrCreate(['beneficiary_id' => $case->id], ['furnishing_band' => 50]);
-
-    $masked = maskedOf($case);
-
-    expect($masked['furnishing_label'])->toBe(__('sanabel.bands.furnishing.50'))
-        ->and(json_encode($masked, JSON_UNESCAPED_UNICODE))->not->toContain('عند الجيران');
-
-    $this->get(route('opportunity', $case->file_number))
-        ->assertOk()
-        ->assertSee(__('sanabel.masked.furnishing'))
-        ->assertSee(__('sanabel.bands.furnishing.50'))
-        ->assertDontSee('عند الجيران');
 });
 
 it('publishes the kinds of medicine, and never the prescription', function () {
@@ -88,18 +70,13 @@ it('ignores a kind that is not on the association’s list', function () {
 it('closes both with the switch over the block they belong to', function () {
     $case = publishedCase($this->region);
 
-    $case->housing()->updateOrCreate(['beneficiary_id' => $case->id], ['furnishing_band' => 50]);
     HealthRecord::factory()->create([
         'beneficiary_id' => $case->id,
         'severity_band' => 25,
         'medicine_kinds' => ['chronic'],
     ]);
 
-    Setting::put('show_housing_detail', false);
     Setting::put('show_health_condition', false);
 
-    $masked = maskedOf($case);
-
-    expect($masked['furnishing_label'])->toBeNull()
-        ->and($masked['medicine_kinds'])->toBe([]);
+    expect(maskedOf($case)['medicine_kinds'])->toBe([]);
 });

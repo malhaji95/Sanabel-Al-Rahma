@@ -973,20 +973,35 @@ class BeneficiaryResource extends Resource
                             Forms\Components\Select::make('eviction_band')->label(__('sanabel.housing.eviction'))->options(__('sanabel.bands.eviction'))->default(0)->required(),
 
                             /*
-                             | T-164 — «وضع فرش المنزل» as a grade.
+                             | T-169 — the two questions the association wrote
+                             | out by hand on 31 October, in place of T-164's
+                             | single grade.
                              |
-                             | The association asked on 30 October for it on
-                             | the donor's page, and the sentence beside it
-                             | cannot go there: a sentence may carry a
-                             | neighbour's name or an address, and nothing
-                             | reads it before it is published. The grade is a
-                             | row in lang/ar, so the wording is theirs to
-                             | change without a release.
+                             | The first judges the house. The second is the
+                             | one a donor can act on: «برّاد، أغطية» says what
+                             | to give, where a grade only says how bad it is.
+                             | Both are lists, so both may be published; the
+                             | sentence below them stays for the committee, and
+                             | so does whatever is typed beside «غيرها».
                              */
-                            Forms\Components\Select::make('furnishing_band')
-                                ->label(__('sanabel.housing.furnishing_band'))
-                                ->helperText(__('sanabel.housing.furnishing_band_help'))
-                                ->options(__('sanabel.bands.furnishing')),
+                            Forms\Components\Select::make('home_impression')
+                                ->label(__('sanabel.housing.home_impression'))
+                                ->helperText(__('sanabel.housing.home_impression_help'))
+                                ->options(__('sanabel.home_impression')),
+
+                            Forms\Components\CheckboxList::make('missing_items')
+                                ->label(__('sanabel.housing.missing_items'))
+                                ->helperText(__('sanabel.housing.missing_items_help'))
+                                ->options(__('sanabel.missing_items'))
+                                ->live()
+                                ->columns(3)
+                                ->columnSpanFull(),
+
+                            Forms\Components\TextInput::make('missing_items_other_ar')
+                                ->label(__('sanabel.housing.missing_items_other_ar'))
+                                ->helperText(__('sanabel.housing.missing_items_other_help'))
+                                ->visible(fn (Forms\Get $get) => in_array('other', (array) $get('missing_items'), true))
+                                ->columnSpanFull(),
 
                             Forms\Components\TextInput::make('landlord_name_ar')->label(__('sanabel.housing.landlord_name')),
                             Forms\Components\TextInput::make('landlord_phone_encrypted')

@@ -20,8 +20,9 @@ class Housing extends Model
         'safety_band', 'services_band', 'eviction_band', 'landlord_name_ar',
         'landlord_phone_encrypted', 'created_by',
         'type_other_ar', 'rent_period', 'bathrooms', 'has_kitchen',
-        // T-164 — the grade a donor is shown, beside the sentence for the committee.
-        'furnishing_band',
+        // T-169 — the impression of the house and what it lacks, beside the
+        // researcher's sentence for the committee.
+        'home_impression', 'missing_items', 'missing_items_other_ar',
     ];
 
     /** شهري أو سنوي، كما يسأل الاستبيان. */
@@ -32,6 +33,8 @@ class Housing extends Model
     protected function casts(): array
     {
         return [
+            // T-169 — more than one thing may be missing from one house.
+            'missing_items' => 'array',
             'landlord_phone_encrypted' => 'encrypted',
             'monthly_rent' => 'integer',
             'habitable_rooms' => 'integer',

@@ -27,8 +27,12 @@
             : null,
         __('sanabel.masked.home_safety') => $case['home_safety_label'] ?? null,
         __('sanabel.masked.home_services') => $case['home_services_label'] ?? null,
-        // T-164 — «وضع فرش المنزل», the grade and not the sentence.
-        __('sanabel.masked.furnishing') => $case['furnishing_label'] ?? null,
+        // T-169 — the impression of the house, and the list of what it lacks:
+        // the half of the question a donor can act on.
+        __('sanabel.masked.home_impression') => $case['home_impression_label'] ?? null,
+        __('sanabel.masked.missing_items') => ($case['missing_items'] ?? []) !== []
+            ? implode('، ', $case['missing_items'])
+            : null,
         // T-158 — «خطر الاخلاء», the band the housing sheet already grades. It
         // travels with the rest of the house, so the switch that closes the
         // house closes it too.

@@ -289,7 +289,8 @@ return [
         // T-162 — ما أُضيف إلى سطر كل فرد معال.
         'quran_memorizer' => 'حافظ للقرآن',
         // T-164 — ما يُعرض على صفحة الحالة بدل الجملتين.
-        'furnishing' => 'وضع فرش المنزل',
+        'home_impression' => 'الانطباع العام عن المنزل',
+        'missing_items' => 'نواقص احتياجات المنزل',
         'medicine_kinds' => 'نوع الأدوية',
         // T-106 — «قيمة الديون». السطر نفسه يقول «لا» حين لا يوجد دين، ويقول
         // قيمته حين يوجد، فلا يُقرأ «قيمة الديون: لا».
@@ -436,15 +437,6 @@ return [
         'economic_impact' => [
             0 => 'لا يوجد', 25 => 'محدود أو مؤقت', 50 => 'انخفاض واضح',
             75 => 'اضطراب كبير', 100 => 'فقدان كامل للدخل',
-        ],
-        /*
-         | T-164 — «وضع فرش المنزل», asked as a grade instead of a sentence so
-         | that it can be shown to a donor at all. The wordings are rows in
-         | this file: change one and the form and the page change with it.
-         */
-        'furnishing' => [
-            0 => 'مؤثّث بالكافي', 25 => 'ينقصه بعض الأساسيات',
-            50 => 'متهالك', 75 => 'شبه خالٍ من الفرش',
         ],
         'care_burden' => [
             0 => 'لا يوجد', 25 => 'أحياناً', 50 => 'يومي منتظم',
@@ -707,6 +699,37 @@ return [
      | More than one may be true of one household, and the sentence beside it
      | stays where it was, for the committee.
      */
+    /*
+     | T-169 — «الانطباع العام عن المنزل», as the association wrote it by hand
+     | on 31 October: five words, from the best to nothing at all.
+     */
+    'home_impression' => [
+        'excellent' => 'ممتاز',
+        'good' => 'جيد',
+        'acceptable' => 'مقبول',
+        'very_bad' => 'سيّئ جدًا',
+        'almost_none' => 'شبه معدوم',
+    ],
+
+    /*
+     | T-169 — «نواقص احتياجات المنزل», their own list. More than one may be
+     | true of one house, and «غيرها» opens a box to name what is not here.
+     |
+     | This is the half of the question a donor can act on: «برّاد، أغطية»
+     | tells them what to give, where a grade only tells them how bad it is.
+     */
+    'missing_items' => [
+        'fridge' => 'برّاد',
+        'washing_machine' => 'غسّالة',
+        'kerosene' => 'كاز',
+        'lighting_battery' => 'بطارية للإنارة',
+        'floor_mat' => 'فرشة أرضية',
+        'mattresses' => 'فرشات نوم',
+        'blankets' => 'أغطية',
+        'iron' => 'مكواة',
+        'other' => 'غيرها',
+    ],
+
     'medicine_kinds' => [
         'chronic' => 'أدوية مزمنة دائمة',
         'painkiller' => 'مسكّنات',
@@ -754,8 +777,13 @@ return [
         'has_kitchen' => 'هل يوجد مطبخ',
         'furnishing_ar' => 'وصف فرش المنزل بالتفصيل',
         // T-164 — الدرجة التي تُعرض على المتبرّع. والوصف أعلاه يبقى للّجنة.
-        'furnishing_band' => 'وضع فرش المنزل',
-        'furnishing_band_help' => 'هذه الدرجة هي ما يُعرض على صفحة الحالة. والوصف التفصيلي يبقى داخليًّا ولا يراه متبرّع.',
+        // T-169 — السؤالان كما كتبتهما الجمعية بخطّ اليد.
+        'home_impression' => 'الانطباع العام عن المنزل',
+        'home_impression_help' => 'يُعرض على صفحة الحالة. والوصف التفصيلي أعلاه يبقى داخليًّا ولا يراه متبرّع.',
+        'missing_items' => 'نواقص احتياجات المنزل',
+        'missing_items_help' => 'اختر ما ينقص البيت. تُعرض القائمة على صفحة الحالة ليعرف المتبرّع ما يُعطى.',
+        'missing_items_other_ar' => 'نواقص أخرى — اذكرها',
+        'missing_items_other_help' => 'ما لا تذكره القائمة. يبقى داخليًّا ولا يُعرض, لأنه نصّ حرّ.',
     ],
 
     'rent_period' => [

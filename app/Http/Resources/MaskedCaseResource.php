@@ -86,9 +86,10 @@ class MaskedCaseResource extends JsonResource
         'accepts_visit',
         // T-161 — that the identity number was checked, never the number.
         'duplicate_checked',
-        // T-164 — a grade for the furnishing and the kinds of medicine, both
-        // out of a list. The sentences they replace are not here.
-        'furnishing_label', 'medicine_kinds',
+        // T-164 and T-169 — the kinds of medicine, the impression of the
+        // house, and what the house lacks. All three out of a list; the
+        // sentences they sit beside are not here.
+        'medicine_kinds', 'home_impression_label', 'missing_items',
         'has_vehicle', 'vehicles', 'has_livestock', 'livestock', 'has_property', 'property',
         'dependents',
         // T-106 — the paragraph, and the heading the association chose for it.
@@ -259,7 +260,8 @@ class MaskedCaseResource extends JsonResource
              | A grade and a set of kinds; the sentences they sit beside stay
              | where the researcher wrote them.
              */
-            'furnishing_label' => $this->furnishingLabel($case),
+            'home_impression_label' => $this->homeImpression($case),
+            'missing_items' => $this->missingItems($case),
             'medicine_kinds' => $this->medicineKinds($case),
             /*
              | T-102 — «علاج دائم», asked for on 15 October beside the illness.
@@ -514,19 +516,42 @@ class MaskedCaseResource extends JsonResource
     }
 
     /**
-     * T-164 — «وضع فرش المنزل», as the grade the researcher picked.
+     * T-169 — «الانطباع العام عن المنزل», the word the researcher picked.
      *
      * It describes the house, so it closes with the house.
      */
-    private function furnishingLabel(Beneficiary $case): ?string
+    private function homeImpression(Beneficiary $case): ?string
     {
         if (! $this->switched('show_housing_detail')) {
             return null;
         }
 
-        $band = $case->housing?->furnishing_band;
+        return $this->fromList('sanabel.home_impression', $case->housing?->home_impression);
+    }
 
-        return $band === null ? null : __('sanabel.bands.furnishing.'.(int) $band);
+    /**
+     * T-169 — «نواقص احتياجات المنزل», as the things that were ticked.
+     *
+     * The half of the question a donor can act on. «غيرها» is a box the
+     * researcher types into, so the word «غيرها» travels and what was typed
+     * beside it does not: it is a sentence, and no sentence reaches a donor.
+     *
+     * @return array<int,string>
+     */
+    private function missingItems(Beneficiary $case): array
+    {
+        if (! $this->switched('show_housing_detail')) {
+            return [];
+        }
+
+        $ticked = (array) ($case->housing?->missing_items ?? []);
+
+        // Read in the association's own order rather than the order they were
+        // ticked in, so the row says the same thing on every file.
+        return collect(__('sanabel.missing_items'))
+            ->filter(fn (string $label, string $key) => in_array($key, $ticked, true))
+            ->values()
+            ->all();
     }
 
     /**
