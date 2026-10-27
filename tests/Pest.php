@@ -17,6 +17,7 @@ use App\Services\DonationService;
 use Database\Seeders\FundSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Database\Seeders\SettingSeeder;
+use Filament\Forms\Components\Wizard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -251,6 +252,20 @@ function runArtisan(string $command, array $arguments = [], bool $failing = fals
  *
  * @return array<string,bool>
  */
+/**
+ * The wizard on the case form, found rather than counted to.
+ *
+ * T-159 put a line above it saying who wrote to the file last, so the wizard
+ * is no longer the first component and a test that assumes it is breaks on
+ * the next thing added over it. T-177 gave the read-only screen its own
+ * answer about skipping, so two files ask for it now and it lives here.
+ */
+function wizardOf($page): Wizard
+{
+    return collect($page->instance()->form->getComponents())
+        ->first(fn ($component) => $component instanceof Wizard);
+}
+
 function memberToggles(): array
 {
     return [

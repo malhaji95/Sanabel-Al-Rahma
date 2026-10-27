@@ -480,6 +480,27 @@ class BeneficiaryResource extends Resource
                         ->helperText(__('sanabel.beneficiary.previous_aid_help'))
                         ->rows(2)
                         ->columnSpanFull(),
+
+                    /*
+                     | T-177 — the approver's own note, where everyone who may
+                     | open the file can read it: it is often an instruction to
+                     | whoever fills the file in («الدخل يحتاج ورقة»), and a
+                     | note nobody but its author sees is not worth writing.
+                     |
+                     | Read-only here on purpose. It is written from the
+                     | «التصنيف وملاحظة الإدارة» button, which asks
+                     | `approve_case`, so a clerk cannot answer the management
+                     | in the management's own box. Hidden while empty rather
+                     | than drawn blank on every file.
+                     */
+                    Forms\Components\Textarea::make('management_note_ar')
+                        ->label(__('sanabel.classify.note'))
+                        ->helperText(__('sanabel.classify.note_read_help'))
+                        ->rows(3)
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->visible(fn (?Beneficiary $record) => filled($record?->management_note_ar))
+                        ->columnSpanFull(),
                 ])->columns(2),
 
                 Forms\Components\Wizard\Step::make(__('sanabel.beneficiary.step_members'))->schema([
@@ -1762,7 +1783,17 @@ class BeneficiaryResource extends Resource
                  | step, which is what keeps T-130's draft, filled on the first
                  | page and saved there, exactly as it was.
                  */
-                ->skippable(false),
+                /*
+                 | T-177 — and a reader is never stopped by it.
+                 |
+                 | The association pressed «التالي» on the read-only screen and
+                 | was answered «حقل الرقم الوطني مطلوب» — a required field,
+                 | refusing to let them past a page they could not type on
+                 | anyway. Validation is there to protect what is saved, and
+                 | this screen saves nothing, so on it the wizard is walked
+                 | freely and every step is one click away.
+                 */
+                ->skippable(fn (string $operation): bool => $operation === 'view'),
         ]);
     }
 

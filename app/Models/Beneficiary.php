@@ -46,6 +46,8 @@ class Beneficiary extends Model
         'file_number', 'legacy_file_no', 'user_id', 'national_id_encrypted', 'national_id_hash', 'first_name', 'father_name',
         'family_name', 'phone_encrypted', 'region_id', 'association_id', 'marital_status', 'wallet_encrypted',
         'support_type', 'zakat_category', 'zakat_recommended', 'case_classifications', 'legacy_review_json', 'is_shareable', 'previous_aid_ar',
+        // T-177 — the approver's own note on a file they are keeping.
+        'management_note_ar',
         // T-69 — what the filled dossier of 12 October showed.
         'quarter_ar', 'declared_monthly_income', 'donor_visit_consent', 'donor_visit_consent_on',
         'privacy_policy_seen', 'privacy_consent', 'privacy_consent_on', 'privacy_policy_version',

@@ -18,19 +18,6 @@ use Filament\Support\Exceptions\Halt;
  | the two questions are asked refusing to hand over until they are answered.
  */
 
-/**
- * The wizard on the case form, found rather than counted to.
- *
- * T-159 put a line above it saying who wrote to the file last, so the wizard
- * is no longer the first component and a test that assumes it is breaks on
- * the next thing added over it.
- */
-function wizardOf($page): Wizard
-{
-    return collect($page->instance()->form->getComponents())
-        ->first(fn ($component) => $component instanceof Wizard);
-}
-
 beforeEach(function () {
     seedCore();
     $this->region = regionWithRates();
