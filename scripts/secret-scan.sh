@@ -68,6 +68,11 @@ filled credential assignment|(PASSWORD|SECRET|TOKEN|API_KEY|PRIVATE_KEY)[A-Z0-9_
 PAT
 )
 
+# The same patterns as one alternation, for the history pass to ask «does this
+# blob match anything at all» in a single grep. Built from PATTERNS so it can
+# never fall behind it: add a line above and this follows.
+ANY=$(printf '%s\n' "$PATTERNS" | cut -d'|' -f2- | paste -sd'|' -)
+
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
@@ -140,11 +145,22 @@ while read -r blob path; do
         continue
     fi
 
+    # Read the blob once and ask all ten questions of the copy, rather than
+    # fetching it again for each. T-94 walked 1,870 blobs with ten `git
+    # cat-file` calls apiece and took a minute, which is the push waiting; the
+    # one pass below, and the cheap ANY test after it, do the same work in a
+    # few seconds. Nothing is read that was not read before.
+    git cat-file blob "$blob" 2>/dev/null > "$work/blob" || continue
+
+    # Almost no blob matches anything, so one combined pattern decides that for
+    # the whole set. Only a blob that hits is read again, pattern by pattern,
+    # to say which one it was.
+    grep -qEI -- "$ANY" "$work/blob" 2>/dev/null || continue
+
     printf '%s\n' "$PATTERNS" | while IFS='|' read -r name pattern; do
         [ -n "${name:-}" ] || continue
 
-        git cat-file blob "$blob" 2>/dev/null \
-            | grep -nEI -- "$pattern" 2>/dev/null \
+        grep -nEI -- "$pattern" "$work/blob" 2>/dev/null \
             | grep -Ev "$PLACEHOLDERS" \
             | sed "s|^|${name}: ${path}:|" >> "$work/past" || true
     done
