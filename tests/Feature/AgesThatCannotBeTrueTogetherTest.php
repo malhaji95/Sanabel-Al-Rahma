@@ -87,14 +87,14 @@ it('says nothing about a brother, whichever of them is older', function () {
 });
 
 it('asks «يتيم» only of a child under fifteen in a widowed household', function () {
-    expect(FamilyAges::orphanMayBeAsked(9, 'widowed'))->toBeTrue()
+    expect(FamilyAges::countsAsOrphan(9, 'widowed'))->toBeTrue()
         // Old enough to answer for himself.
-        ->and(FamilyAges::orphanMayBeAsked(15, 'widowed'))->toBeFalse()
-        ->and(FamilyAges::orphanMayBeAsked(22, 'widowed'))->toBeFalse()
+        ->and(FamilyAges::countsAsOrphan(15, 'widowed'))->toBeFalse()
+        ->and(FamilyAges::countsAsOrphan(22, 'widowed'))->toBeFalse()
         // Both parents living.
-        ->and(FamilyAges::orphanMayBeAsked(9, 'married'))->toBeFalse()
-        ->and(FamilyAges::orphanMayBeAsked(9, 'divorced'))->toBeFalse()
-        ->and(FamilyAges::orphanMayBeAsked(9, null))->toBeFalse()
+        ->and(FamilyAges::countsAsOrphan(9, 'married'))->toBeFalse()
+        ->and(FamilyAges::countsAsOrphan(9, 'divorced'))->toBeFalse()
+        ->and(FamilyAges::countsAsOrphan(9, null))->toBeFalse()
         // And an age nobody has answered yet is not a yes.
-        ->and(FamilyAges::orphanMayBeAsked(null, 'widowed'))->toBeFalse();
+        ->and(FamilyAges::countsAsOrphan(null, 'widowed'))->toBeFalse();
 });

@@ -708,6 +708,11 @@ class BeneficiaryResource extends Resource
                                         $get('occupation') === 'student',
                                         false,
                                     ));
+                                    // T-173 — the orphan mark follows the age.
+                                    $set('is_orphan', FamilyAges::countsAsOrphan(
+                                        (int) date('Y') - $year,
+                                        $get('../../marital_status'),
+                                    ));
                                 }),
 
                             Forms\Components\TextInput::make('birth_year')
@@ -727,6 +732,10 @@ class BeneficiaryResource extends Resource
                                             (int) date('Y') - (int) $state,
                                             $get('occupation') === 'student',
                                             false,
+                                        ));
+                                        $set('is_orphan', FamilyAges::countsAsOrphan(
+                                            (int) date('Y') - (int) $state,
+                                            $get('../../marital_status'),
                                         ));
                                     }
                                 }),
@@ -779,9 +788,34 @@ class BeneficiaryResource extends Resource
                              | and a child under the age this form starts
                              | answering as an adult.
                              */
+                            /*
+                             | T-173 — «الأفضل يكون ظاهر لكن يتم اختياره من
+                             | النظام بشكل تلقائي حسب تحقق الشرط, أي فقط
+                             | للعرض», 1 November.
+                             |
+                             | T-153 had hidden it wherever it could not be
+                             | true, which answered a different question: the
+                             | researcher could not see that the system had
+                             | considered the child at all, and a box that
+                             | vanishes reads like a box that was forgotten.
+                             |
+                             | It is drawn on every member now and nobody can
+                             | press it. What is saved is computed from the
+                             | rule rather than from the switch, so the file
+                             | cannot hold an answer the screen never showed —
+                             | and a file whose head stops being a widow has
+                             | every orphan mark on it recomputed the next time
+                             | it is saved.
+                             */
                             Forms\Components\Toggle::make('is_orphan')
                                 ->label(__('sanabel.household_member.is_orphan'))
-                                ->visible(fn (Forms\Get $get) => FamilyAges::orphanMayBeAsked(
+                                ->helperText(__('sanabel.household_member.is_orphan_help'))
+                                ->disabled()
+                                ->dehydrated()
+                                ->afterStateHydrated(fn (Forms\Components\Toggle $component, Forms\Get $get) => $component->state(
+                                    FamilyAges::countsAsOrphan(self::memberAge($get), $get('../../marital_status')),
+                                ))
+                                ->dehydrateStateUsing(fn (Forms\Get $get) => FamilyAges::countsAsOrphan(
                                     self::memberAge($get),
                                     $get('../../marital_status'),
                                 )),

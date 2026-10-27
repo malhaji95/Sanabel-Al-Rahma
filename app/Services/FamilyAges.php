@@ -46,17 +46,28 @@ class FamilyAges
     }
 
     /**
-     * Whether «يتيم» is a question worth asking about this member.
+     * Whether this member is an orphan, by the association's own rule.
      *
      * «في حال كان عمره اكبر من العمر المفروض لخيار يتيم لازم يختفي خيار يتيم
-     * بحيث تحت 15 يعني شرط تفعيل اليتيم تكون الام ارملة وعمره تحت 15».
+     * بحيث تحت 15 يعني شرط تفعيل اليتيم تكون الام ارملة وعمره تحت 15»
+     * (T-153), and again on 1 November: «وتصنيفه لما تكون أرملة, تحت 15 سنة
+     * مباشرة يتيم».
      *
      * Two conditions, both the association's: the household is headed by a
      * widow or a widower, and the child is under the age at which this form
      * starts treating somebody as an adult — the same fifteen that decides
      * whether work or marriage may be answered at all.
+     *
+     * T-173 — it was a question the form asked when it could be true, and is
+     * now the answer itself: «يتيم» is shown on every member, the system fills
+     * it in, and nobody types it. So this method had to stop being named for
+     * whether to ask and start being named for what it decides. Nothing about
+     * the test changed.
+     *
+     * It deliberately says nothing about kinship: the association stated the
+     * rule twice and both times it was these two conditions and no third.
      */
-    public static function orphanMayBeAsked(?int $age, ?string $headMaritalStatus): bool
+    public static function countsAsOrphan(?int $age, ?string $headMaritalStatus): bool
     {
         return $headMaritalStatus === 'widowed'
             && $age !== null
