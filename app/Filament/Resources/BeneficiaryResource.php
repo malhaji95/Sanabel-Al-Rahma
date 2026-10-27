@@ -931,6 +931,36 @@ class BeneficiaryResource extends Resource
                             Forms\Components\TextInput::make('skills_ar')
                                 ->label(__('sanabel.household_member.skills_ar')),
 
+                            /*
+                             | T-174 and T-176 — «هل يوجد مرض مزمن؟ نعم لا.
+                             | إذا نعم, نوع المرض», 1 November, and the
+                             | question behind it: «بخصوص الحالة الصحية, هل
+                             | فقط تظهر في حال كان لا يعمل؟».
+                             |
+                             | It did. T-129 attached «الوضع الصحي الخاص» and
+                             | the doctor's number to «غير قادر على العمل»,
+                             | because that was the association's own
+                             | instruction at the time and those two questions
+                             | explain that answer. But a chronic illness is a
+                             | fact about anybody — a child with asthma works
+                             | nothing and answers «طالب» — so it is asked of
+                             | every member and of none in particular.
+                             |
+                             | A screening answer, and nothing reads it: the
+                             | banded record the need engine prices is still
+                             | the one in the health step, where the severity,
+                             | the burden and the monthly cost are asked.
+                             */
+                            Forms\Components\Toggle::make('has_chronic_illness')
+                                ->label(__('sanabel.household_member.has_chronic_illness'))
+                                ->helperText(__('sanabel.household_member.has_chronic_illness_help'))
+                                ->live(),
+
+                            Forms\Components\TextInput::make('chronic_illness_ar')
+                                ->label(__('sanabel.household_member.chronic_illness_ar'))
+                                ->required()
+                                ->visible(fn (Forms\Get $get) => (bool) $get('has_chronic_illness')),
+
                             Forms\Components\Toggle::make('has_documented_condition')
                                 ->label(__('sanabel.household_member.has_documented_condition'))
                                 ->helperText(__('sanabel.household_member.condition_help'))

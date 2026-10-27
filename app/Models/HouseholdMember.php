@@ -69,6 +69,7 @@ class HouseholdMember extends Model
         'national_id_encrypted' => 'encrypted',
         'spouse_national_id_encrypted' => 'encrypted',
         'is_orphan' => 'boolean',
+        'has_chronic_illness' => 'boolean',
         'smokes' => 'boolean',
         'birth_date' => 'date',
         'works' => 'boolean',

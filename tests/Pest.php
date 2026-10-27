@@ -275,6 +275,8 @@ function memberToggles(): array
         'has_certificate' => false,
         'can_teach_quran' => false,
         'is_orphan' => false,
+        // T-176 — asked of every member now, so a fixture answers it.
+        'has_chronic_illness' => false,
     ];
 }
 
