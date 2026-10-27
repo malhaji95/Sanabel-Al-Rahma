@@ -1,6 +1,25 @@
 /** @type {import('tailwindcss').Config} */
 export default {
     darkMode: 'class',
+    /*
+     | T-167 — the four progress colours, kept out of the sweep.
+     |
+     | Tailwind deletes any rule in `@layer components` whose class name it
+     | cannot find in the files it scans. These four are written as
+     | `meter-fill-{{ ProgressBand::of($percent) }}`, so the name only exists
+     | once the page is rendered and the scan never sees it: the association's
+     | red, amber, light green and deep green were compiled out of every build
+     | and every bar on the site drew in the one default colour. The markup was
+     | right and the stylesheet was right; the build threw the colours away.
+     |
+     | Named here, so a band added later is added here with it.
+     */
+    safelist: [
+        'meter-fill-low',
+        'meter-fill-mid',
+        'meter-fill-high',
+        'meter-fill-complete',
+    ],
     content: [
         './resources/views/**/*.blade.php',
         './app/Livewire/**/*.php',

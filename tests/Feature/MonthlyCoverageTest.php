@@ -1,8 +1,6 @@
 <?php
 
 use App\Exceptions\ReservationUnavailable;
-use App\Models\Beneficiary;
-use App\Models\Donation;
 use App\Models\DonationAllocation;
 use App\Models\Donor;
 use App\Models\Setting;
@@ -24,25 +22,6 @@ beforeEach(function () {
     seedCore();
     $this->region = regionWithRates();
 });
-
-function fundFor(Beneficiary $case, int $amount, ?Carbon $month = null): Donation
-{
-    $donor = Donor::factory()->create();
-    $baskets = app(BasketService::class);
-    $basket = $baskets->openFor($donor);
-
-    $baskets->addItem($basket, $case, $amount, $month);
-    $baskets->reserve($basket);
-
-    $donation = app(DonationService::class)->record([
-        'donor_id' => $donor->id,
-        'basket_id' => $basket->id,
-        'amount' => $amount,
-        'transaction_ref' => 'MONTH-'.uniqid(),
-    ]);
-
-    return app(DonationService::class)->verify($donation, userWithRole('admin')->id);
-}
 
 it('starts each family at zero coverage when a new month begins', function () {
     $case = publishedCase($this->region);
