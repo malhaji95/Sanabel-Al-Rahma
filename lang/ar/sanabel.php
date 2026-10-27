@@ -707,7 +707,7 @@ return [
         'excellent' => 'ممتاز',
         'good' => 'جيد',
         'acceptable' => 'مقبول',
-        'very_bad' => 'سيّئ جدًا',
+        'bad' => 'سيء',
         'almost_none' => 'شبه معدوم',
     ],
 
@@ -721,12 +721,12 @@ return [
     'missing_items' => [
         'fridge' => 'برّاد',
         'washing_machine' => 'غسّالة',
-        'kerosene' => 'كاز',
-        'lighting_battery' => 'بطارية للإنارة',
-        'floor_mat' => 'فرشة أرضية',
+        'gas' => 'غاز',
+        'lighting_battery' => 'بطارية للإضاءة',
+        'floor_mats' => 'فرش أرضية',
         'mattresses' => 'فرشات نوم',
         'blankets' => 'أغطية',
-        'iron' => 'مكواة',
+        'pillows' => 'مخدات',
         'other' => 'غيرها',
     ],
 
@@ -782,7 +782,7 @@ return [
         'home_impression_help' => 'يُعرض على صفحة الحالة. والوصف التفصيلي أعلاه يبقى داخليًّا ولا يراه متبرّع.',
         'missing_items' => 'نواقص احتياجات المنزل',
         'missing_items_help' => 'اختر ما ينقص البيت. تُعرض القائمة على صفحة الحالة ليعرف المتبرّع ما يُعطى.',
-        'missing_items_other_ar' => 'نواقص أخرى — اذكرها',
+        'missing_items_other_ar' => 'غيرها — تُذكر كتابةً',
         'missing_items_other_help' => 'ما لا تذكره القائمة. يبقى داخليًّا ولا يُعرض, لأنه نصّ حرّ.',
     ],
 

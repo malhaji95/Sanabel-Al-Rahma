@@ -41,9 +41,10 @@ it('publishes the impression the researcher picked', function () {
 
 it('publishes what the house lacks, in the association’s own words', function () {
     $case = publishedCase($this->region);
-    houseDescribed($case, ['missing_items' => ['fridge', 'blankets', 'kerosene']]);
+    houseDescribed($case, ['missing_items' => ['fridge', 'blankets', 'gas']]);
 
-    expect(maskedOf($case)['missing_items'])->toBe(['برّاد', 'كاز', 'أغطية']);
+    // Read in the association's own order, not the order they were ticked in.
+    expect(maskedOf($case)['missing_items'])->toBe(['برّاد', 'غاز', 'أغطية']);
 
     $this->get(route('opportunity', $case->file_number))
         ->assertOk()

@@ -8,9 +8,14 @@ use Illuminate\Support\Facades\Schema;
  * T-169 — «بالنسبة وضع فرش المنزل نحتاجه بهذي الطريقة», 31 October, with the
  * two questions written out by hand:
  *
- *   ١ الانطباع العام عن المنزل: ممتاز، جيد، مقبول، سيّئ جدًا، شبه معدوم.
- *   ٢ نواقص احتياجات المنزل: برّاد، غسّالة، كاز، بطارية للإنارة، فرشة أرضية،
- *     فرشات نوم، أغطية، مكواة، وغيرها تُذكر.
+ *   ١ الانطباع العام عن المنزل: ممتاز، جيد، مقبول، سيء، شبه معدوم.
+ *   ٢ نواقص احتياجات المنزل: برّاد، غسّالة، غاز، بطارية للإضاءة، فرش أرضية،
+ *     فرشات نوم، أغطية، مخدات، وغيرها تُذكر كتابةً.
+ *
+ * The lists above are the association's own, dictated on 31 October after the
+ * handwritten note was read back to them: five grades and nine items, in that
+ * order. The order is theirs too, and `MaskedCaseResource` reads the ticked
+ * items in it rather than in the order they happened to be ticked.
  *
  * T-164 had turned «وضع فرش المنزل» into a single grade so that it could be
  * shown to a donor at all. The association has now said what they actually
