@@ -70,9 +70,34 @@
                                 :key="'basket-' . $case['file_number'] . '-' . ($case['coverage_month'] ?? '')"
                             />
                         @else
-                            <a href="{{ route('login') }}" class="btn-primary w-full no-underline">
-                                {{ __('sanabel.public.login_to_donate') }}
-                            </a>
+                            {{--
+                                T-168 — «تبرعات الملفات بالالوان ونسبة الانجاز
+                                تعامل نفس معاملة الحملات, وحتى زر التبرع الان
+                                نفس موضوع», 31 October.
+
+                                The campaign cards were answered in T-123: the
+                                word «تبرع» belongs to every visitor, and the
+                                account is what a pledge needs, not what the
+                                invitation needs. A family's card still read
+                                «سجل الدخول للتبرع» — a door with its own
+                                condition written on it. It reads the same as a
+                                campaign's now: the invitation first, and the
+                                account underneath it as the way to put your own
+                                name on the gift.
+                            --}}
+                            <div class="space-y-2">
+                                <a href="{{ route('donate.general') }}"
+                                   class="btn-primary block w-full text-center no-underline">
+                                    {{ __('sanabel.public.donate_now') }}
+                                </a>
+
+                                <p class="text-center text-xs" style="color: var(--text-muted);">
+                                    <a href="{{ route('login') }}" style="color: var(--accent);">
+                                        {{ __('sanabel.public.login') }}
+                                    </a>
+                                    {{ __('sanabel.public.earmark_needs_account') }}
+                                </p>
+                            </div>
                         @endauth
 
                         {{-- The opportunity's own address, and a way to send it
