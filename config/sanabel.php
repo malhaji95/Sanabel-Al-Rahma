@@ -24,6 +24,34 @@ return [
     'demo_seed' => (bool) env('DEMO_SEED', false),
 
     /*
+     | T-179 — whether the second factor is enforced on the panels.
+     |
+     | «اعمل إيقاف للتحقق بخطوتين بشكل مؤقت», 28 October. T-38 put a TOTP gate
+     | in front of every panel screen for the four roles that hold the whole
+     | system — admin, council, and the two board directors — and there was no
+     | way to lift it for an afternoon of training without editing the code.
+     |
+     | Enforced unless this says otherwise, and it is read from the server's
+     | environment rather than from the settings screen on purpose: an account
+     | that got into the panel must not be able to turn off the lock on the
+     | panel. Lifting it needs a hand on the server and a restart, which is
+     | also what makes putting it back a deliberate act.
+     |
+     | While it is off, every panel screen carries a red band saying so. That
+     | band is the whole safety of the thing: «مؤقت» is a promise somebody has
+     | to keep, and a switch nobody can see is a switch nobody remembers.
+     |
+     | What it does NOT do: it does not unenrol anybody, does not delete a
+     | secret, and does not change which roles are meant to carry one. The
+     | enrolment page stays open throughout, and putting the switch back shuts
+     | the gate again on the next request.
+     */
+    'two_factor_enforced' => filter_var(
+        env('SANABEL_TWO_FACTOR', true),
+        FILTER_VALIDATE_BOOL,
+    ),
+
+    /*
      | T-87 — how long a page of the donor's list of families is held before it
      | is computed again.
      |

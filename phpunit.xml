@@ -40,5 +40,14 @@
         <env name="SESSION_DRIVER" value="array"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="SANABEL_MEDIA_DISK" value="media_test"/>
+        <!--
+            T-179 - the second factor stays enforced for the suite, whatever
+            the server's own .env says. A deployment that has lifted the gate
+            for an afternoon of training must not quietly lift it for the
+            tests that prove the gate is there: T-38's guarantee is only worth
+            what the suite checks. The test that exercises the lifted path
+            overrides the config itself, which is the only way it is reached.
+        -->
+        <env name="SANABEL_TWO_FACTOR" value="true"/>
     </php>
 </phpunit>

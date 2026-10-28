@@ -65,6 +65,16 @@ class AdminPanelProvider extends PanelProvider
              | avatar Filament draws. The name itself sits inside the menu,
              | which is one click away on a screen somebody has open all day.
              */
+            /*
+             | T-179 — while the second factor is lifted from the server's
+             | environment, every screen of every panel says so in red. See
+             | the view for why it is drawn for everybody and not only for
+             | the roles the gate is for.
+             */
+            ->renderHook(
+                PanelsRenderHook::TOPBAR_BEFORE,
+                fn (): View => view('filament.components.two-factor-off'),
+            )
             ->renderHook(
                 PanelsRenderHook::USER_MENU_BEFORE,
                 fn (): View => view('filament.components.signed-in-as'),
