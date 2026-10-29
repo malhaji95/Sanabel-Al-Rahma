@@ -38,9 +38,17 @@ class LoginController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(
-            Auth::user()->hasRole('delegate') ? route('field') : route('donor.portal')
-        );
+        /*
+         | T-194 — «صفحة الأسرة مو جاهزة, ظاهرة وكأنها صفحة المتبرع»,
+         | 29 October. A household signing in landed on «تبرعاتي», because
+         | everybody who was not a delegate was sent to the donor portal.
+         | Their own page has existed since T-26; nothing led to it.
+         */
+        return redirect()->intended(match (true) {
+            Auth::user()->hasRole('delegate') => route('field'),
+            Auth::user()->hasRole('beneficiary') => route('family.portal'),
+            default => route('donor.portal'),
+        });
     }
 
     public function destroy(Request $request): RedirectResponse

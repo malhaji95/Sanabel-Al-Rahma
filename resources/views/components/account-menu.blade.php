@@ -41,7 +41,13 @@
         >
             <p class="px-4 pt-3 text-xs" style="color: var(--text-muted);">{{ auth()->user()->name }}</p>
 
-            @foreach ([
+            {{-- T-194 — a household's menu is its own file, not the donor's
+                 basket and favourites. The five rows below belong to somebody
+                 who gives; a family that signs in is here to read its own
+                 page and answer the one question only it may answer. --}}
+            @foreach (auth()->user()->hasRole('beneficiary') ? [
+                ['label' => __('sanabel.portal.my_file'), 'href' => route('family.portal')],
+            ] : [
                 ['label' => __('sanabel.public.account_home'), 'href' => route('donor.portal')],
                 ['label' => __('sanabel.public.basket'), 'href' => route('donor.basket')],
                 ['label' => __('sanabel.favourites.title'), 'href' => route('donor.favourites')],
