@@ -169,45 +169,11 @@
          verified transfers only: a pending one is not a donation yet, and a
          figure on the front page that counted it would be a claim the books
          cannot support.
+
+         T-183 — and it moves while the page is open. The strip is a Livewire
+         component now; the switches, the figures and the words are the same.
     --------------------------------------------------------------------- --}}
-    @php
-        $on = fn (string $key) => (bool) \App\Models\Setting::value($key, config('sanabel.setting_defaults.'.$key));
-
-        $figures = collect([
-            ['stat_families', $stats['families'], __('sanabel.public.stat_families'), 'family', 'var(--accent)', false],
-            ['stat_bands', $stats['bands']['critical'], __('sanabel.masked.priority.critical'), 'heart', '#b91c1c', false],
-            ['stat_bands', $stats['bands']['middle'], __('sanabel.masked.priority.middle'), 'hand-heart', 'var(--brand-gold)', false],
-            ['stat_bands', $stats['bands']['low'], __('sanabel.masked.priority.low'), 'info', 'var(--text-muted)', false],
-            ['stat_covered', $stats['bands']['complete'], __('sanabel.public.stat_covered'), 'check-circle', 'var(--accent)', false],
-            ['stat_donated', $stats['donated'], __('sanabel.public.stat_donated'), 'card', 'var(--brand-gold)', true],
-            ['stat_donations', $stats['donations'], __('sanabel.public.stat_donations'), 'hand-heart', 'var(--accent)', false],
-        ])->filter(fn (array $figure) => $on($figure[0]));
-    @endphp
-
-    @if ($figures->isNotEmpty())
-        <section class="card mt-6 !p-0" aria-label="{{ __('sanabel.public.stats') }}">
-            <div @class([
-                'grid grid-cols-2',
-                'sm:grid-cols-3' => $figures->count() === 3,
-                'sm:grid-cols-4' => $figures->count() === 4,
-                'sm:grid-cols-5' => $figures->count() >= 5,
-            ])>
-                @foreach ($figures as [$key, $value, $label, $icon, $colour, $isMoney])
-                    <div class="border-b border-s p-4 text-center last:border-b-0 sm:border-b-0"
-                         style="border-color: var(--border);">
-                        <x-brand.icon :name="$icon" class="mx-auto mb-1.5 h-6 w-6" style="color: {{ $colour }};" />
-                        <p class="tabular text-2xl font-bold" style="color: {{ $colour }};">
-                            {{ number_format($value) }}
-                            @if ($isMoney)
-                                <span class="text-xs font-normal" style="color: var(--text-muted);">{{ \App\Services\Money::label() }}</span>
-                            @endif
-                        </p>
-                        <p class="mt-1 text-xs" style="color: var(--text-muted);">{{ $label }}</p>
-                    </div>
-                @endforeach
-            </div>
-        </section>
-    @endif
+    <livewire:platform-counters />
 
     {{-- ---------- today's appeals ---------------------------------------- --}}
     <section class="mt-10">

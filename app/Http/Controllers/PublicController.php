@@ -7,14 +7,12 @@ use App\Models\Banner;
 use App\Models\Beneficiary;
 use App\Models\Campaign;
 use App\Models\ContentCard;
-use App\Models\Donation;
 use App\Models\Page;
 use App\Models\Post;
-use App\Models\Region;
 use App\Models\Setting;
 use App\Services\CoverageService;
 use App\Services\DonorCaseList;
-use App\Services\RankingService;
+use App\Services\PlatformStats;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
@@ -23,7 +21,6 @@ use Illuminate\View\View;
 class PublicController extends Controller
 {
     public function __construct(
-        private readonly RankingService $ranking,
         private readonly CoverageService $coverage,
     ) {}
 
@@ -58,7 +55,7 @@ class PublicController extends Controller
             'campaigns' => $campaigns,
             'monthlyFunding' => $this->monthlyFunding($campaigns),
             'cases' => $urgent,
-            'stats' => $this->stats(),
+            'stats' => app(PlatformStats::class)->all(),
             'features' => $cards->get('feature', collect()),
             'tiles' => $cards->get('tile', collect()),
             'advantages' => $cards->get('advantage', collect()),
@@ -69,62 +66,6 @@ class PublicController extends Controller
             'about' => Page::where('slug', 'about')->where('is_published', true)->first(),
             'shariaBoard' => Page::where('slug', 'sharia-board')->where('is_published', true)->first(),
         ]);
-    }
-
-    /**
-     * Counts only. Nothing here identifies a family.
-     *
-     * T-87 — it used to load every published family with its assessments to
-     * count how many were covered, which is the homepage carrying the whole
-     * table on every visit. It now asks for the needs alone and counts what is
-     * still short: a family with no approved assessment has no need and is
-     * covered, exactly as before, which is why the covered figure is the total
-     * less the short rather than a filter over models.
-     */
-    private function stats(): array
-    {
-        $needs = $this->ranking->publishedNeeds();
-        $funded = $this->coverage->fundedForMonthByNeed($needs);
-
-        $families = Beneficiary::published()->count();
-
-        // T-89 — the five figures the design asks for, over the needs alone.
-        // A family with no approved assessment has no need and no band; it is
-        // counted in the total and read as covered, as it always was.
-        $bands = ['critical' => 0, 'middle' => 0, 'low' => 0, 'complete' => 0];
-
-        foreach ($needs as $id => $need) {
-            $bands[$this->coverage->bandOf($need, $funded[$id] ?? 0)]++;
-        }
-
-        $bands['complete'] += $families - count($needs);
-
-        /*
-         | T-99 — the two figures the association asked for on 15 October, and
-         | both are money, so both are read from verified rows only: a transfer
-         | the finance desk has matched to its notice. A pending one is not a
-         | donation yet, and a figure on the front page that counts it would be
-         | a claim the books cannot support.
-         |
-         | Rule 9 — integers in the smallest unit, formatted where they are
-         | shown and never divided here.
-         */
-        $verified = Donation::where('status', 'verified');
-
-        return [
-            'families' => $families,
-            'regions' => Region::where('is_active', true)->where('type', '!=', 'governorate')->count(),
-            'covered' => $bands['complete'],
-            'bands' => $bands,
-            // What the «الدفع المباشر» card counts: families a donor could give
-            // to right now.
-            'open' => $families - $bands['complete'],
-            'donated' => (int) (clone $verified)->sum('amount'),
-            // «عداد التبرع المباشر»: how many transfers arrived and were
-            // matched. A count rather than a sum, beside the sum, so the page
-            // says both «how much» and «from how many hands».
-            'donations' => (clone $verified)->count(),
-        ];
     }
 
     public function page(string $slug): View
