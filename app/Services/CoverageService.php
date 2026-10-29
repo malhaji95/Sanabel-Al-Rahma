@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\BasketItem;
 use App\Models\Beneficiary;
 use App\Models\Campaign;
 use App\Models\DonationAllocation;
@@ -456,6 +457,38 @@ class CoverageService
     }
 
     /** Verified money currently held against this family by a live basket reservation. */
+    /**
+     * T-186 — what is held for each of many families, in one query.
+     *
+     * The donor list ranks every published family on every request, and asking
+     * `reservedAmount()` per family would be one query per card. Same condition
+     * as the single lookup below: a basket that is reserved and whose hold has
+     * not run out.
+     *
+     * @param  array<int,int>  $ids
+     * @return array<int,int>
+     */
+    public function reservedForIds(array $ids, ?Carbon $month = null): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $month = ($month ?? $this->currentMonth())->copy()->startOfMonth();
+
+        return BasketItem::query()
+            ->whereIn('basket_items.beneficiary_id', $ids)
+            ->whereDate('basket_items.coverage_month', $month->toDateString())
+            ->whereHas('basket', fn ($q) => $q
+                ->where('status', 'reserved')
+                ->where('reserved_until', '>', now()))
+            ->groupBy('basket_items.beneficiary_id')
+            ->selectRaw('basket_items.beneficiary_id, sum(basket_items.amount) as held')
+            ->pluck('held', 'beneficiary_id')
+            ->map(fn ($held) => (int) $held)
+            ->all();
+    }
+
     public function reservedAmount(Beneficiary $beneficiary, ?Carbon $month = null): int
     {
         $month = ($month ?? $this->currentMonth())->copy()->startOfMonth();
@@ -627,7 +660,47 @@ class CoverageService
      */
     public function priorityBand(Beneficiary $beneficiary, ?int $confirmed = null, ?Carbon $month = null): string
     {
-        return $this->bandOfPercent($this->coveragePercent($beneficiary, $confirmed, $month));
+        /*
+         | T-186 — the band reads what is spoken for, not what is verified.
+         |
+         | «واللون أو الدرجة ما تغيّرت», 29 October: a family whose whole
+         | remainder was held in a basket kept its «أولوية قصوى» and its red
+         | bar while its own card said «المتبقي: 0». The badge is an answer to
+         | «who still needs money», and a family whose need is promised does
+         | not — which is the same sum `remainingNeed()` has always used, and
+         | the same one the list order now reads.
+         |
+         | `coveragePercent()` beside it is untouched: that is verified money
+         | and stays verified money.
+         */
+        return $this->bandOfPercent($this->spokenForPercent($beneficiary, $confirmed, $month));
+    }
+
+    /** T-186 — verified money and held money together, as a percentage of the need. */
+    public function spokenForPercent(Beneficiary $beneficiary, ?int $confirmed = null, ?Carbon $month = null): int
+    {
+        $need = $this->needAmount($beneficiary);
+
+        if ($need <= 0) {
+            return 100;
+        }
+
+        $spokenFor = ($confirmed ?? $this->fundedForMonth($beneficiary, $month))
+            + $this->reservedAmount($beneficiary, $month);
+
+        return (int) round(100 * min(1.0, $spokenFor / $need));
+    }
+
+    /**
+     * T-186 — the part of the need that is held and not yet confirmed.
+     *
+     * Drawn on the bar as its own lighter segment, so a donor sees that the
+     * rest of this month is promised without being told it has arrived.
+     */
+    public function heldPercent(Beneficiary $beneficiary, ?int $confirmed = null, ?Carbon $month = null): int
+    {
+        return max(0, $this->spokenForPercent($beneficiary, $confirmed, $month)
+            - $this->coveragePercent($beneficiary, $confirmed, $month));
     }
 
     /**

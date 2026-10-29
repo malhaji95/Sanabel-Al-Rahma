@@ -53,6 +53,10 @@ class MaskedCaseResource extends JsonResource
     public const ALLOWED_KEYS = [
         'file_number', 'area_ar', 'family_size', 'age_bands', 'need_type', 'need_type_label',
         'need_amount', 'currency', 'coverage_percent', 'coverage_label', 'remaining_amount',
+        // T-186 — the part of this month that is held in somebody's basket and
+        // not yet confirmed. A share of the need, never an amount and never
+        // whose basket it is.
+        'held_percent',
         'urgency_label', 'has_chronic_illness', 'rent_band', 'is_renting', 'waiting_weeks',
         'priority_band', 'priority_label', 'is_urgent', 'accepts_zakat', 'can_share',
         // T-78 — the funding target. Figures about the appeal, not about the
@@ -178,6 +182,7 @@ class MaskedCaseResource extends JsonResource
             'need_amount' => $coverage->needAmount($case),
             'currency' => config('sanabel.currency'),
             'coverage_percent' => $coverage->coveragePercent($case, $confirmed, $month),
+            'held_percent' => $coverage->heldPercent($case, $confirmed, $month),
             'coverage_label' => __('sanabel.coordination.coverage_'.$coverage->coverageLabel($case, $confirmed, $month)),
             'remaining_amount' => $coverage->remainingNeed($case, $confirmed, $month),
             // The badge the association asked for: priority read from how much

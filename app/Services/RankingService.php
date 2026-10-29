@@ -29,10 +29,17 @@ class RankingService
         return $this->priority(
             $beneficiary->currentAssessment()?->effectiveScore() ?? 0.0,
             $this->coverage->needAmount($beneficiary),
-            // fundingList() fetches the whole list's confirmed support in one
-            // query and passes it in; on its own the call falls back to its
-            // own lookup.
-            $confirmed ?? $this->coverage->confirmedForMonth($beneficiary),
+            /*
+             | fundingList() fetches the whole list's confirmed support in one
+             | query and passes it in; on its own the call falls back to its
+             | own lookup.
+             |
+             | T-186 — and what is held in a basket is added to it, because a
+             | family whose remainder is promised is not an opportunity any
+             | more. The same sum `remainingNeed()` has always worked from.
+             */
+            ($confirmed ?? $this->coverage->confirmedForMonth($beneficiary))
+                + $this->coverage->reservedAmount($beneficiary),
             $this->waitingBonus($beneficiary),
         );
     }
@@ -146,13 +153,16 @@ class RankingService
         // list asks about this month only, so it costs exactly what it did.
         $months = $withCovered ? $this->coverage->openMonths() : [$this->coverage->currentMonth()];
         $funded = [];
+        $held = [];
 
         foreach ($months as $month) {
             $funded[$month->format('Y-m')] = $this->coverage->fundedForMonthByNeed($needs, $month);
+            // T-186 — and what is held in somebody's basket for that month.
+            $held[$month->format('Y-m')] = $this->coverage->reservedForIds(array_keys($needs), $month);
         }
 
         return $families
-            ->map(fn (object $family) => $this->row($family, $months, $funded))
+            ->map(fn (object $family) => $this->row($family, $months, $funded, $held))
             // A family with no need recorded is not a funding opportunity at
             // all, in either list. A covered one is, in the donor's list only.
             ->filter(fn (array $row) => $row['need'] > 0 && ($withCovered || ! $row['covered']))
@@ -289,9 +299,10 @@ class RankingService
      *
      * @param  array<int,Carbon>  $months
      * @param  array<string,array<int,int>>  $funded
-     * @return array{beneficiary_id:int,file_number:string,confirmed:int,need:int,month:Carbon,covered:bool,ranking:array}
+     * @param  array<string,array<int,int>>  $held
+     * @return array{beneficiary_id:int,file_number:string,confirmed:int,held:int,need:int,month:Carbon,covered:bool,ranking:array}
      */
-    private function row(object $family, array $months, array $funded): array
+    private function row(object $family, array $months, array $funded, array $held = []): array
     {
         $id = (int) $family->id;
         $need = $this->needOf($family);
@@ -304,17 +315,37 @@ class RankingService
 
         foreach ($months as $month) {
             $confirmed = $funded[$month->format('Y-m')][$id] ?? 0;
+            $reserved = $held[$month->format('Y-m')][$id] ?? 0;
 
-            if ($need > 0 && $confirmed < $need) {
+            /*
+             | T-186 — «الحالة التي يقوم المتبرع بإجراء عملية تحويل لها تبقى في
+             | أعلى مع حذف قيمة المبلغ, تظهر مثلًا 0 … واللون أو الدرجة ما
+             | تغيّرت», 29 October, filmed twice.
+             |
+             | `remainingNeed()` has always subtracted what is held in a
+             | basket — it has to, or two donors fund one family and the
+             | second transfer has nowhere to go. The priority and the bar did
+             | not, so one card said «المتبقي: 0» and «نسبة التغطية: 0%» at the
+             | same time and sat at the top of the list asking for money
+             | somebody had already promised.
+             |
+             | What is spoken for is what decides whether this family is still
+             | an opportunity. Verified money is still the only money: it is
+             | carried beside it, and the card draws the two apart.
+             */
+            $spokenFor = $confirmed + $reserved;
+
+            if ($need > 0 && $spokenFor < $need) {
                 return [
                     'beneficiary_id' => $id,
                     'file_number' => (string) $family->file_number,
                     'confirmed' => $confirmed,
+                    'held' => $reserved,
                     'need' => $need,
                     'month' => $month,
                     'covered' => false,
                     'overdue' => $this->overdue($family),
-                    'ranking' => $this->priority($score, $need, $confirmed, $waiting),
+                    'ranking' => $this->priority($score, $need, $spokenFor, $waiting),
                 ];
             }
         }
@@ -324,16 +355,18 @@ class RankingService
         // funded rather than one already behind them.
         $month = end($months);
         $confirmed = $funded[$month->format('Y-m')][$id] ?? 0;
+        $reserved = $held[$month->format('Y-m')][$id] ?? 0;
 
         return [
             'beneficiary_id' => $id,
             'file_number' => (string) $family->file_number,
             'confirmed' => $confirmed,
+            'held' => $reserved,
             'need' => $need,
             'month' => $month,
             'covered' => true,
             'overdue' => $this->overdue($family),
-            'ranking' => $this->priority($score, $need, $confirmed, $waiting),
+            'ranking' => $this->priority($score, $need, $confirmed + $reserved, $waiting),
         ];
     }
 

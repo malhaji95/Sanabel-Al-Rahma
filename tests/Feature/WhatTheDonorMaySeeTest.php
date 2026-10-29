@@ -414,7 +414,9 @@ it('tells the donor the relation, the standing and the illness of each dependant
     $row = collect((new MaskedCaseResource($case->refresh()))->toArray(request())['dependents'])->first();
 
     expect($row['relation_label'])->toBe(__('sanabel.relation.daughter'))
-        ->and($row['occupation_label'])->toBe(__('sanabel.occupation.student'))
+        // T-185 — «طالبة» for a daughter. This line read the masculine list
+        // until the association said so on 29 October.
+        ->and($row['occupation_label'])->toBe(__('sanabel.occupation_f.student'))
         ->and($row['marital_label'])->toBe(__('sanabel.marital_status_f.single'))
         // Still no name, no birth year, no age in years.
         ->and(array_diff(array_keys($row), MaskedCaseResource::DEPENDENT_KEYS))->toBeEmpty();

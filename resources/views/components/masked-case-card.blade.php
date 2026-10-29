@@ -179,7 +179,7 @@
         </div>
 
         <div
-            class="meter mt-1.5"
+            class="meter mt-1.5 flex"
             role="progressbar"
             aria-valuenow="{{ $coveredPercent }}"
             aria-valuemin="0"
@@ -196,7 +196,31 @@
                     style="width: {{ $coveredPercent }}%"
                 ></div>
             @endif
+
+            {{--
+                T-186 — «المفروض يتحرك بمجرد التبرع», 29 October, filmed twice.
+
+                It does now, and it says which kind of movement it is: a
+                lighter segment beside the verified one for the part of this
+                month that is held in a basket and waiting on the treasurer.
+                The number above stays the verified figure — money is money
+                when it is confirmed — but the family stops reading as though
+                nobody had answered.
+            --}}
+            @if (($case['held_percent'] ?? 0) > 0)
+                <div
+                    class="meter-fill"
+                    style="width: {{ $case['held_percent'] }}%; background-color: color-mix(in srgb, var(--accent) 35%, transparent);"
+                    title="{{ __('sanabel.funding_held.note') }}"
+                ></div>
+            @endif
         </div>
+
+        @if (($case['held_percent'] ?? 0) > 0)
+            <p class="mt-1.5 text-xs" style="color: var(--text-muted);">
+                {{ __('sanabel.funding_held.note_full', ['percent' => $case['held_percent']]) }}
+            </p>
+        @endif
 
         <p class="mt-2.5 text-sm">
             @if ($covered && $monthLabel)
