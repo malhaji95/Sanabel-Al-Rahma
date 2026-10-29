@@ -38,11 +38,11 @@ class ProviderResource extends Resource
             Forms\Components\TextInput::make('name_ar')->label(__('sanabel.provider.name'))->required(),
             Forms\Components\Select::make('type')->label(__('sanabel.provider.type'))->options(__('sanabel.provider_type'))->required(),
             Forms\Components\TextInput::make('specialty_ar')->label(__('sanabel.provider.specialty')),
-            Forms\Components\Select::make('region_id')->label(__('sanabel.beneficiary.region'))->relationship('region', 'name_ar')->searchable()->required(),
+            Forms\Components\Select::make('region_id')->label(__('sanabel.beneficiary.region'))->relationship('region', 'name_ar')->searchable()->preload()->required(),
             Forms\Components\Select::make('discount_type')->label(__('sanabel.provider.discount_type'))->options(__('sanabel.discount_type'))->required(),
             Forms\Components\TextInput::make('discount_value')->label(__('sanabel.provider.discount_value'))->numeric()->minValue(0)->required(),
             Forms\Components\DatePicker::make('valid_until')->label(__('sanabel.provider.valid_until')),
-            Forms\Components\Select::make('user_id')->label(__('sanabel.provider.account'))->relationship('user', 'name')->searchable(),
+            Forms\Components\Select::make('user_id')->label(__('sanabel.provider.account'))->relationship('user', 'name')->searchable()->preload(),
 
             // The agreed ceiling. Left empty for a provider that set none, which
             // is how every provider stood before this was added.

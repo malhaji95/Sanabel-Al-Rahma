@@ -38,11 +38,11 @@ class SponsorshipResource extends Resource
         return $form->schema([
             Forms\Components\Select::make('donor_id')
                 ->label(__('sanabel.donation.donor'))
-                ->relationship('donor', 'name_ar')->searchable()->required(),
+                ->relationship('donor', 'name_ar')->searchable()->preload()->required(),
 
             Forms\Components\Select::make('beneficiary_id')
                 ->label(__('sanabel.referral.case'))
-                ->relationship('beneficiary', 'file_number')->searchable()->required(),
+                ->relationship('beneficiary', 'file_number')->searchable()->preload()->required(),
 
             Forms\Components\TextInput::make('amount')
                 ->label(__('sanabel.sponsorship.amount'))

@@ -38,7 +38,7 @@ class AdjustmentCatalogResource extends Resource
             Forms\Components\TextInput::make('key')->label(__('sanabel.adjustment.key'))->required(),
             Forms\Components\TextInput::make('name_ar')->label(__('sanabel.adjustment.name'))->required(),
             Forms\Components\TextInput::make('amount')->label(__('sanabel.adjustment.amount'))->numeric()->minValue(0)->required()->suffix(Money::short()),
-            Forms\Components\Select::make('region_id')->label(__('sanabel.beneficiary.region'))->relationship('region', 'name_ar')->searchable(),
+            Forms\Components\Select::make('region_id')->label(__('sanabel.beneficiary.region'))->relationship('region', 'name_ar')->searchable()->preload(),
             Forms\Components\DatePicker::make('effective_from')->label(__('sanabel.reference.effective_from'))->required(),
             Forms\Components\TextInput::make('version')->label(__('sanabel.reference.version'))->numeric()->minValue(0)->required(),
         ])->columns(2);

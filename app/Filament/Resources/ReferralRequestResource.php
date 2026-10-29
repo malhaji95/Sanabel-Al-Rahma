@@ -58,7 +58,7 @@ class ReferralRequestResource extends Resource
             Forms\Components\Select::make('beneficiary_id')
                 ->label(__('sanabel.referral.case'))
                 ->relationship('beneficiary', 'file_number')
-                ->searchable()->required(),
+                ->searchable()->preload()->required(),
 
             Forms\Components\Select::make('provider_type')
                 ->label(__('sanabel.health_path.provider_type'))
@@ -144,13 +144,27 @@ class ReferralRequestResource extends Resource
                     ->color('success')
                     ->visible(fn (ReferralRequest $record) => auth()->user()->can('handle', $record))
                     ->form(fn (ReferralRequest $record) => [
+                        /*
+                         | T-195 — «لازم تظهر الخيارات وممكن أختار منها بدون
+                         | بحث», 29 October, over a photograph of this very
+                         | field reading «ابدأ بالكتابة للبحث...».
+                         |
+                         | That sentence is Filament's words for a list with
+                         | nothing in it, not an instruction. The list is
+                         | empty when no provider of the asked-for kind is
+                         | active, so it now says that; and the search box is
+                         | offered only once the list is long enough to need
+                         | one.
+                         */
                         Forms\Components\Select::make('provider_id')
                             ->label(__('sanabel.referral.provider'))
-                            ->options(fn () => Provider::where('type', $record->provider_type)
+                            ->options($providers = Provider::where('type', $record->provider_type)
                                 ->where('status', 'active')
                                 ->pluck('name_ar', 'id'))
-                            ->helperText(__('sanabel.health_path.provider_help'))
-                            ->searchable()
+                            ->helperText($providers->isEmpty()
+                                ? __('sanabel.health_path.no_provider_of_type')
+                                : __('sanabel.health_path.provider_help'))
+                            ->searchable($providers->count() > 10)
                             ->required(),
                     ])
                     ->action(function (ReferralRequest $record, array $data) {

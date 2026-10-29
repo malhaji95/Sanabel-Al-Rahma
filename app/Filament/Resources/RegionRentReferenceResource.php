@@ -38,7 +38,7 @@ class RegionRentReferenceResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Select::make('region_id')->label(__('sanabel.beneficiary.region'))->relationship('region', 'name_ar')->searchable()->required(),
+            Forms\Components\Select::make('region_id')->label(__('sanabel.beneficiary.region'))->relationship('region', 'name_ar')->searchable()->preload()->required(),
             Forms\Components\Select::make('family_size_band')->label(__('sanabel.rent_reference.band'))->options(['1-3' => '1-3', '4-6' => '4-6', '7+' => '7+'])->required(),
             Forms\Components\TextInput::make('reference_rent')
                 ->label(__('sanabel.rent_reference.amount'))

@@ -40,11 +40,11 @@ class ReferralResource extends Resource
         return $form->schema([
             Forms\Components\Select::make('beneficiary_id')
                 ->label(__('sanabel.referral.case'))
-                ->relationship('beneficiary', 'file_number')->searchable()->required(),
+                ->relationship('beneficiary', 'file_number')->searchable()->preload()->required(),
 
             Forms\Components\Select::make('provider_id')
                 ->label(__('sanabel.referral.provider'))
-                ->relationship('provider', 'name_ar')->searchable()->required(),
+                ->relationship('provider', 'name_ar')->searchable()->preload()->required(),
 
             Forms\Components\DateTimePicker::make('expires_at')
                 ->label(__('sanabel.referral.expires_at'))

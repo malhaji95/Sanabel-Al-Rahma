@@ -37,7 +37,7 @@ class RegionResource extends Resource
         return $form->schema([
             Forms\Components\TextInput::make('name_ar')->label(__('sanabel.region.name'))->required(),
             Forms\Components\Select::make('type')->label(__('sanabel.region.type'))->options(__('sanabel.region_type'))->required(),
-            Forms\Components\Select::make('parent_id')->label(__('sanabel.region.parent'))->relationship('parent', 'name_ar')->searchable(),
+            Forms\Components\Select::make('parent_id')->label(__('sanabel.region.parent'))->relationship('parent', 'name_ar')->searchable()->preload(),
             Forms\Components\Toggle::make('is_active')->label(__('sanabel.region.is_active')),
 
             /*

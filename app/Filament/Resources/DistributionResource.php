@@ -42,7 +42,7 @@ class DistributionResource extends Resource
 
             Forms\Components\Select::make('region_id')
                 ->label(__('sanabel.beneficiary.region'))
-                ->relationship('region', 'name_ar')->searchable()->required(),
+                ->relationship('region', 'name_ar')->searchable()->preload()->required(),
 
             Forms\Components\TextInput::make('per_family_amount')
                 ->label(__('sanabel.distribution.per_family'))

@@ -83,7 +83,7 @@ class DonationResource extends Resource
             Forms\Components\Select::make('donor_id')
                 ->relationship('donor', 'name_ar')
                 ->label(__('sanabel.donation.donor'))
-                ->searchable()->required(),
+                ->searchable()->preload()->required(),
 
             /*
              | T-142 — «وموضوع تعديل المبالغ ليش في تعديل؟», 28 October.

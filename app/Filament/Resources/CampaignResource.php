@@ -52,7 +52,7 @@ class CampaignResource extends Resource
                 ->maxSize(4096)
                 ->columnSpanFull(),
             Forms\Components\TextInput::make('goal_amount')->label(__('sanabel.campaign.goal'))->numeric()->minValue(0)->required()->suffix(Money::short()),
-            Forms\Components\Select::make('beneficiary_id')->label(__('sanabel.campaign.case'))->relationship('beneficiary', 'file_number')->searchable(),
+            Forms\Components\Select::make('beneficiary_id')->label(__('sanabel.campaign.case'))->relationship('beneficiary', 'file_number')->searchable()->preload(),
             Forms\Components\DatePicker::make('starts_on')
                 ->label(__('sanabel.campaigns.starts_on'))
                 ->helperText(__('sanabel.campaigns.window_help')),

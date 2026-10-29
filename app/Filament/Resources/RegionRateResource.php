@@ -43,7 +43,7 @@ class RegionRateResource extends Resource
         return $form->schema([
             Forms\Components\Select::make('region_id')
                 ->label(__('sanabel.beneficiary.region'))
-                ->relationship('region', 'name_ar')->searchable()->required(),
+                ->relationship('region', 'name_ar')->searchable()->preload()->required(),
 
             Forms\Components\Select::make('person_class')
                 ->label(__('sanabel.household_member.person_class'))

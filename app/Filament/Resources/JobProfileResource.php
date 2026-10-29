@@ -35,10 +35,10 @@ class JobProfileResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Select::make('beneficiary_id')->label(__('sanabel.job_profile.case'))->relationship('beneficiary', 'file_number')->searchable()->required(),
+            Forms\Components\Select::make('beneficiary_id')->label(__('sanabel.job_profile.case'))->relationship('beneficiary', 'file_number')->searchable()->preload()->required(),
             Forms\Components\TextInput::make('trade_key')->label(__('sanabel.job_profile.trade'))->required(),
             Forms\Components\Textarea::make('summary_ar')->label(__('sanabel.job_profile.summary'))->required()->columnSpanFull(),
-            Forms\Components\Select::make('region_id')->label(__('sanabel.beneficiary.region'))->relationship('region', 'name_ar')->searchable()->required(),
+            Forms\Components\Select::make('region_id')->label(__('sanabel.beneficiary.region'))->relationship('region', 'name_ar')->searchable()->preload()->required(),
             Forms\Components\TextInput::make('availability')->label(__('sanabel.job_profile.availability')),
             Forms\Components\Select::make('status')->label(__('sanabel.beneficiary.status'))->options(__('sanabel.job_profile_status'))->required(),
         ])->columns(2);

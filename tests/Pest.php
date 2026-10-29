@@ -339,3 +339,56 @@ function fundFor(Beneficiary $case, int $amount, ?Carbon $month = null): Donatio
 
     return app(DonationService::class)->verify($donation, userWithRole('admin')->id);
 }
+
+/**
+ * T-195 — every chained statement in `$source` that opens with `$opening`,
+ * as [offset, text] pairs.
+ *
+ * A fluent Filament chain ends at the comma that separates it from the next
+ * field in the array, or at the semicolon that ends the statement — whichever
+ * comes first at depth zero.
+ *
+ * @return array<int,array{0:int,1:string}>
+ */
+function statementsOpenedBy(string $source, string $opening): array
+{
+    $found = [];
+    $offset = 0;
+
+    while (($start = strpos($source, $opening, $offset)) !== false) {
+        $depth = 0;
+        $quote = null;
+        $i = $start + strlen($opening) - 1;
+
+        for (; $i < strlen($source); $i++) {
+            $c = $source[$i];
+
+            if ($quote !== null) {
+                if ($c === '\\') {
+                    $i++;
+                } elseif ($c === $quote) {
+                    $quote = null;
+                }
+
+                continue;
+            }
+
+            if ($c === "'" || $c === '"') {
+                $quote = $c;
+            } elseif ($c === '(' || $c === '[') {
+                $depth++;
+            } elseif ($c === ')' || $c === ']') {
+                if (--$depth < 0) {
+                    break;
+                }
+            } elseif ($depth === 0 && ($c === ',' || $c === ';')) {
+                break;
+            }
+        }
+
+        $found[] = [$start, substr($source, $start, $i - $start)];
+        $offset = $i;
+    }
+
+    return $found;
+}
