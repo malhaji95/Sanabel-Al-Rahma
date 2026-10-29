@@ -62,7 +62,14 @@
                     <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                         <path d="M12 2 1 21h22L12 2Zm0 6 1 7h-2l1-7Zm0 9.5a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4Z"/>
                     </svg>
-                    {{ __('sanabel.masked.urgency.critical') }}
+                    {{-- T-192 — «حالة طارئة هذا شلون ظهرت على أي أساس؟», 29
+                         October. The marker read «حالة طارئة» for every file
+                         inside a week, because the word was written here
+                         instead of being taken from the band the resource
+                         already computes. A week out now reads «أولوية
+                         عالية», and «حالة طارئة» means the two days it has
+                         always meant. --}}
+                    {{ $case['urgency_label'] }}
                 </span>
             @endif
 
