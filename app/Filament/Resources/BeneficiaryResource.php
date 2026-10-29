@@ -1150,6 +1150,15 @@ class BeneficiaryResource extends Resource
                         ->visible(fn (Forms\Get $get) => $get('has_income') === 'yes')
                         ->relationship()
                         ->label(__('sanabel.beneficiary.incomes'))
+                        /*
+                         | T-197 — the sources the association listed on 29
+                         | October, written under the table so every one of
+                         | them is asked after rather than remembered. The
+                         | field stays free text: they named examples, not a
+                         | closed list, and a closed one would drop whatever
+                         | they had not thought of.
+                         */
+                        ->helperText(__('sanabel.income.sources_help'))
                         // T-130 — a repeater that opens with a blank row asks a
                         // question the family may not have an answer to, and then
                         // refuses the whole file over it. It opens empty: no row
