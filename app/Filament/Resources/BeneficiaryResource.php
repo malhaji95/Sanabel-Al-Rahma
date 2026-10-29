@@ -310,8 +310,27 @@ class BeneficiaryResource extends Resource
                                 ->live(onBlur: true)
                                 ->afterStateUpdated(fn (Forms\Get $get, Forms\Set $set) => self::refreshInheritedNames($get, $set)),
 
+                            /*
+                             | T-188 — «لما يكون متزوج أو أرمل يكون الرقم
+                             | الوطني إجباري; لما يكون مطلق أو منفصل ما يكون
+                             | إجباري», 29 October.
+                             |
+                             | T-152 had left it optional everywhere, on the
+                             | reasoning that a husband who died in 2013 may
+                             | have left no number behind. The association has
+                             | decided otherwise for a marriage and for a
+                             | widowhood — those two are the files they check
+                             | against the civil registry — and kept it open
+                             | where a separation means the paper is not
+                             | theirs to produce.
+                             */
                             Forms\Components\TextInput::make('spouse_national_id_encrypted')
                                 ->label(__('sanabel.beneficiary.spouse_national_id'))
+                                ->required(fn (Forms\Get $get) => in_array($get('marital_status'), ['married', 'widowed'], true))
+                                ->validationMessages(['required' => __('sanabel.beneficiary.spouse_national_id_required')])
+                                ->helperText(fn (Forms\Get $get) => in_array($get('marital_status'), ['married', 'widowed'], true)
+                                    ? null
+                                    : __('sanabel.beneficiary.spouse_national_id_optional'))
                                 ->maxLength(IdentityFormat::NATIONAL_ID_DIGITS)
                                 ->rule(fn () => IdentityFormat::lengthRule(
                                     IdentityFormat::NATIONAL_ID_DIGITS,
@@ -745,6 +764,7 @@ class BeneficiaryResource extends Resource
                                     $set('is_orphan', FamilyAges::countsAsOrphan(
                                         (int) date('Y') - $year,
                                         $get('../../marital_status'),
+                                        $get('../../gender'),
                                     ));
                                 }),
 
@@ -769,6 +789,7 @@ class BeneficiaryResource extends Resource
                                         $set('is_orphan', FamilyAges::countsAsOrphan(
                                             (int) date('Y') - (int) $state,
                                             $get('../../marital_status'),
+                                            $get('../../gender'),
                                         ));
                                     }
                                 }),
@@ -846,11 +867,16 @@ class BeneficiaryResource extends Resource
                                 ->disabled()
                                 ->dehydrated()
                                 ->afterStateHydrated(fn (Forms\Components\Toggle $component, Forms\Get $get) => $component->state(
-                                    FamilyAges::countsAsOrphan(self::memberAge($get), $get('../../marital_status')),
+                                    FamilyAges::countsAsOrphan(
+                                        self::memberAge($get),
+                                        $get('../../marital_status'),
+                                        $get('../../gender'),
+                                    ),
                                 ))
                                 ->dehydrateStateUsing(fn (Forms\Get $get) => FamilyAges::countsAsOrphan(
                                     self::memberAge($get),
                                     $get('../../marital_status'),
+                                    $get('../../gender'),
                                 )),
 
                             /*

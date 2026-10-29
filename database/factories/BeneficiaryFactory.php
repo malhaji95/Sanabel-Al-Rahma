@@ -29,6 +29,9 @@ class BeneficiaryFactory extends Factory
             // factory makes one that the form would accept. Synthetic, like
             // every other name here (rule 11).
             'spouse_name_ar' => 'زوج'.fake()->numberBetween(1, 999),
+            // T-188 — required on a married or a widowed file, so a
+            // fixture carries one the way a real file does.
+            'spouse_national_id_encrypted' => '08'.fake()->numerify('#########'),
             'support_type' => 'monthly',
             'status' => 'draft',
             'source' => 'delegate',
