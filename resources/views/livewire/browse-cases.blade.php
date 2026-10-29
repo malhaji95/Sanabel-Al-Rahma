@@ -54,7 +54,7 @@
                             'background-color: var(--accent); color: var(--accent-contrast)' => $supportType === $type,
                             'color: var(--text-muted)' => $supportType !== $type,
                         ])
-                    >{{ $type === 'all' ? __('sanabel.public.all_cases') : __('sanabel.masked.need_type.' . $type) }}</button>
+                    >{{ $type === 'all' ? __('sanabel.public.support_all') : __('sanabel.masked.need_type.' . $type) }}</button>
                 @endforeach
             </div>
 

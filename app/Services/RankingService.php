@@ -134,7 +134,9 @@ class RankingService
      * @return Collection<int,array{beneficiary_id:int,file_number:string,confirmed:int,need:int,month:Carbon,covered:bool,ranking:array}>
      */
     public function fundingList(
-        string $supportType,
+        // T-189 — null is «جميع الحالات»: both kinds, which `rankingRows()`
+        // has always understood and this signature refused.
+        ?string $supportType,
         ?int $regionId = null,
         bool $withCovered = false,
         bool $zakatOnly = false,
