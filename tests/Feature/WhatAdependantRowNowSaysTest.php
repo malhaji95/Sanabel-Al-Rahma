@@ -38,6 +38,9 @@ it('says which age class, where at school, and whether they memorise the Qur’a
         'occupation' => 'student',
         'school_stage' => 'primary',
         'is_quran_memorizer' => true,
+        // T-185 — the status list follows the member's own gender now, so the
+        // row has to say which it is for the label to be checkable at all.
+        'gender' => 'male',
     ]);
 
     $row = firstDependent($case);
