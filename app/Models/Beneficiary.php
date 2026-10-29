@@ -481,6 +481,25 @@ class Beneficiary extends Model
     }
 
     /** sha256 of the normalised national id — rule 11, exact match blocks a second file. */
+    /**
+     * T-191 — «SWA-0001: أرقام الملفات التي سنعتمدها», 29 October.
+     *
+     * It was `F-26-000045` — a letter, the year, and six digits — written out
+     * twice, once in the form's default and once in the API that opens a file
+     * from the field app. Two copies of a numbering scheme is one more than a
+     * numbering scheme can survive, so the association's new one lives here
+     * and both call it.
+     *
+     * Four digits because that is what they wrote; `str_pad` only pads, so the
+     * ten thousandth file is `SWA-10000` rather than a collision.
+     */
+    public static function nextFileNumber(): string
+    {
+        $next = (int) static::withoutGlobalScopes()->max('id') + 1;
+
+        return 'SWA-'.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+    }
+
     public static function hashNationalId(string $nationalId): string
     {
         $normalised = preg_replace('/\D+/', '', $nationalId) ?: $nationalId;

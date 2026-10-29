@@ -82,7 +82,8 @@ class BeneficiaryResource extends Resource
                         ->label(__('sanabel.beneficiary.file_number'))
                         ->required()
                         ->unique(ignoreRecord: true)
-                        ->default(fn () => 'F-'.now()->format('y').'-'.str_pad((string) (Beneficiary::withoutGlobalScopes()->max('id') + 1), 6, '0', STR_PAD_LEFT)),
+                        // T-191 — the association's own numbering, written once.
+                        ->default(fn () => Beneficiary::nextFileNumber()),
 
                     // T-50 — the number this family carried in the old system.
                     // Unique, so the same old file cannot be imported twice.

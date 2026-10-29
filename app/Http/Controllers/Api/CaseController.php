@@ -56,7 +56,7 @@ class CaseController extends Controller
         app(DuplicateService::class)->guardAgainstDuplicate($validated['national_id']);
 
         $case = Beneficiary::create([
-            'file_number' => 'F-'.now()->format('y').'-'.str_pad((string) (Beneficiary::withoutGlobalScopes()->max('id') + 1), 6, '0', STR_PAD_LEFT),
+            'file_number' => Beneficiary::nextFileNumber(),
             'national_id_encrypted' => $validated['national_id'],
             'national_id_hash' => Beneficiary::hashNationalId($validated['national_id']),
             'first_name' => $validated['first_name'],
