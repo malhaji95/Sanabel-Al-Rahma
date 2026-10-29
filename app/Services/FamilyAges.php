@@ -64,12 +64,27 @@ class FamilyAges
      * whether to ask and start being named for what it decides. Nothing about
      * the test changed.
      *
-     * It deliberately says nothing about kinship: the association stated the
-     * rule twice and both times it was these two conditions and no third.
+     * T-188 — «اليتيم فقط من فقد الأب», 29 October, which is the third
+     * condition and the one that gives the other two their meaning.
+     *
+     * A widowed head has lost a spouse; which spouse decides whether these
+     * children are orphans. A widow has lost their father, so they are. A
+     * widower has lost their mother, so by the association's own definition
+     * they are not — and the form has said this all along in the feminine,
+     * «لما تكون أرملة», which we had been reading as «widowed» and nothing
+     * more.
+     *
+     * It still says nothing about kinship: the association has stated the rule
+     * three times now and never once in terms of who the dependant is to the
+     * head. That question is on the open list.
      */
-    public static function countsAsOrphan(?int $age, ?string $headMaritalStatus): bool
-    {
+    public static function countsAsOrphan(
+        ?int $age,
+        ?string $headMaritalStatus,
+        ?string $headGender = null,
+    ): bool {
         return $headMaritalStatus === 'widowed'
+            && $headGender === 'female'
             && $age !== null
             && $age < DependencyRules::ANSWERS_AS_ADULT_FROM;
     }

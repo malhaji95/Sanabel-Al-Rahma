@@ -26,15 +26,28 @@ beforeEach(function () {
 });
 
 it('marks a child of a widow under fifteen, and nobody else', function () {
-    expect(FamilyAges::countsAsOrphan(9, 'widowed'))->toBeTrue()
-        ->and(FamilyAges::countsAsOrphan(14, 'widowed'))->toBeTrue()
+    expect(FamilyAges::countsAsOrphan(9, 'widowed', 'female'))->toBeTrue()
+        ->and(FamilyAges::countsAsOrphan(14, 'widowed', 'female'))->toBeTrue()
         // Fifteen is the age this form starts answering as an adult.
-        ->and(FamilyAges::countsAsOrphan(15, 'widowed'))->toBeFalse()
-        ->and(FamilyAges::countsAsOrphan(9, 'married'))->toBeFalse()
-        ->and(FamilyAges::countsAsOrphan(9, 'divorced'))->toBeFalse()
-        ->and(FamilyAges::countsAsOrphan(9, null))->toBeFalse()
+        ->and(FamilyAges::countsAsOrphan(15, 'widowed', 'female'))->toBeFalse()
+        ->and(FamilyAges::countsAsOrphan(9, 'married', 'female'))->toBeFalse()
+        ->and(FamilyAges::countsAsOrphan(9, 'divorced', 'female'))->toBeFalse()
+        ->and(FamilyAges::countsAsOrphan(9, null, 'female'))->toBeFalse()
         // An age nobody has typed yet is not an orphan either.
-        ->and(FamilyAges::countsAsOrphan(null, 'widowed'))->toBeFalse();
+        ->and(FamilyAges::countsAsOrphan(null, 'widowed', 'female'))->toBeFalse();
+});
+
+it('marks nobody on a widower’s file, because an orphan has lost a father', function () {
+    /*
+     | T-188 — «اليتيم فقط من فقد الأب», 29 October. A widowed head has lost a
+     | spouse; which spouse is what decides. A widow has lost these children's
+     | father. A widower has lost their mother, and by the association's own
+     | definition they are not orphans — which is why their rule has always
+     | been written in the feminine, «لما تكون أرملة».
+     */
+    expect(FamilyAges::countsAsOrphan(9, 'widowed', 'male'))->toBeFalse()
+        // And a file whose head has not said is not guessed at either way.
+        ->and(FamilyAges::countsAsOrphan(9, 'widowed', null))->toBeFalse();
 });
 
 it('fills the mark in itself, whatever the form was sent', function () {
