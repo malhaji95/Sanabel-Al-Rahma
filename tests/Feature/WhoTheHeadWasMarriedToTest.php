@@ -16,8 +16,10 @@ use Illuminate\Http\UploadedFile;
  |
  | The block has been on the form since T-128 and could be walked past, so a
  | file could say «أرملة» and name nobody. The name is required wherever the
- | block is shown; the identity number is not, because a husband who died
- | years ago may have left no paper behind and a file is not refused over one.
+ | block is shown. The identity number was left open here, because a husband
+ | who died years ago may have left no paper behind; T-187 closed it for
+ | «متزوجة» and «أرملة» on 29 October, and it stays open for «مطلقة» and
+ | «منفصلة», where the paper is not the family's to produce.
  */
 
 beforeEach(function () {
@@ -71,13 +73,15 @@ it('asks nobody who is single for a spouse', function () {
     expect(Beneficiary::withoutGlobalScopes()->latest('id')->first()->marital_status)->toBe('single');
 });
 
-it('takes the file once the husband is named, without asking for his number', function () {
+it('takes the file once the husband is named, without asking a divorcée for his number', function () {
     [$delegate, $village] = researcherIn($this->region);
 
+    // T-187 — «أرملة» is now asked for the number too. «مطلقة» is the one
+    // left open, and it is the one this guard stands on.
     Livewire\Livewire::actingAs($delegate)
         ->test(CreateBeneficiary::class)
         ->fillForm(fileForm($village, [
-            'marital_status' => 'widowed',
+            'marital_status' => 'divorced',
             'spouse_name_ar' => 'أحمد بن علي',
         ]))
         ->call('create')
@@ -101,6 +105,9 @@ it('files the widow’s paper as a death certificate and the divorcee’s as a d
             ->fillForm(fileForm($village, [
                 'marital_status' => $status,
                 'spouse_name_ar' => 'أحمد بن علي',
+                // T-187 — the widow's file carries the number now; the
+                // divorcée's is taken with or without it.
+                'spouse_national_id_encrypted' => '09876543210',
                 'spouse_proof' => UploadedFile::fake()->image('paper.jpg'),
             ]))
             ->call('create')
