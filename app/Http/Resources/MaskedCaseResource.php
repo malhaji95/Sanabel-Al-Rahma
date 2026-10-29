@@ -710,8 +710,15 @@ class MaskedCaseResource extends JsonResource
                     // T-162 — the class they are priced in, which is the band
                     // the household counts are made of: a child, an adult, a
                     // wife, an elderly person.
+                    /*
+                     | T-193 — one person, so the singular list, and the
+                     | feminine one where the person is a woman: «بالغة» for a
+                     | sister, «بالغ» for a brother. `masked.age_band` counts
+                     | a household and stays plural where it is counting.
+                     */
                     'age_band_label' => $member->person_class
-                        ? __('sanabel.masked.age_band.'.$member->person_class)
+                        ? __('sanabel.'.($member->gender === 'female' ? 'person_class_f' : 'person_class')
+                            .'.'.$member->person_class)
                         : null,
                     // Where a student is, which is what «طالب» leaves open.
                     'school_stage_label' => $member->school_stage

@@ -45,7 +45,9 @@ it('says which age class, where at school, and whether they memorise the Qur’a
 
     $row = firstDependent($case);
 
-    expect($row['age_band_label'])->toBe(__('sanabel.masked.age_band.child'))
+    // T-193 — one person, so the singular list, and the masculine one
+    // because this fixture pins «male».
+    expect($row['age_band_label'])->toBe(__('sanabel.person_class.child'))
         ->and($row['school_stage_label'])->toBe(__('sanabel.school_stage.primary'))
         ->and($row['is_quran_memorizer'])->toBeTrue()
         ->and($row['occupation_label'])->toBe(__('sanabel.occupation.student'));
@@ -107,11 +109,14 @@ it('draws the new badges on the family’s own page', function () {
         'occupation' => 'student',
         'school_stage' => 'primary',
         'is_quran_memorizer' => true,
+        // T-193 — the class label follows the member's gender, so the row
+        // has to say which it is for the label to be checkable at all.
+        'gender' => 'male',
     ]);
 
     $this->get(route('opportunity', $case->file_number))
         ->assertOk()
         ->assertSee(__('sanabel.school_stage.primary'))
         ->assertSee(__('sanabel.masked.quran_memorizer'))
-        ->assertSee(__('sanabel.masked.age_band.child'));
+        ->assertSee(__('sanabel.person_class.child'));
 });

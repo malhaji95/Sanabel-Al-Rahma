@@ -66,6 +66,21 @@ return [
         'elderly' => 'مسن',
     ],
 
+    /*
+     | T-193 — «هذي أنثى, لازم بالغة موظفة», 29 October, over a photograph of
+     | a sister's row reading «بالغ» and «موظف».
+     |
+     | The same pairing as `occupation_f` and `marital_status_f`: one list for
+     | each, the keys identical, and only the word on the screen changing.
+     | «زوجة» is a kinship class and was feminine already.
+     */
+    'person_class_f' => [
+        'adult' => 'بالغة',
+        'wife' => 'زوجة',
+        'child' => 'طفلة',
+        'elderly' => 'مسنة',
+    ],
+
     'status' => [
         'draft' => 'مسودة',
         'pending_visit' => 'بانتظار الزيارة',
