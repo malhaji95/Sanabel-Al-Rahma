@@ -74,7 +74,18 @@ class DonorCaseList
         bool $withCovered,
         bool $zakatOnly,
     ): array {
-        $ranked = $this->ranking->fundingList($supportType, $regionId, $withCovered, $zakatOnly);
+        /*
+         | T-189 — «الفلاتر: جميع الحالات, دعم شهري, دعم لمرة واحدة»,
+         | 29 October. The ranking has always taken null for «both kinds»;
+         | what was missing was a word for it on the screen, and a word the
+         | cache key and the query string can carry.
+         */
+        $ranked = $this->ranking->fundingList(
+            $supportType === 'all' ? null : $supportType,
+            $regionId,
+            $withCovered,
+            $zakatOnly,
+        );
 
         return [
             'cards' => $this->ranking

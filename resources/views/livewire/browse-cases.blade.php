@@ -1,4 +1,31 @@
 <div>
+    {{--
+        T-189 — «نحتاج وضع بي أعلى فوق كلمة الحالات», 29 October, with the
+        hadith and the two lines under it written out.
+
+        Their reasoning, in their own words: «هذا من باب التحفيز, عند الوصول
+        إلى مرحلة الاختيار تكون حافزًا له على الاستمرار في عملية التبرع». So
+        it sits above the heading, where the eye lands before the grid, and
+        the attribution travels with it because a hadith without its grading
+        is a hadith nobody can check.
+    --}}
+    <section class="card mb-6 text-center" aria-labelledby="cases-hadith">
+        <p class="text-sm" style="color: var(--text-muted);">{{ __('sanabel.cases_intro.said') }}</p>
+
+        <blockquote id="cases-hadith" class="mt-2 text-lg font-bold leading-relaxed sm:text-xl">
+            {{ __('sanabel.cases_intro.hadith') }}
+        </blockquote>
+
+        <p class="mt-2 text-xs" style="color: var(--text-muted);">{{ __('sanabel.cases_intro.grading') }}</p>
+
+        <div class="rule-gold my-4" aria-hidden="true"></div>
+
+        <p class="text-sm leading-relaxed">{{ __('sanabel.cases_intro.ordering') }}</p>
+        <p class="mt-1.5 text-sm font-semibold" style="color: var(--accent);">
+            {{ __('sanabel.cases_intro.choose') }}
+        </p>
+    </section>
+
     <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
             <h1 class="text-2xl">{{ __('sanabel.public.cases') }}</h1>
@@ -15,7 +42,8 @@
                 role="tablist"
                 aria-label="{{ __('sanabel.beneficiary.support_type') }}"
             >
-                @foreach (['monthly', 'one_time'] as $type)
+                {{-- T-189 — «جميع الحالات, دعم شهري, دعم لمرة واحدة». --}}
+                @foreach (['all', 'monthly', 'one_time'] as $type)
                     <button
                         type="button"
                         role="tab"
@@ -26,7 +54,7 @@
                             'background-color: var(--accent); color: var(--accent-contrast)' => $supportType === $type,
                             'color: var(--text-muted)' => $supportType !== $type,
                         ])
-                    >{{ __('sanabel.masked.need_type.' . $type) }}</button>
+                    >{{ $type === 'all' ? __('sanabel.public.all_cases') : __('sanabel.masked.need_type.' . $type) }}</button>
                 @endforeach
             </div>
 

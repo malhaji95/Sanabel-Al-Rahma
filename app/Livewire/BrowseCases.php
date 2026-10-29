@@ -16,8 +16,15 @@ class BrowseCases extends Component
 {
     use WithPagination;
 
+    /*
+     | T-189 — «الفلاتر: جميع الحالات, دعم شهري, دعم لمرة واحدة», 29 October.
+     |
+     | «جميع الحالات» is the one a visitor lands on: the page is for choosing
+     | a family, and starting it on one of the two kinds hides half of them
+     | behind a tab nobody was told to press.
+     */
     #[Url]
-    public string $supportType = 'monthly';
+    public string $supportType = 'all';
 
     #[Url]
     public ?int $regionId = null;
@@ -63,7 +70,18 @@ class BrowseCases extends Component
             'cases' => collect($list['cards']),
             'total' => $list['total'],
             'hasMore' => $list['total'] > $page * $perPage,
-            'regions' => Region::where('is_active', true)->orderBy('name_ar')->pluck('name_ar', 'id'),
+            /*
+             | T-189 — «والفلاتر التي في الأعلى فقط المناطق, لا نحتاج إظهار
+             | القرى», 29 October. One list of a hundred and forty-seven
+             | places, most of them villages a donor has never heard of, is
+             | not a filter anybody uses. The five areas are, and choosing one
+             | already covers every village under it — the ranking filters
+             | down the tree.
+             */
+            'regions' => Region::where('is_active', true)
+                ->where('type', 'area')
+                ->orderBy('name_ar')
+                ->pluck('name_ar', 'id'),
         ])->layout('layouts.app');
     }
 }
