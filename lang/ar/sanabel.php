@@ -714,6 +714,29 @@ return [
     ],
 
     /*
+     | T-185 — «أنثى لازم يكون الخيارات طالبة موظفة عاملة بالتاء التأنيث»,
+     | 29 October, with a photograph of a widow named «مها» being offered
+     | «طالب, موظف, عامل».
+     |
+     | The same pairing the marital states have had since T-121: one list for
+     | each, the keys identical, and only the word on the screen changing.
+     | What is saved for a student is `student` whichever list drew it.
+     |
+     | «ربة منزل» has no masculine twin in their own list and keeps its own
+     | word here; «أخرى» was already neutral.
+     */
+    'occupation_f' => [
+        'student' => 'طالبة',
+        'employee' => 'موظفة',
+        'worker' => 'عاملة',
+        'jobseeker' => 'باحثة عن عمل',
+        'retired' => 'متقاعدة',
+        'housewife' => 'ربة منزل',
+        'unable' => 'غير قادرة على العمل',
+        'other' => 'أخرى',
+    ],
+
+    /*
      | T-130 — أزرار الإضافة في الجداول المتكرّرة.
      | «لما يتم اختيار لا، تختفي مباشر جميع الخيارات التابعة لها … وزر الحذف
      | يعبر عن لا او اخفاء»: الجدول يبدأ فارغًا، وخلوّه هو «لا».

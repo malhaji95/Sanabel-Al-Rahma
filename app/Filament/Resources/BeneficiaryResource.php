@@ -865,7 +865,17 @@ class BeneficiaryResource extends Resource
                              */
                             Forms\Components\Select::make('occupation')
                                 ->label(__('sanabel.household_member.occupation'))
-                                ->options(__('sanabel.occupation'))
+                                /*
+                                 | T-185 — «أنثى لازم يكون الخيارات طالبة موظفة
+                                 | عاملة بالتاء التأنيث», 29 October, with a
+                                 | photograph of a widow being offered «طالب».
+                                 |
+                                 | The member's own gender, which the kinship
+                                 | has been filling in since T-129, so a row
+                                 | that says «ابنة» reads «طالبة» without
+                                 | anybody choosing twice.
+                                 */
+                                ->options(fn (Forms\Get $get) => self::occupationOptions($get('gender')))
                                 ->live()
                                 ->afterStateUpdated(fn ($state, Forms\Get $get, Forms\Set $set) => $set(
                                     'dependent',
@@ -2291,6 +2301,23 @@ class BeneficiaryResource extends Resource
         return $gender === 'female'
             ? __('sanabel.marital_status_f')
             : __('sanabel.marital_status');
+    }
+
+    /**
+     * T-185 — the status list, written for whoever is being asked.
+     *
+     * Keys unchanged, as with the marital states above: what is saved for a
+     * student is `student` whichever list drew it, and only the word on the
+     * screen moves. A member whose gender is not answered yet reads the
+     * masculine list, which is where every row started before this.
+     *
+     * @return array<string,string>
+     */
+    public static function occupationOptions(?string $gender): array
+    {
+        return $gender === 'female'
+            ? __('sanabel.occupation_f')
+            : __('sanabel.occupation');
     }
 
     /**

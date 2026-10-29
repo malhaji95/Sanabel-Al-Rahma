@@ -736,7 +736,13 @@ class MaskedCaseResource extends JsonResource
     private function occupation($member): ?string
     {
         if ($member->occupation) {
-            return $this->fromList('sanabel.occupation', $member->occupation);
+            // T-185 — «طالبة» for a daughter, «طالب» for a son. The donor's
+            // page reads the same list the form writes into, so a word
+            // corrected on one is corrected on the other.
+            return $this->fromList(
+                $member->gender === 'female' ? 'sanabel.occupation_f' : 'sanabel.occupation',
+                $member->occupation,
+            );
         }
 
         return match (true) {
