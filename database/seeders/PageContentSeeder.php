@@ -30,8 +30,16 @@ class PageContentSeeder extends Seeder
 {
     public const DIRECTORY = 'data/pages';
 
-    /** The placeholder the footer opened these pages with (T-99). */
-    private const PLACEHOLDER = 'هذه الصفحة بانتظار نصّها من الجمعية.';
+    /**
+     * The lines these pages were opened with and nobody has written over:
+     * the footer's placeholder (T-99) and the demonstration sentence the
+     * synthetic seeder leaves on «من نحن». Either is replaced by the
+     * association's own text; a line they have since written is not.
+     */
+    private const PLACEHOLDERS = [
+        'هذه الصفحة بانتظار نصّها من الجمعية.',
+        'صفحة تعريفية تجريبية يحررها المدير من لوحة التحكم.',
+    ];
 
     public function run(): void
     {
@@ -49,7 +57,7 @@ class PageContentSeeder extends Seeder
          | placeholder — but never a line the association has since written
          | over it.
          */
-        if (! $page->exists || $page->body_ar === self::PLACEHOLDER || blank($page->body_ar)) {
+        if (! $page->exists || in_array($page->body_ar, self::PLACEHOLDERS, true) || blank($page->body_ar)) {
             $page->fill([
                 'title_ar' => $content['page']['title_ar'],
                 'body_ar' => $content['page']['body_ar'] ?? null,

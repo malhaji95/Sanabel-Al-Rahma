@@ -72,13 +72,16 @@ it('fills every page the association sent, and none that they did not', function
         '/faq' => 'التعريف بالمنصة',
         '/financial-transparency' => 'كيف تتحقق من وضوح الأرقام؟',
         '/internal-oversight' => 'ماذا تراجع الرقابة؟ وكيف؟',
+        // T-196 — «من نحن», sent on 29 October in the same shape as the
+        // other five, and filled from the same kind of file.
+        '/about' => 'رؤيتنا الرقمية وكيف نعمل على تحقيقها',
     ] as $url => $heading) {
         expect($this->get($url)->assertOk()->getContent())->toContain($heading);
     }
 
-    // The two they have not written yet still say so rather than inventing
-    // words for them.
-    expect($this->get('/about')->assertOk()->getContent())
+    // The one they have not written yet still says so rather than inventing
+    // words for it.
+    expect($this->get('/contact')->assertOk()->getContent())
         ->toContain('بانتظار نصّها من الجمعية');
 });
 
