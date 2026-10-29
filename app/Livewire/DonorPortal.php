@@ -70,7 +70,7 @@ class DonorPortal extends Component
         $donor = auth()->user()->donor;
 
         $donations = $donor
-            ? $donor->donations()->with(['allocations.beneficiary', 'transferRecord'])->latest('id')->take(50)->get()
+            ? $donor->donations()->with(['allocations.beneficiary', 'transferRecord', 'receipt'])->latest('id')->take(50)->get()
             : collect();
 
         return view('livewire.donor-portal', [
@@ -90,6 +90,25 @@ class DonorPortal extends Component
                     ? app(MediaService::class)->temporaryUrl($donation->transferRecord, 15)
                     : null,
                 'designation_label' => __('sanabel.designation.'.$donation->designation),
+                /*
+                 | T-181 — «نعم نحتاج إضافة غير المؤكدة ومعها تاريخ والمبلغ
+                 | والحالة, ويعرض سبب الرفض والإيصال», 29 October.
+                 |
+                 | The waiting row was already here with its date, its amount
+                 | and its status; these two were not. A donor told «مرفوضة»
+                 | and nothing else has no idea whether to send the money
+                 | again or to send a clearer photograph of the slip.
+                 |
+                 | The reason is shown only on a refusal: on any other row it
+                 | is either empty or stale, and a reason beside a verified
+                 | transfer reads like a complaint about money that arrived.
+                 */
+                'reject_reason' => $donation->status === 'rejected' ? $donation->reject_reason : null,
+                // Their own slip, behind the same short-lived signed link the
+                // association's own paper uses: the file itself stays private.
+                'receipt' => $donation->receipt?->isServable()
+                    ? app(MediaService::class)->temporaryUrl($donation->receipt, 15)
+                    : null,
                 'created_at' => $donation->created_at->translatedFormat('Y-m-d'),
                 'cases' => $donation->allocations
                     ->filter(fn ($a) => $a->beneficiary !== null)

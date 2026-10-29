@@ -459,6 +459,27 @@ class SyntheticDataSeeder extends Seeder
         }
 
         /*
+         | T-181 — one refused transfer, with the sentence that refused it.
+         |
+         | The donor's page can now say why a receipt was turned down, and a
+         | demonstration with nothing refused in it shows an empty column and
+         | proves nothing. Refused through the service, so the row is a real
+         | refusal rather than a picture of one.
+         */
+        $refused = $donations->record([
+            'donor_id' => $donors[0]->id,
+            'amount' => 15_000,
+            'transaction_ref' => 'DEMO-TRX-0005',
+            'designation' => 'general',
+        ]);
+
+        $donations->reject(
+            $refused,
+            $staff['admin']->id,
+            'صورة الإيصال غير واضحة, الرجاء إعادة تصويرها مع ظهور رقم الحوالة والتاريخ.',
+        );
+
+        /*
          | T-97 — a spread, so the demo shows what was built.
          |
          | Before this the seeder funded four families and left the rest at

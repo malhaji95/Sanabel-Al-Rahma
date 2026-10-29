@@ -43,6 +43,19 @@ class Donation extends Model
         return $this->belongsTo(Media::class, 'transfer_record_media_id');
     }
 
+    /**
+     * T-181 — the donor's own deposit slip, the one they uploaded themselves.
+     *
+     * The other way round from `transferRecord()` above, and the two are
+     * easily confused: this is the paper the donor hands in, that is the paper
+     * the association hands back. A donor whose receipt was refused is shown
+     * their own, beside the reason, so they can see what was read.
+     */
+    public function receipt(): BelongsTo
+    {
+        return $this->belongsTo(Media::class, 'receipt_media_id');
+    }
+
     public function donor(): BelongsTo
     {
         return $this->belongsTo(Donor::class);

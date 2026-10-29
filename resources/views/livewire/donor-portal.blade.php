@@ -100,6 +100,7 @@
                         <th class="px-4 py-3 text-start font-medium">{{ __('sanabel.beneficiary.status') }}</th>
                         <th class="px-4 py-3 text-start font-medium">{{ __('sanabel.public.covered_files') }}</th>
                         <th class="px-4 py-3 text-start font-medium">{{ __('sanabel.donation.received_at') }}</th>
+                        <th class="px-4 py-3 text-start font-medium">{{ __('sanabel.donation.receipt') }}</th>
                         <th class="px-4 py-3 text-start font-medium">{{ __('sanabel.donation.transfer_record_seen') }}</th>
                     </tr>
                 </thead>
@@ -117,12 +118,35 @@
                                     'bg-gold-100 text-gold-800 dark:bg-gold-900/50 dark:text-gold-100' => $donation['status'] === 'pending',
                                     'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-100' => $donation['status'] === 'reversed',
                                 ])>{{ $donation['status_label'] }}</span>
+
+                                {{-- T-181 — a refusal says what was wrong with
+                                     it. «مرفوضة» on its own leaves the donor
+                                     guessing whether to send the money again
+                                     or to photograph the slip again. --}}
+                                @if ($donation['reject_reason'])
+                                    <p class="mt-1.5 max-w-xs text-xs leading-relaxed" style="color: var(--text-muted);">
+                                        {{ $donation['reject_reason'] }}
+                                    </p>
+                                @endif
                             </td>
                             {{-- File numbers only. Nothing that identifies a family. --}}
                             <td class="tabular px-4 py-3 text-xs" style="color: var(--text-muted);">
                                 {{ $donation['cases']->join('، ') ?: '—' }}
                             </td>
                             <td class="tabular px-4 py-3" style="color: var(--text-muted);">{{ $donation['created_at'] }}</td>
+                            {{-- T-181 — the donor's own slip, so they can see
+                                 what the treasurer was reading. --}}
+                            <td class="px-4 py-3 text-xs">
+                                @if ($donation['receipt'])
+                                    <a href="{{ $donation['receipt'] }}" target="_blank" rel="noopener"
+                                       class="font-medium" style="color: var(--brand-primary);">
+                                        {{ __('sanabel.donation.receipt_open') }}
+                                    </a>
+                                @else
+                                    <span style="color: var(--text-muted);">{{ __('sanabel.donation.receipt_none') }}</span>
+                                @endif
+                            </td>
+
                             {{-- Proof the association moved the money onward. --}}
                             <td class="px-4 py-3 text-xs">
                                 @if ($donation['transfer_record'])
