@@ -53,6 +53,7 @@ RUN apk add --no-cache \
     && rm -rf /var/cache/apk/*
 
 COPY docker/php.ini /usr/local/etc/php/conf.d/99-sanabel.ini
+COPY docker/php-fpm-pool.conf /usr/local/etc/php-fpm.d/zz-sanabel.conf
 COPY docker/nginx.conf /etc/nginx/nginx.conf.template
 COPY docker/supervisord.conf /etc/supervisord.conf
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint
