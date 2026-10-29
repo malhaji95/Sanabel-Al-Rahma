@@ -41,6 +41,11 @@
                     {{ __('sanabel.public.donate_now') }}
                 </a>
 
+                {{-- T-180 — and the way to keep this family, on the page a
+                     shared link lands on. Drawn for a signed-in donor only;
+                     the component decides that for itself. --}}
+                <livewire:favourite-toggle :file-number="$card['file_number']" />
+
                 @if ($card['can_share'] ?? true)
                     <x-share-button
                         :url="route('opportunity', $card['file_number'])"

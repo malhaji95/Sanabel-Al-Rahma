@@ -69,6 +69,16 @@
                                 :coverage-month="$case['coverage_month'] ?? null"
                                 :key="'basket-' . $case['file_number'] . '-' . ($case['coverage_month'] ?? '')"
                             />
+
+                            {{-- T-180 — keep this family, to come back to. Under
+                                 the giving box, not over it: the card is an
+                                 invitation to give first. --}}
+                            <div class="mt-2">
+                                <livewire:favourite-toggle
+                                    :file-number="$case['file_number']"
+                                    :key="'fav-' . $case['file_number']"
+                                />
+                            </div>
                         @else
                             {{--
                                 T-168 — «تبرعات الملفات بالالوان ونسبة الانجاز

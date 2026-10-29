@@ -44,6 +44,7 @@
             @foreach ([
                 ['label' => __('sanabel.public.account_home'), 'href' => route('donor.portal')],
                 ['label' => __('sanabel.public.basket'), 'href' => route('donor.basket')],
+                ['label' => __('sanabel.favourites.title'), 'href' => route('donor.favourites')],
                 ['label' => __('sanabel.public.zakat_due'), 'href' => route('cases.browse', ['zakat' => 1])],
             ] as $item)
                 <a href="{{ $item['href'] }}" class="block px-4 py-2.5 text-sm no-underline hover:opacity-80">

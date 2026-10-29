@@ -5,6 +5,7 @@ use App\Http\Controllers\FieldController;
 use App\Http\Controllers\PublicController;
 use App\Livewire\BrowseCases;
 use App\Livewire\DonorBasket;
+use App\Livewire\DonorFavourites;
 use App\Livewire\DonorPortal;
 use App\Livewire\FamilyPortal;
 use App\Livewire\GeneralDonation;
@@ -65,6 +66,10 @@ Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 Route::middleware('auth')->group(function () {
     Route::get('/portal', DonorPortal::class)->name('donor.portal');
     Route::get('/portal/basket', DonorBasket::class)->name('donor.basket');
+
+    // T-180 — the families this donor kept, to come back to. Paying does not
+    // take one off the list; only the donor does.
+    Route::get('/portal/favourites', DonorFavourites::class)->name('donor.favourites');
 
     // The household's own page: their file, and the one question only they
     // may answer — did the money arrive.

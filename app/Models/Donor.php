@@ -7,6 +7,7 @@ use App\Models\Concerns\TracksCreator;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -55,6 +56,19 @@ class Donor extends Model
     public function baskets(): HasMany
     {
         return $this->hasMany(Basket::class);
+    }
+
+    /**
+     * T-180 — the families this donor kept, to come back to.
+     *
+     * Paying for one does not take it off: «وعند السداد لهم تبقى في المفضلة
+     * للعودة لها متى ما شاء». Only the donor removes a family from here.
+     */
+    public function favourites(): BelongsToMany
+    {
+        return $this->belongsToMany(Beneficiary::class, 'donor_favourites')
+            ->withTimestamps()
+            ->orderByPivot('created_at', 'desc');
     }
 
     /** Badges by verified donation count — silver >= 3, gold >= 10 (docs/07). */
