@@ -75,11 +75,17 @@ it('browses cases without leaking anything identifying', function () {
     $response->assertSuccessful();
 });
 
-it('shows monthly and one-time cases as two separate lists', function () {
+/*
+ | T-189 — «الفلاتر: جميع الحالات, دعم شهري, دعم لمرة واحدة», 29 October.
+ | The page used to open on the monthly half of the list; it opens on the
+ | whole of it now, and the two kinds are still a filter apart.
+ */
+it('shows monthly and one-time cases as two lists a filter apart', function () {
     $monthly = publishedCase($this->region, attributes: ['support_type' => 'monthly']);
     $oneTime = publishedCase($this->region, attributes: ['support_type' => 'one_time']);
 
     Livewire::test(BrowseCases::class)
+        ->set('supportType', 'monthly')
         ->assertSee($monthly->file_number)
         ->assertDontSee($oneTime->file_number)
         ->set('supportType', 'one_time')
