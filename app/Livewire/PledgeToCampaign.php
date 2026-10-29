@@ -22,6 +22,18 @@ class PledgeToCampaign extends Component
     // Named `notice`, not `message`: Blade's @error directive binds $message.
     public ?string $notice = null;
 
+    /*
+     | T-190 — «المشكلة التي كانت بالحالة بعدها موجودة بالحملات, نحتاجها تُطبَّق
+     | بكل شيء فيه دفع بالمنصة: عند الدفع يظهر لك مواصلة العطاء أو إتمام
+     | التبرع», 29 October.
+     |
+     | T-147 answered it for a family: the page does not move, and the donor
+     | is offered the two ways on rather than having one taken for them. A
+     | campaign was left with a line of text and no way forward, so a donor who
+     | had just pledged had to find the basket themselves.
+     */
+    public bool $added = false;
+
     public function mount(Campaign $campaign): void
     {
         $this->campaignId = $campaign->getKey();
@@ -49,7 +61,15 @@ class PledgeToCampaign extends Component
         app(BasketService::class)->addCampaign($basket, $campaign, (int) $this->amount);
 
         $this->notice = __('sanabel.public.added_to_basket');
+        $this->added = true;
         $this->dispatch('basket-updated');
+    }
+
+    /** T-190 — back to the form, on this page, with nothing lost. */
+    public function keepGiving(): void
+    {
+        $this->added = false;
+        $this->notice = null;
     }
 
     public function render()

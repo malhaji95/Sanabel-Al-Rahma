@@ -24,7 +24,23 @@
         @enderror
     @endif
 
-    @if ($notice)
+    {{-- T-190 — the two ways on, as a family's card has offered since T-147.
+         Neither is taken for the donor, and the page has not moved. --}}
+    @if ($added)
+        <div class="mt-2 rounded-xl p-3" style="background: var(--surface-muted, rgba(0,0,0,.03));">
+            <p class="text-xs font-medium" style="color: var(--accent);">{{ $notice }}</p>
+
+            <div class="mt-2 flex flex-wrap gap-2">
+                <button type="button" wire:click="keepGiving" class="btn-secondary flex-1 justify-center text-sm">
+                    {{ __('sanabel.public.continue_donating') }}
+                </button>
+
+                <a href="{{ route('donor.basket') }}" class="btn-primary flex-1 justify-center text-sm no-underline">
+                    {{ __('sanabel.public.complete_donation') }}
+                </a>
+            </div>
+        </div>
+    @elseif ($notice)
         <p class="mt-2 text-xs font-medium" style="color: var(--accent);" x-data x-init="$nextTick(() => $el.scrollIntoView({ behavior: 'smooth', block: 'center' }))">{{ $notice }}</p>
     @endif
 </div>
