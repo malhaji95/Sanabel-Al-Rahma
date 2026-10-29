@@ -50,6 +50,8 @@ class SecurityHeaders
 
         if ($this->mustNotStore($request, $config['no_store'])) {
             $this->forbidStoring($response);
+        } else {
+            $this->allowStoring($response);
         }
 
         /*
@@ -104,6 +106,42 @@ class SecurityHeaders
         $response->headers->set('Pragma', 'no-cache');
         $response->headers->set('Expires', '0');
         $response->headers->set('Vary', 'Cookie', false);
+    }
+
+    /**
+     * T-199 — and a public page stays a public page, whatever rendered it.
+     *
+     * Livewire marks every response that boots a component `no-store`, so the
+     * back button cannot show a component holding yesterday's state. It is a
+     * blanket: one counter strip on the front page made the most-visited page
+     * on the site unstorable by every browser and every cache in front of it.
+     *
+     * The decision about what may be kept is `no_store` in config — signed in,
+     * or one of the listed paths — and it already says in as many words that
+     * the public pages are not in it. This is that decision applied rather
+     * than merely stated: a response the rule leaves public is handed back
+     * storable, and only `no-store` is lifted. `no-cache` stays, so the
+     * browser revalidates before it shows the page again, and `private` keeps
+     * it out of any shared cache — which is what `Vary: Cookie` is for too,
+     * since the top bar reads the session.
+     *
+     * A response the application marked itself is left exactly as it is.
+     */
+    private function allowStoring(Response $response): void
+    {
+        $control = (string) $response->headers->get('Cache-Control');
+
+        if (! str_contains($control, 'no-store')) {
+            return;
+        }
+
+        $response->headers->set('Cache-Control', 'private, no-cache, must-revalidate');
+        $response->headers->set('Vary', 'Cookie', false);
+
+        // Livewire sets both, and an `Expires` in 1990 says `no-store` again
+        // to anything too old to read the line above it.
+        $response->headers->remove('Pragma');
+        $response->headers->remove('Expires');
     }
 
     /** @param  array<string,mixed>  $csp */

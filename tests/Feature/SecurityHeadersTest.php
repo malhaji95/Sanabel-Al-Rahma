@@ -282,3 +282,36 @@ it('follows the demo seed unless it is told otherwise', function () {
         ->and(file_get_contents(base_path('config/sanabel.php')))
         ->toContain("env('SANABEL_ALLOW_INDEXING', ! env('DEMO_SEED', false))");
 })->group('APP-06');
+
+/*
+ | T-199 — the front page carries a Livewire component since T-183, and
+ | Livewire marks every response that boots one `no-store`. That made the
+ | most-visited page on the site unstorable by every browser in front of it,
+ | which is the opposite of what the counter was for.
+ */
+it('leaves a public page storable even when Livewire rendered it', function () {
+    $control = (string) $this->get('/')->headers->get('Cache-Control');
+
+    expect($this->get('/')->assertOk()->getContent())
+        // The page really is a Livewire page; the guard is worthless if it
+        // ever stops being one.
+        ->toContain('wire:id')
+        ->and(str_contains($control, 'no-store'))->toBeFalse($control)
+        // Storable, not freely shareable: it revalidates, and no shared cache
+        // may hold it.
+        ->and($control)->toContain('no-cache')
+        ->and($control)->toContain('private');
+})->group('APP-07');
+
+it('leaves no 1990 Expires behind to say no-store in another way', function () {
+    $response = $this->get('/');
+
+    expect($response->headers->get('Expires'))->toBeNull()
+        ->and($response->headers->get('Pragma'))->toBeNull();
+})->group('APP-07');
+
+it('still refuses to store the same page once somebody has signed in', function () {
+    $this->actingAs(userWithRole('donor'));
+
+    expect((string) $this->get('/')->headers->get('Cache-Control'))->toContain('no-store');
+})->group('APP-07');
