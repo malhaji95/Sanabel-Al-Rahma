@@ -12,6 +12,7 @@ use App\Models\HealthRecord;
 use App\Models\HouseholdMember;
 use App\Models\Income;
 use App\Models\Referral;
+use App\Models\Region;
 use App\Models\Sponsorship;
 use App\Models\User;
 use App\Models\Visit;
@@ -105,13 +106,15 @@ class DuplicateService
      *
      * @return array{registered:bool,has_active_assessment:bool,supported_this_period:bool,coverage:string}
      */
-    public function coordinationLookup(string $nationalId): array
+    public function coordinationLookup(string $nationalId, ?User $askedBy = null): array
     {
+        $askedBy ??= auth()->user();
         $case = $this->existingFile($nationalId);
 
         if (! $case) {
             return [
                 'registered' => false,
+                'resident' => false,
                 'assessment_state' => 'none',
                 'has_active_assessment' => false,
                 'supported_this_period' => false,
@@ -134,11 +137,44 @@ class DuplicateService
 
         return [
             'registered' => true,
+            // T-182 — «يظهر فقط مسجلة, مقيمة, وهل مدعومة, بدون اسم أو عنوان»,
+            // 29 October. «مسجلة» has always been answered across the whole
+            // country, because that is what stops two associations opening one
+            // family twice. «مقيمة» is the other half of the question they
+            // actually ask: is she one of mine. A place, answered as a yes or
+            // a no — never the place itself.
+            'resident' => $this->isResidentInScopeOf($case, $askedBy),
             'assessment_state' => $state,
             // Kept beside the new value: partner systems already read it.
             'has_active_assessment' => $state === 'active',
             'supported_this_period' => $coverage->confirmedForMonth($case) > 0,
             'coverage' => $coverage->coverageLabel($case),
         ];
+    }
+
+    /**
+     * T-182 — whether this family lives inside the asking account's own area.
+     *
+     * «الاستعلام برقم الهوية يتم ضمن منطقته كاملة»: an association coordinates
+     * over its whole area, not over the files it happens to have opened, so the
+     * question is asked of the area above the locality and answered down every
+     * village under it.
+     *
+     * An account tied to no region — the administrator, a director — is tied to
+     * no area either, so there is no area for the family to be inside: the
+     * answer is no, and the four values beside it are unchanged. It says
+     * nothing about where the family is in any case; it says whether they are
+     * here, which is what a coordinating association is deciding on.
+     */
+    private function isResidentInScopeOf(Beneficiary $case, ?User $askedBy): bool
+    {
+        $own = $askedBy?->region_id
+            ? Region::withoutGlobalScopes()->find($askedBy->region_id)
+            : null;
+
+        $area = $own?->ancestorOfType('area') ?? $own;
+
+        return $area !== null
+            && in_array((int) $case->region_id, Region::descendantIds($area->id), true);
     }
 }

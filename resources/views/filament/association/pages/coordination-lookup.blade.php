@@ -11,8 +11,12 @@
         {{-- A handful of values. Nothing that identifies the family is here. --}}
         <x-filament::section :heading="__('sanabel.actions.lookup')" class="mt-6">
             <dl class="grid gap-4 sm:grid-cols-2">
+                {{-- T-182 — «مقيمة»: whether this family is one of yours. A
+                     yes or a no about your own area, never the place itself,
+                     and never a name beside it. --}}
                 @foreach ([
                     'registered' => __('sanabel.coordination.registered'),
+                    'resident' => __('sanabel.coordination.resident'),
                     'supported_this_period' => __('sanabel.coordination.supported_this_period'),
                 ] as $key => $label)
                     <div>
