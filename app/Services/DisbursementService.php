@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Models\Beneficiary;
 use App\Models\Complaint;
 use App\Models\Disbursement;
+use App\Models\DisbursementFunding;
 use App\Models\DisbursementOrder;
+use App\Models\DonationAllocation;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\Money;
@@ -55,15 +57,117 @@ class DisbursementService
             ]));
         }
 
-        return Disbursement::create([
-            'beneficiary_id' => $beneficiary->getKey(),
-            'amount' => $amount,
-            'currency' => config('sanabel.currency'),
-            'period' => $period,
-            'status' => 'confirmed',
-            'confirmed_by' => $officer->getKey(),
-            'confirmed_at' => now(),
-        ]);
+        /*
+         | T-213 — «لازم نمنع صرف نفس التبرع مرتين», 1 November.
+         |
+         | The line is written and its money is drawn in one transaction.
+         | Drawn here rather than at the transfer, because two orders can be
+         | approved over the same donation long before either is paid, and
+         | by then the second one is a decision somebody has already signed.
+         |
+         | Rule 6: the allocations are locked before they are read, so two
+         | desks confirming at the same instant cannot both see the same
+         | balance and both spend it.
+         */
+        return DB::transaction(function () use ($beneficiary, $amount, $period, $officer) {
+            $line = Disbursement::create([
+                'beneficiary_id' => $beneficiary->getKey(),
+                'amount' => $amount,
+                'currency' => config('sanabel.currency'),
+                'period' => $period,
+                'status' => 'confirmed',
+                'confirmed_by' => $officer->getKey(),
+                'confirmed_at' => now(),
+            ]);
+
+            $this->drawEarmarked($line);
+
+            return $line;
+        });
+    }
+
+    /**
+     * T-213 — takes this payment's money out of the family's earmarked
+     * donations, oldest first, and records what it took from each.
+     *
+     * Oldest first because a donation that has waited longest is the one the
+     * association means to spend, and because any other order would need a
+     * rule nobody has written.
+     *
+     * A payment may be larger than everything earmarked for the family — the
+     * rest comes from the general fund, which is not held per donor and has
+     * no row to draw from. That is not an error: it draws what exists and
+     * leaves the remainder unbacked, which is the truth of where the money
+     * came from.
+     *
+     * The database refuses a draw past what was given (the CHECK on
+     * `drawn_amount`), so the arithmetic here is checked rather than trusted.
+     */
+    private function drawEarmarked(Disbursement $line): void
+    {
+        $remaining = (int) $line->amount;
+
+        $allocations = DonationAllocation::query()
+            ->where('donation_allocations.beneficiary_id', $line->beneficiary_id)
+            ->join('donations', 'donations.id', '=', 'donation_allocations.donation_id')
+            // Only money that actually arrived, and never a reversal row.
+            ->where('donations.status', 'verified')
+            ->whereNull('donations.deleted_at')
+            ->whereNull('donations.reversal_of_id')
+            ->whereColumn('donation_allocations.drawn_amount', '<', 'donation_allocations.amount')
+            ->orderBy('donation_allocations.id')
+            ->select('donation_allocations.*')
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($allocations as $allocation) {
+            if ($remaining <= 0) {
+                break;
+            }
+
+            $take = min($remaining, $allocation->undrawn());
+
+            if ($take <= 0) {
+                continue;
+            }
+
+            $allocation->forceFill(['drawn_amount' => (int) $allocation->drawn_amount + $take])->save();
+
+            DisbursementFunding::create([
+                'disbursement_id' => $line->getKey(),
+                'donation_allocation_id' => $allocation->getKey(),
+                'amount' => $take,
+                'currency' => $line->currency,
+            ]);
+
+            $remaining -= $take;
+        }
+    }
+
+    /**
+     * T-213 — and gives it back when the payment does not happen.
+     *
+     * A rejected or failed line must release what it drew, or one bounced
+     * transfer would lock a donor's money out of the family it was given to
+     * for good.
+     */
+    private function releaseEarmarked(Disbursement $line): void
+    {
+        DB::transaction(function () use ($line) {
+            $fundings = DisbursementFunding::where('disbursement_id', $line->getKey())->get();
+
+            foreach ($fundings as $funding) {
+                $allocation = DonationAllocation::whereKey($funding->donation_allocation_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                $allocation?->forceFill([
+                    'drawn_amount' => max(0, (int) $allocation->drawn_amount - (int) $funding->amount),
+                ])->save();
+
+                $funding->delete();
+            }
+        });
     }
 
     /**
@@ -226,6 +330,10 @@ class DisbursementService
             throw new \RuntimeException(__('sanabel.disbursement.cannot_reject'));
         }
 
+        // T-213 — a line set aside gives its earmarked money back, so the
+        // next order may spend it.
+        $this->releaseEarmarked($disbursement);
+
         $disbursement->forceFill([
             'status' => 'rejected',
             'approved_by' => $approver->getKey(),
@@ -317,6 +425,10 @@ class DisbursementService
         if ($disbursement->status !== 'approved') {
             throw new \RuntimeException(__('sanabel.disbursement.approve_before_executing'));
         }
+
+        // T-213 — a transfer that bounced gives its money back too, or one
+        // bad account number would lock a donor's gift away for good.
+        $this->releaseEarmarked($disbursement);
 
         $disbursement->forceFill(['status' => 'failed', 'failure_reason_ar' => $reasonAr])->save();
 

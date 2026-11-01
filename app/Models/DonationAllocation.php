@@ -13,7 +13,15 @@ class DonationAllocation extends Model
 
     protected $fillable = ['donation_id', 'beneficiary_id', 'campaign_id', 'coverage_month', 'amount', 'currency'];
 
-    protected $casts = ['amount' => 'integer', 'coverage_month' => 'date'];
+    // T-213 — `drawn_amount` is deliberately absent from $fillable: it is
+    // moved by the service inside a locked transaction and by nothing else.
+    protected $casts = ['amount' => 'integer', 'drawn_amount' => 'integer', 'coverage_month' => 'date'];
+
+    /** T-213 — what is left of this allocation to pay a family with. */
+    public function undrawn(): int
+    {
+        return max(0, (int) $this->amount - (int) $this->drawn_amount);
+    }
 
     public function donation(): BelongsTo
     {
