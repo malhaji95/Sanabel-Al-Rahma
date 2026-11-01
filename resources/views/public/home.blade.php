@@ -200,8 +200,28 @@
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             @foreach ($cases->take(3) as $case)
                 <x-masked-case-card :case="$case">
+                    {{-- T-207 — «هون ما في يحط المبلغ ويحط إضافة بالسلة…
+                         هون احنا نحتاج متل هيك, إنه يقدر يحط المبلغ»,
+                         30 October.
+
+                         The same box the list at /cases carries. A donor who
+                         meets a family on the front page had to open the
+                         file, then the list, before they could give; and the
+                         «تبرع الآن» tile beside these cards goes straight to
+                         the payment page, which is a different thing and not
+                         a replacement for it. --}}
+                    @auth
+                        <livewire:add-to-basket
+                            :file-number="$case['file_number']"
+                            :remaining="$case['remaining_amount']"
+                            :target-remaining="$case['target_remaining'] ?? 0"
+                            :coverage-month="$case['coverage_month'] ?? null"
+                            :key="'home-basket-' . $case['file_number'] . '-' . ($case['coverage_month'] ?? '')"
+                        />
+                    @endauth
+
                     <a href="{{ route('opportunity', $case['file_number']) }}"
-                       class="btn-primary w-full justify-center gap-1 no-underline">
+                       class="btn-secondary mt-2 w-full justify-center gap-1 no-underline">
                         {{ __('sanabel.public.more_info') }}
                         <x-brand.icon name="chevron-left" class="h-4 w-4" />
                     </a>
