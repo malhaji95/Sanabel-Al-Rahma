@@ -2464,8 +2464,58 @@ class BeneficiaryResource extends Resource
                     })
                     ->deselectRecordsAfterCompletion(),
             ])
+            /*
+             | T-223 — «يكون محجوب, يظهر له متل رسالة انه هو بغير منطقة
+             | محجوب عنك», 1 November.
+             |
+             | A delegate in Izra' types a file number from Bosra. The
+             | region scope takes the row out of the query and the screen
+             | says «لا توجد نتائج» — the same words it says for a number
+             | that was never written down. So the delegate reads «this
+             | family is not in the system», rings the office, and the
+             | office tells them it is, and that they cannot see it.
+             |
+             | The file stays hidden. Only the reason is published: that a
+             | file with this number exists and belongs to another area.
+             | No name, no area, no figure — the association weighed that
+             | sentence against a delegate hunting a file that was never
+             | theirs to find, and chose the sentence.
+             */
+            ->emptyStateHeading(fn ($livewire) => self::outOfScopeFileNumber($livewire)
+                ? __('sanabel.beneficiary.file_in_another_region')
+                : null)
+            ->emptyStateDescription(fn ($livewire) => self::outOfScopeFileNumber($livewire)
+                ? __('sanabel.beneficiary.file_in_another_region_help')
+                : null)
             ->defaultSort('id', 'desc')
             ->paginated([25, 50, 100]);
+    }
+
+    /**
+     * T-223 — whether what was searched for is a file this account may not see.
+     *
+     * Only ever asked when the account's own list came back empty, and only
+     * answered for an account the region scope actually holds: for everybody
+     * else an empty list means there is nothing, which is already the truth.
+     *
+     * The lookup drops the region scope on purpose and reads one column, so
+     * nothing of the file is loaded and nothing of it can leak through the
+     * answer: it returns a boolean.
+     */
+    private static function outOfScopeFileNumber($livewire): bool
+    {
+        $term = trim((string) ($livewire->tableSearch ?? ''));
+        $user = auth()->user();
+
+        if ($term === '' || ! $user?->region_id
+            || ! in_array($user->role?->key, RegionScope::SCOPED_ROLES, true)) {
+            return false;
+        }
+
+        return Beneficiary::query()
+            ->withoutGlobalScope(RegionScope::class)
+            ->whereRaw('lower(file_number) = ?', [mb_strtolower($term)])
+            ->exists();
     }
 
     /**
