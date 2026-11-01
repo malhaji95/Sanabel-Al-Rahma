@@ -38,6 +38,8 @@ class ProviderPanelProvider extends PanelProvider
             // Filament. The field PWA is a plain route and is unaffected.
             ->spa()
             ->path('provider')
+            // T-200 — the same narrowed sidebar as the admin panel.
+            ->sidebarWidth('16rem')
             ->login()
             ->brandName(__('sanabel.app_name'))
             // The name-only version: a panel top bar is not room for the full lockup.

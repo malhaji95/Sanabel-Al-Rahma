@@ -79,6 +79,24 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::USER_MENU_BEFORE,
                 fn (): View => view('filament.components.signed-in-as'),
             )
+            /*
+             | T-200 — «ما صغّرتها, بحيث يكون العرض أصغر من هيك والمعلومات
+             | تكون واضحة», 1 November, over a screenshot of the files list
+             | with the sidebar drawn round in red.
+             |
+             | Filament's own sidebar is 20rem — three hundred and twenty
+             | pixels of mostly empty column beside a table of nine columns
+             | that was being squeezed for them. Sixteen is the narrowest
+             | that still holds the longest row in the navigation, «طلبات
+             | المسار الصحي», without clipping it: fifteen was tried first
+             | and cut it to «طلبات المسار ال…». The other four-and-a-half
+             | rems go back to the files.
+             |
+             | `sidebarWidth()` is Filament's own setting, so the drawer on a
+             | phone, the collapsed rail and the content offset all move with
+             | it; a stylesheet override would have moved one of the three.
+             */
+            ->sidebarWidth('16rem')
             ->defaultThemeMode(ThemeMode::System)
             ->navigationGroups([
                 NavigationGroup::make(__('sanabel.nav.beneficiaries')),
