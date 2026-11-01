@@ -211,6 +211,26 @@ class SyntheticDataSeeder extends Seeder
             'documented_debt' => $index % 6 === 0 ? 150_000 : 0,
             'urgency_deadline_at' => $index % 7 === 0 ? now()->addDays(20) : null,
             /*
+             | T-205, T-208, T-217 — the door a sponsorship falls under.
+             |
+             | The demonstration carried none at all, and the feature is
+             | built to show only the doors a published family is actually
+             | behind — so the row of doors was empty, the badges were
+             | blank, and the whole of it was invisible on the demo site
+             | while passing every test. A seeder that does not say what
+             | the association says hides the work from the people who
+             | asked for it.
+             |
+             | The three they named, and «فقير» for the rest, so the filter
+             | has more than one door to be a filter at all.
+             */
+            'case_classifications' => match (true) {
+                $index % 4 === 0 => ['widowed', 'orphan'],
+                $index % 5 === 0 => ['student'],
+                $index % 3 === 0 => ['orphan'],
+                default => ['poor'],
+            },
+            /*
              | T-106 — the paragraph the association writes for the donor.
              | Two thirds of the demonstration families carry one, and half
              | of those are approved: the screens have to show a story, a
