@@ -19,7 +19,8 @@ class HealthRecord extends Model
         'ongoing_treatment', 'treatment_place_ar', 'medicines_ar', 'doctor_name_ar',
         'doctor_phone_encrypted',
         // T-164 — the kinds a donor is shown, beside the names for the committee.
-        'medicine_kinds',
+        // T-222 — and a box for the kind the list forgot, which stays inside.
+        'medicine_kinds', 'medicine_kinds_other_ar',
     ];
 
     // The doctor's own number is somebody's telephone number too.

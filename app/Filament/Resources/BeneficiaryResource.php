@@ -1476,7 +1476,17 @@ class BeneficiaryResource extends Resource
                                 ->label(__('sanabel.health.medicine_kinds'))
                                 ->helperText(__('sanabel.health.medicine_kinds_help'))
                                 ->options(__('sanabel.medicine_kinds'))
+                                ->live()
                                 ->columns(2)
+                                ->columnSpanFull(),
+
+                            // T-222 — the way out of a closed list, on the
+                            // same pattern housing already carries (T-169).
+                            Forms\Components\TextInput::make('medicine_kinds_other_ar')
+                                ->label(__('sanabel.health.medicine_kinds_other_ar'))
+                                ->helperText(__('sanabel.health.medicine_kinds_other_help'))
+                                ->visible(fn (Forms\Get $get) => in_array('other', (array) $get('medicine_kinds'), true))
+                                ->required(fn (Forms\Get $get) => in_array('other', (array) $get('medicine_kinds'), true))
                                 ->columnSpanFull(),
 
                             Forms\Components\Textarea::make('description_ar')->label(__('sanabel.health.description'))->columnSpanFull(),
