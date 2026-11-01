@@ -275,6 +275,30 @@ class DisbursementService
             );
         }
 
+        /*
+         | T-215 — «رسالة المستفيد تنرسل بعد تسجيل تنفيذ التحويل وإثباته, مو
+         | بمجرد اعتماد أمر الصرف», 1 November.
+         |
+         | It is sent from here and from nowhere else, which is what they
+         | asked: `approve()` tells the treasurer and no one else, so no
+         | household has ever been told about money that had not moved. What
+         | was missing is that none was told when it did move either — they
+         | learned it only by opening their own page.
+         |
+         | And it is sent after the reference and the proof are written
+         | above, not before: a household asked to confirm a transfer whose
+         | reference does not yet exist has nothing to confirm against.
+         |
+         | The message carries the file number and no figure (rule 10 keeps
+         | notification bodies to the allowlist, and the amount is on their
+         | own page behind their own login, which is where they answer).
+         */
+        $this->notifications->send(
+            $disbursement->beneficiary?->user_id,
+            'disbursement_to_confirm',
+            ['file_number' => $disbursement->beneficiary?->file_number],
+        );
+
         return $disbursement->refresh();
     }
 
