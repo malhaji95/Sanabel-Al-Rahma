@@ -2189,14 +2189,24 @@ class BeneficiaryResource extends Resource
                          | Under the status badge, which is the thing it
                          | explains, and in the colour of that badge.
                          */
+                        /*
+                         | T-211 — the lines are gathered rather than
+                         | returned one by one. The first draft of the story
+                         | line returned early and swallowed the overdue
+                         | review warning on every published file that had
+                         | no story yet, which is most of them. Two things
+                         | can be owed on one file, and the operations one is
+                         | not the one to drop.
+                         */
+                        $lines = [];
+
+                        $tint = fn (string $colour, string $text) => '<span class="text-'.$colour.'-600 dark:text-'
+                            .$colour.'-400">'.e($text).'</span>';
+
                         $reason = trim((string) $record->reject_reason_ar);
 
                         if ($reason !== '' && in_array($record->status, ['rejected', 'returned', 'suspended'], true)) {
-                            $colour = $record->status === 'returned' ? 'warning' : 'danger';
-
-                            return new HtmlString(
-                                '<span class="text-'.$colour.'-600 dark:text-'.$colour.'-400">'.e($reason).'</span>'
-                            );
+                            $lines[] = $tint($record->status === 'returned' ? 'warning' : 'danger', $reason);
                         }
 
                         /*
@@ -2214,24 +2224,19 @@ class BeneficiaryResource extends Resource
                         if ($record->status === 'published'
                             && $record->story_approved_at === null
                             && ! $record->isAnonymised()) {
-                            return new HtmlString(
-                                '<span class="text-warning-600 dark:text-warning-400">'
-                                .e(__('sanabel.beneficiary.'.(blank($record->story_ar) ? 'story_missing' : 'story_awaiting')))
-                                .'</span>'
+                            $lines[] = $tint(
+                                'warning',
+                                __('sanabel.beneficiary.'.(blank($record->story_ar) ? 'story_missing' : 'story_awaiting'))
                             );
                         }
 
-                        $due = $record->next_assessment_due_at;
+                        if ($due = $record->next_assessment_due_at) {
+                            $line = __('sanabel.beneficiary.next_assessment').': '.$due->format('Y-m-d');
 
-                        if (! $due) {
-                            return null;
+                            $lines[] = $due->isPast() ? $tint('danger', $line) : e($line);
                         }
 
-                        $line = __('sanabel.beneficiary.next_assessment').': '.$due->format('Y-m-d');
-
-                        return $due->isPast()
-                            ? new HtmlString('<span class="text-danger-600 dark:text-danger-400">'.e($line).'</span>')
-                            : $line;
+                        return $lines === [] ? null : new HtmlString(implode('<br>', $lines));
                     }),
 
                 Tables\Columns\TextColumn::make('fieldVerifier.name')
