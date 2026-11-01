@@ -169,6 +169,82 @@ class DisbursementResource extends Resource
                     ->placeholder('—'),
                 Tables\Columns\TextColumn::make('confirmedBy.name')
                     ->label(__('sanabel.disbursement.confirmed_by'))->toggleable(),
+
+                /*
+                 | T-214 — «إغلاق متابعة المستفيد غير إغلاق التدقيق المالي»,
+                 | 1 November. Two closings, so two readings: the status
+                 | column above says what happened to the money, and this
+                 | one says what the data desk has done about the line.
+                 */
+                Tables\Columns\TextColumn::make('followup_closed_at')
+                    ->label(__('sanabel.disbursement.followup'))
+                    ->badge()
+                    ->state(fn (Disbursement $record) => match (true) {
+                        $record->followup_closed_at !== null => __('sanabel.disbursement.followup_closed_badge'),
+                        $record->returned_to_treasurer_at !== null => __('sanabel.disbursement.followup_with_treasurer'),
+                        in_array($record->status, ['received', 'disputed'], true) => __('sanabel.disbursement.followup_open'),
+                        default => null,
+                    })
+                    ->color(fn (Disbursement $record) => match (true) {
+                        $record->followup_closed_at !== null => 'success',
+                        $record->returned_to_treasurer_at !== null => 'warning',
+                        default => 'gray',
+                    })
+                    ->placeholder(''),
+            ])
+            ->actions([
+                /*
+                 | T-214 — «ردود المستفيدين بترجع عنده بصفحة التبرعات،
+                 | وبيشوف مين استلم ومين ما استلم. اللي أكد الاستلام وكان
+                 | عنده إثبات تحويل صحيح، بيقفل متابعة الطلب. واللي ما
+                 | استلم أو عنده مشكلة، بيرجعه لأمين الصندوق للمعالجة،
+                 | وبيظل مفتوح لحد ما تنحل المشكلة», 1 November.
+                 |
+                 | The desk could read both answers on this screen and act
+                 | on neither. These are its two acts, and they belong to
+                 | the key it already holds — the one that put the line here
+                 | in the first place.
+                 */
+                Tables\Actions\Action::make('closeFollowUp')
+                    ->label(__('sanabel.disbursement.close_followup'))
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->visible(fn (Disbursement $record) => $record->status === 'received'
+                        && $record->followup_closed_at === null
+                        && auth()->user()?->can_('confirm_disbursement'))
+                    ->requiresConfirmation()
+                    ->modalDescription(__('sanabel.disbursement.close_followup_help'))
+                    ->action(function (Disbursement $record) {
+                        try {
+                            app(DisbursementService::class)->closeFollowUp($record, auth()->user());
+                        } catch (\RuntimeException $e) {
+                            Notification::make()->title($e->getMessage())->danger()->send();
+
+                            return;
+                        }
+
+                        Notification::make()->title(__('sanabel.disbursement.followup_closed'))->success()->send();
+                    }),
+
+                Tables\Actions\Action::make('returnToTreasurer')
+                    ->label(__('sanabel.disbursement.return_to_treasurer'))
+                    ->icon('heroicon-o-arrow-uturn-left')
+                    ->color('warning')
+                    ->visible(fn (Disbursement $record) => $record->status === 'disputed'
+                        && auth()->user()?->can_('confirm_disbursement'))
+                    ->requiresConfirmation()
+                    ->modalDescription(__('sanabel.disbursement.return_to_treasurer_help'))
+                    ->action(function (Disbursement $record) {
+                        try {
+                            app(DisbursementService::class)->returnToTreasurer($record, auth()->user());
+                        } catch (\RuntimeException $e) {
+                            Notification::make()->title($e->getMessage())->danger()->send();
+
+                            return;
+                        }
+
+                        Notification::make()->title(__('sanabel.disbursement.returned_to_treasurer'))->success()->send();
+                    }),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')

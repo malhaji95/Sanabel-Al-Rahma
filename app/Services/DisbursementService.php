@@ -325,6 +325,69 @@ class DisbursementService
         return $disbursement->refresh();
     }
 
+    /**
+     * T-214 — the data desk finishes following a line up.
+     *
+     * «اللي أكد الاستلام وكان عنده إثبات تحويل صحيح، بيقفل متابعة الطلب»,
+     * 1 November — and, in the same breath, «إغلاق متابعة المستفيد غير
+     * إغلاق التدقيق المالي».
+     *
+     * So this closes nothing about the money. The line keeps its status,
+     * keeps its place in the accountant's queue, and is reconciled later by
+     * somebody else. What it records is that a desk asked the household,
+     * got its answer, and is done.
+     *
+     * Only a line the household itself confirmed: closing the follow-up of
+     * a payment nobody has answered for would be the desk answering on
+     * their behalf, and the association's rule of 8 October — silence is
+     * neither a yes nor a no — is the whole reason that is refused.
+     */
+    public function closeFollowUp(Disbursement $disbursement, User $officer): Disbursement
+    {
+        if ($disbursement->status !== 'received') {
+            throw new \RuntimeException(__('sanabel.disbursement.only_received_closes'));
+        }
+
+        $disbursement->forceFill([
+            'followup_closed_by' => $officer->getKey(),
+            'followup_closed_at' => now(),
+        ])->save();
+
+        return $disbursement->refresh();
+    }
+
+    /**
+     * T-214 — and hands a disputed one back to the treasurer.
+     *
+     * «واللي ما استلم أو عنده مشكلة، بيرجعه لأمين الصندوق للمعالجة، وبيظل
+     * مفتوح لحد ما تنحل المشكلة».
+     *
+     * It stays `disputed`, which is what «يظل مفتوح» means here: nothing
+     * about the line is closed or settled by handing it on. The treasurer
+     * is told, and the line is stamped so the desk can tell the ones it has
+     * passed on from the ones still in front of it.
+     */
+    public function returnToTreasurer(Disbursement $disbursement, User $officer): Disbursement
+    {
+        if ($disbursement->status !== 'disputed') {
+            throw new \RuntimeException(__('sanabel.disbursement.only_disputed_returns'));
+        }
+
+        $disbursement->forceFill(['returned_to_treasurer_at' => now()])->save();
+
+        // Told by file number rather than by order reference: the treasurer
+        // is being sent to one household's payment, not to the batch it
+        // happened to travel in, and a line raised outside an order has no
+        // reference to quote.
+        foreach (User::holdersOf('execute_disbursement') as $userId) {
+            $this->notifications->send($userId, 'disbursement_disputed', [
+                'file_number' => $disbursement->beneficiary?->file_number,
+            ]);
+        }
+
+        return $disbursement->refresh();
+    }
+
     /** The accountant ties the executed line to the bank. */
     public function reconcile(Disbursement $disbursement, User $accountant): Disbursement
     {

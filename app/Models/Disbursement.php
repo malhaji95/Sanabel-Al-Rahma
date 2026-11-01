@@ -24,6 +24,10 @@ class Disbursement extends Model
         'reconciled_at' => 'datetime',
         'confirm_due_at' => 'datetime',
         'beneficiary_responded_at' => 'datetime',
+        // T-214 — what the data desk did about this line, which is not what
+        // happened to the money.
+        'followup_closed_at' => 'datetime',
+        'returned_to_treasurer_at' => 'datetime',
         'escalated_at' => 'datetime',
     ];
 
