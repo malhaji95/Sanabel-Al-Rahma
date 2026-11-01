@@ -83,6 +83,19 @@
                 {{ $case['priority_label'] }}
             </span>
 
+            {{-- T-205 — «لازم يتم إظهار نوع الكفالة على الواجهة: كفالة يتيم
+                 أو أرملة أو طالب علم», 1 November.
+
+                 The association's own classification of the file, in their
+                 own words. A household may hold more than one, and all of
+                 them are drawn; the switch on the settings screen closes
+                 them all together. --}}
+            @foreach ($case['sponsorship_kinds'] ?? [] as $kind)
+                <span class="badge bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-100">
+                    {{ $kind }}
+                </span>
+            @endforeach
+
             {{-- That zakat may be paid on this file. Which of the eight
                  categories it falls under is never published. --}}
             @if ($case['accepts_zakat'] ?? false)

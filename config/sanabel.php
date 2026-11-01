@@ -408,6 +408,8 @@ return [
         'show_health_condition' => true,
         'show_possessions' => true,
         'show_dependents' => true,
+        // T-205 — نوع الكفالة على بطاقة المتبرع: يتيم, أرملة, طالب علم.
+        'show_sponsorship_kind' => true,
 
         /*
          | T-160 — «يقبل الزيارة نعم لا, ونقدر نوقفها او نفعلها», 30 October.

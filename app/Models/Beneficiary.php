@@ -34,8 +34,18 @@ class Beneficiary extends Model
      * مرض and أرمل are not channels at all, so the two questions stay apart
      * and the zakat channel stays the management's own call.
      */
+    /*
+     | T-205 — «لازم يتم إظهار نوع الكفالة على الواجهة: كفالة يتيم أو أرملة
+     | أو طالب علم», 1 November.
+     |
+     | Two of the three were already here, because this is the association's
+     | own classification out of their dossier. «طالب علم» was not, and it is
+     | theirs to add rather than ours to infer: a household may hold orphans,
+     | a widow and a student at once, and which of the three a donor is being
+     | asked to sponsor is a judgement, not a query.
+     */
     public const CASE_CLASSIFICATIONS = [
-        'poor', 'needy', 'orphan', 'widowed', 'illness', 'debtor', 'other',
+        'poor', 'needy', 'orphan', 'widowed', 'student', 'illness', 'debtor', 'other',
     ];
 
     public const ZAKAT_CATEGORIES = [

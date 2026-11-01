@@ -59,6 +59,13 @@ class MaskedCaseResource extends JsonResource
         'held_percent',
         'urgency_label', 'has_chronic_illness', 'rent_band', 'is_renting', 'waiting_weeks',
         'priority_band', 'priority_label', 'is_urgent', 'accepts_zakat', 'can_share',
+        /*
+         | T-205 — «لازم يتم إظهار نوع الكفالة على الواجهة: كفالة يتيم أو
+         | أرملة أو طالب علم», 1 November. The association's own classification
+         | out of their dossier, as words out of a closed list. A household may
+         | carry more than one, and all of them are shown.
+         */
+        'sponsorship_kinds',
         // T-78 — the funding target. Figures about the appeal, not about the
         // household: a share of a need the donor is already shown.
         'target_percent', 'target_amount', 'target_remaining', 'target_complete',
@@ -193,6 +200,10 @@ class MaskedCaseResource extends JsonResource
             // and still be running out of time; one badge cannot say both.
             'is_urgent' => ScoreService::urgencyBand($case->urgency_deadline_at) >= 75,
             'urgency_label' => $this->urgencyLabel($case),
+            // T-205 — what kind of sponsorship this file is, in the
+            // association's own words. Set by whoever may approve a case
+            // (T-177) and never inferred from the household.
+            'sponsorship_kinds' => $this->sponsorshipKinds($case),
             'has_chronic_illness' => $this->hasChronicIllness($case),
             'rent_band' => $this->rentBand($case),
             'is_renting' => (bool) $case->housing?->isRenting(),
@@ -818,6 +829,36 @@ class MaskedCaseResource extends JsonResource
         }
 
         return $case->healthRecords()->where('severity_band', '>', 0)->exists();
+    }
+
+    /**
+     * T-205 — «نوع الكفالة»: يتيم, أرملة, طالب علم, and the rest of the list.
+     *
+     * Read from `case_classifications`, which the association fills on the
+     * file itself, so there is one source and not two. Nothing is inferred:
+     * a widow whose children are orphans and in school is all three, and
+     * which of them a donor is asked to sponsor is the association's
+     * judgement, not a query over the household.
+     *
+     * Behind its own switch like every other block a donor sees, and closed
+     * by it: the words are a judgement about a family, and the association
+     * decides whether they are published.
+     *
+     * @return array<int,string>
+     */
+    private function sponsorshipKinds(Beneficiary $case): array
+    {
+        if (! $this->switched('show_sponsorship_kind')) {
+            return [];
+        }
+
+        return collect($case->case_classifications ?? [])
+            // Out of the list or not at all: a value that is not one of the
+            // association's own keys never reaches a donor's screen.
+            ->filter(fn ($key) => in_array($key, Beneficiary::CASE_CLASSIFICATIONS, true))
+            ->map(fn (string $key) => __('sanabel.case_classification.'.$key))
+            ->values()
+            ->all();
     }
 
     /** A label, never the raw score. */
