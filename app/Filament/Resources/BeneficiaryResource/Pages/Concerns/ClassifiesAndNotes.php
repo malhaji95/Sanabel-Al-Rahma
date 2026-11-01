@@ -40,6 +40,7 @@ trait ClassifiesAndNotes
             ->fillForm(fn (): array => [
                 'zakat_category' => $this->record->zakat_category,
                 'case_classifications' => $this->record->case_classifications ?? [],
+                'story_ar' => $this->record->story_ar,
                 'management_note_ar' => $this->record->management_note_ar,
             ])
             ->form([
@@ -65,6 +66,36 @@ trait ClassifiesAndNotes
                         ->mapWithKeys(fn (string $k) => [$k => __('sanabel.case_classification.'.$k)])
                         ->all()),
 
+                /*
+                 | T-212 — «نعم يمكن للمدير التنفيذي الكتابة», 1 November,
+                 | answering what T-211 left open: he could sign the family's
+                 | story and could not write one, because writing lives on
+                 | the edit screen that T-177 keeps him off. So a published
+                 | file with no story written had nobody obvious to write it
+                 | and an approver standing in front of a button that was
+                 | hidden for want of something to approve.
+                 |
+                 | It joins the one modal an approver may write in rather
+                 | than the edit screen: the story is the association's words
+                 | about a household, not the household's own data, and the
+                 | separation the permission table is built around is between
+                 | those two things.
+                 |
+                 | Signing stays a second, deliberate act. The model withdraws
+                 | the signature the moment the words change (T-106), so what
+                 | is typed here reaches no donor until «اعتماد شرح الحالة»
+                 | is pressed.
+                 */
+                Forms\Components\Textarea::make('story_ar')
+                    ->label(__('sanabel.beneficiary.story_ar'))
+                    ->helperText(__('sanabel.beneficiary.story_help'))
+                    ->hint(fn (): string => __('sanabel.beneficiary.'.match (true) {
+                        $this->record->story_approved_at !== null => 'story_signed',
+                        blank($this->record->story_ar) => 'story_missing',
+                        default => 'story_awaiting',
+                    }))
+                    ->rows(5),
+
                 Forms\Components\Textarea::make('management_note_ar')
                     ->label(__('sanabel.classify.note'))
                     ->helperText(__('sanabel.classify.note_help'))
@@ -73,11 +104,14 @@ trait ClassifiesAndNotes
             ->action(function (array $data) {
                 abort_unless(auth()->user()?->can_('approve_case'), 403);
 
-                // Three named columns and no others: `update()` on the whole
+                // Four named columns and no others: `update()` on the whole
                 // array would take whatever a crafted request put in it.
                 $this->record->update([
                     'zakat_category' => $data['zakat_category'] ?: null,
                     'case_classifications' => $data['case_classifications'] ?: null,
+                    // T-212 — and the signature falls off by itself if the
+                    // words changed; that guard is in the model, not here.
+                    'story_ar' => $data['story_ar'] ?: null,
                     'management_note_ar' => $data['management_note_ar'] ?: null,
                 ]);
 
