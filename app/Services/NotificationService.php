@@ -10,9 +10,27 @@ use App\Models\AppNotification;
  */
 class NotificationService
 {
-    /** Keys a notification payload is allowed to carry. */
+    /**
+     * Keys a notification payload is allowed to carry.
+     *
+     * T-224 — «تم تحويل لك مثلا مبلغ, كل فقير حسب المبلغ اللي له: ميت ألف,
+     * خمسين ألف, ميتين ألف حسب المبلغ», 28 October, in the association's own
+     * recording. T-141 had kept every figure out of these bodies, and that
+     * was right for the five messages it was written for: they go to staff,
+     * about other people's money, and a reference number is all a desk needs
+     * to find the row.
+     *
+     * This one does not. It goes to the household about the household's own
+     * transfer, and the association asked for the figure in it, because a
+     * family cannot confirm a sum nobody told them.
+     *
+     * So the key is allowed and no message gains it by itself: a template
+     * carries a figure only where its caller passes one, and the five staff
+     * messages pass none.
+     */
     private const SAFE_KEYS = [
         'ref', 'reason', 'file_number', 'period', 'due_date', 'expires_at', 'reference_no', 'id',
+        'amount',
     ];
 
     public function send(?int $recipientId, string $templateKey, array $payload = [], array $channels = ['in_app', 'email']): void

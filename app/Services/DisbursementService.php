@@ -8,6 +8,7 @@ use App\Models\Disbursement;
 use App\Models\DisbursementOrder;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\Money;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -289,14 +290,22 @@ class DisbursementService
          | above, not before: a household asked to confirm a transfer whose
          | reference does not yet exist has nothing to confirm against.
          |
-         | The message carries the file number and no figure (rule 10 keeps
-         | notification bodies to the allowlist, and the amount is on their
-         | own page behind their own login, which is where they answer).
+         | T-224 — and it carries the figure. The first draft of this
+         | message did not, on the reasoning that T-141 keeps every amount
+         | out of a notification body. That was right for the five messages
+         | T-141 was written for, which go to staff about other people's
+         | money; it is wrong for this one. The association said so in their
+         | own recording of 28 October — «تم تحويل لك مثلا مبلغ, كل فقير
+         | حسب المبلغ اللي له» — and they are right: a household cannot
+         | confirm a sum nobody told them.
          */
         $this->notifications->send(
             $disbursement->beneficiary?->user_id,
             'disbursement_to_confirm',
-            ['file_number' => $disbursement->beneficiary?->file_number],
+            [
+                'file_number' => $disbursement->beneficiary?->file_number,
+                'amount' => number_format($disbursement->amount).' '.Money::short($disbursement->currency),
+            ],
         );
 
         return $disbursement->refresh();

@@ -73,15 +73,42 @@ it('tells them once the transfer is recorded with its reference', function () {
         ->and($messages->first()->payload_json['file_number'])->toBe($line->beneficiary->file_number);
 });
 
-it('puts no figure in the message, because the page behind their login carries it', function () {
+/*
+ | T-224 — the first draft of this message carried no figure, on the
+ | reasoning that T-141 keeps every amount out of a notification body. That
+ | reasoning holds for the five messages T-141 was written for, which go to
+ | staff about other people's money. It does not hold for this one.
+ |
+ | The association said so in their own recording of 28 October: «تم تحويل
+ | لك مثلا مبلغ, كل فقير حسب المبلغ اللي له». A household cannot confirm a
+ | sum nobody told them.
+ */
+it('puts the figure in the message, which is what the household confirms', function () {
     $line = lineReadyToPay($this->region, $this->officer, $this->treasurer, $this->director);
 
     app(DisbursementService::class)->execute($line, $this->treasurer, 'TRF-99002');
 
-    $payload = messagesFor($line->beneficiary->user_id, 'disbursement_to_confirm')->first()->payload_json;
+    $message = messagesFor($line->beneficiary->user_id, 'disbursement_to_confirm')->first();
 
-    expect($payload)->not->toHaveKey('amount')
-        ->and(json_encode($payload))->not->toContain((string) $line->amount);
+    expect($message->payload_json)->toHaveKey('amount')
+        ->and($message->payload_json['amount'])->toContain(number_format($line->amount))
+        // And it reads as a sentence, not as a token left unreplaced.
+        ->and(app(App\Services\NotificationService::class)->render($message)['body'])
+        ->toContain(number_format($line->amount))
+        ->not->toContain(':amount');
+});
+
+it('still puts no figure in the messages that go to the desks', function () {
+    $line = lineReadyToPay($this->region, $this->officer, $this->treasurer, $this->director);
+
+    app(DisbursementService::class)->execute($line, $this->treasurer, 'TRF-99005');
+
+    // T-141 stands where it was written: a desk is told which order moved,
+    // never how much somebody else was paid.
+    $staff = messagesFor($this->officer->id, 'disbursement_executed')->first();
+
+    expect($staff->payload_json)->not->toHaveKey('amount')
+        ->and(json_encode($staff->payload_json))->not->toContain((string) $line->amount);
 });
 
 it('sends nothing to a household that has no account yet', function () {
