@@ -76,6 +76,23 @@ class BeneficiaryResource extends Resource
                 ->visible(fn (?Beneficiary $record) => filled(self::lastEditLine($record)))
                 ->columnSpanFull(),
 
+            /*
+             | T-206 — «لازم يظهر أنه هذا تم إرجاعه من قبل المدير, مع إظهار
+             | أي شيء ملاحظة», 30 October.
+             |
+             | At the top of the file, before the first field, because it is
+             | the first thing the delegate needs: a file handed back with its
+             | note unread is a file that comes back a second time for the
+             | same reason.
+             */
+            Forms\Components\Placeholder::make('review_note')
+                ->label(fn (?Beneficiary $record) => __('sanabel.cases.review_note_'.($record?->status ?? 'returned')))
+                ->content(fn (?Beneficiary $record) => $record?->reject_reason_ar)
+                ->extraAttributes(['class' => 'rounded-xl bg-warning-50 p-4 dark:bg-warning-950'])
+                ->visible(fn (?Beneficiary $record) => filled($record?->reject_reason_ar)
+                    && in_array($record?->status, ['returned', 'rejected', 'suspended'], true))
+                ->columnSpanFull(),
+
             Forms\Components\Wizard::make([
                 Forms\Components\Wizard\Step::make(__('sanabel.beneficiary.step_identity'))->schema([
                     Forms\Components\TextInput::make('file_number')
@@ -2130,7 +2147,9 @@ class BeneficiaryResource extends Resource
                     ->color(fn (string $state) => match ($state) {
                         'published', 'approved' => 'success',
                         'rejected', 'suspended' => 'danger',
-                        'needs_reassessment' => 'warning',
+                        // T-206 — a file handed back is not idle and not
+                        // refused; it is waiting on a correction.
+                        'returned', 'needs_reassessment' => 'warning',
                         // The two waiting rooms read as in-flight, not idle.
                         'verified', 'pending_approval' => 'info',
                         default => 'gray',
@@ -2139,6 +2158,30 @@ class BeneficiaryResource extends Resource
                     // has passed — the column it replaces said the same thing
                     // in the same colour, two columns further along.
                     ->description(function (Beneficiary $record) {
+                        /*
+                         | T-206 — «ما ظهر سبب الرفض, بحيث تظهر للمندوب
+                         | والمشرف», 30 October.
+                         |
+                         | The reason has been written on the file since the
+                         | first day and read by nobody: it was on no screen
+                         | in the panel. A refusal without its reason tells a
+                         | delegate that something is wrong and not what, and
+                         | a file handed back for a correction is worse — the
+                         | correction is the whole message.
+                         |
+                         | Under the status badge, which is the thing it
+                         | explains, and in the colour of that badge.
+                         */
+                        $reason = trim((string) $record->reject_reason_ar);
+
+                        if ($reason !== '' && in_array($record->status, ['rejected', 'returned', 'suspended'], true)) {
+                            $colour = $record->status === 'returned' ? 'warning' : 'danger';
+
+                            return new HtmlString(
+                                '<span class="text-'.$colour.'-600 dark:text-'.$colour.'-400">'.e($reason).'</span>'
+                            );
+                        }
+
                         $due = $record->next_assessment_due_at;
 
                         if (! $due) {

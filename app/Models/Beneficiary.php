@@ -17,8 +17,20 @@ class Beneficiary extends Model
     use Auditable, BelongsToRegion, HasFactory, SoftDeletes, TracksCreator;
 
     /** Rule 3 — nothing is hard-deleted. forceDelete is not used anywhere. */
+    /*
+     | T-206 — «المدير التنفيذي أعطى إعادة تعديل, إرجاع إلى المندوب. هو
+     | المفروض ما يظهر بانتظار زيارة; لازم يظهر أنه هذا تم إرجاعه من قبل
+     | المدير, مع إظهار أي شيء ملاحظة», 30 October.
+     |
+     | «أُعيد للتعديل» used to be written as «بانتظار الزيارة», because that
+     | is the queue the delegate reads and the file does belong back in it.
+     | But the two are not the same thing: one is a file that has not been
+     | visited yet, the other is a file that was reviewed and sent back, and
+     | the delegate who cannot tell them apart does not know a note is
+     | waiting for them.
+     */
     public const STATUSES = [
-        'draft', 'pending_visit', 'verified', 'pending_approval', 'approved', 'published',
+        'draft', 'pending_visit', 'returned', 'verified', 'pending_approval', 'approved', 'published',
         'needs_reassessment', 'suspended', 'graduated', 'rejected', 'merged',
     ];
 

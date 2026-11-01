@@ -113,13 +113,13 @@ class OverviewStats extends BaseWidget
             ->whereIn('status', (array) $status)
             ->count();
 
-        // A file sent back carries the note that sent it (T-125), and it is
-        // the one thing in this queue that is waiting on a correction rather
-        // than on a first visit.
-        $returned = Beneficiary::where('created_by', $user->getKey())
-            ->where('status', 'pending_visit')
-            ->whereNotNull('reject_reason_ar')
-            ->count();
+        /*
+         | T-206 — a file sent back is its own status now, not a
+         | «بانتظار الزيارة» with a note hanging off it. It gets its own card:
+         | the association's complaint on 30 October was that a returned file
+         | was indistinguishable from one nobody had visited yet.
+         */
+        $returned = $mine('returned');
 
         return [
             Stat::make(__('sanabel.dashboard.my_drafts'), $mine('draft'))
@@ -128,11 +128,15 @@ class OverviewStats extends BaseWidget
                 ->url($this->cases('draft', mine: true)),
 
             Stat::make(__('sanabel.dashboard.my_awaiting_visit'), $mine('pending_visit'))
-                ->description($returned > 0
-                    ? __('sanabel.dashboard.my_returned', ['count' => $returned])
-                    : __('sanabel.dashboard.my_awaiting_visit_help'))
-                ->color($returned > 0 ? 'warning' : 'info')
+                ->description(__('sanabel.dashboard.my_awaiting_visit_help'))
+                ->color('info')
                 ->url($this->cases('pending_visit', mine: true)),
+
+            // T-206 — the files a reviewer handed back, with the note on each.
+            Stat::make(__('sanabel.dashboard.my_returned_files'), $returned)
+                ->description(__('sanabel.dashboard.my_returned_files_help'))
+                ->color($returned > 0 ? 'warning' : 'gray')
+                ->url($this->cases('returned', mine: true)),
 
             /*
              | T-144 — a file a partner association registered is waiting on
@@ -226,6 +230,27 @@ class OverviewStats extends BaseWidget
                 ->description($where())
                 ->color('danger')
                 ->url($this->cases('needs_reassessment')),
+
+            /*
+             | T-206 — «في حالة تم رفضها من قبل المدير التنفيذي لكن من حساب
+             | مشرف المنطقة غير ظاهرة عنده في الـ cards», 30 October.
+             |
+             | They were right: this screen counted the five queues a file
+             | waits in and neither of the two it can stop in. A supervisor
+             | following their area's work could not see, from the dashboard,
+             | that a file had been handed back or refused at all.
+             */
+            Stat::make(__('sanabel.dashboard.returned_files'),
+                Beneficiary::where('status', 'returned')->count())
+                ->description($where(__('sanabel.dashboard.returned_files_help')))
+                ->color('warning')
+                ->url($this->cases('returned')),
+
+            Stat::make(__('sanabel.dashboard.rejected_files'),
+                Beneficiary::where('status', 'rejected')->count())
+                ->description($where(__('sanabel.dashboard.rejected_files_help')))
+                ->color('danger')
+                ->url($this->cases('rejected')),
         ];
     }
 

@@ -15,7 +15,9 @@ class FieldController extends Controller
 
         // Cases in the delegate's own region scope, pre-loaded so the form works offline.
         $cases = Beneficiary::query()
-            ->whereIn('status', ['draft', 'pending_visit', 'verified', 'approved', 'published', 'needs_reassessment'])
+            // T-206 — «أُعيد للتعديل» is the delegate's queue as much as
+            // «بانتظار الزيارة» is, so the field app carries it too.
+            ->whereIn('status', ['draft', 'pending_visit', 'returned', 'verified', 'approved', 'published', 'needs_reassessment'])
             ->orderBy('file_number')
             ->get(['id', 'file_number', 'family_name', 'region_id', 'updated_at']);
 

@@ -26,7 +26,12 @@ class CaseService
      * before it reaches the admin, as the master phases document requires.
      * A file may be submitted from a draft or after a reassessment was asked for.
      */
-    public const AWAITING_FIELD = ['draft', 'pending_visit', 'needs_reassessment'];
+    /*
+     | T-206 — «returned» belongs in the delegate's queue exactly as
+     | «pending_visit» does: the file is theirs to correct and hand back up.
+     | What changed is that it is no longer *called* «بانتظار الزيارة».
+     */
+    public const AWAITING_FIELD = ['draft', 'pending_visit', 'returned', 'needs_reassessment'];
 
     /** The delegate's sign-off: the family was visited and the file matches. */
     /**
@@ -221,7 +226,10 @@ class CaseService
 
         return DB::transaction(function () use ($case, $noteAr) {
             $case->forceFill([
-                'status' => 'pending_visit',
+                // T-206 — its own name, so the delegate reads «أُعيد للتعديل»
+                // and goes looking for the note instead of «بانتظار الزيارة»
+                // and wondering why a file they already finished came back.
+                'status' => 'returned',
                 'reject_reason_ar' => $noteAr,
                 // The sign-offs below this step are given back: whoever
                 // picks the file up next signs it themselves.
