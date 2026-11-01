@@ -107,7 +107,8 @@ class DonorCaseList
         // one page and the next.
         return collect(Beneficiary::CASE_CLASSIFICATIONS)
             ->filter(fn (string $key) => in_array($key, $present, true))
-            ->mapWithKeys(fn (string $key) => [$key => __('sanabel.case_classification.'.$key)])
+            // T-217 — the door's own name, not the person's attribute.
+            ->mapWithKeys(fn (string $key) => [$key => __('sanabel.sponsorship_kind.'.$key)])
             ->all();
     }
 

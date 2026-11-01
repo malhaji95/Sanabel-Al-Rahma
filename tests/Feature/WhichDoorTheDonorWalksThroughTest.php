@@ -132,7 +132,7 @@ it('draws the row of doors on the page, and the chosen one narrows the grid', fu
     Livewire::test(BrowseCases::class)
         ->assertSee('باب الكفالة:')
         ->assertSee('يتيم')
-        ->assertSee('أرمل')
+        ->assertSee('أرملة')
         ->assertSee($orphan->file_number)
         ->assertSee($widow->file_number)
         ->set('kind', 'orphan')
@@ -156,5 +156,5 @@ it('says which door emptied the list when a chosen one has nobody left in the re
     Livewire::test(BrowseCases::class)
         ->set('regionId', $this->region->id)
         ->set('kind', 'widowed')
-        ->assertSee('لا توجد حالياً حالة منشورة تحت باب «أرمل»');
+        ->assertSee('لا توجد حالياً حالة منشورة تحت باب «أرملة»');
 });

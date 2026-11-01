@@ -856,7 +856,9 @@ class MaskedCaseResource extends JsonResource
             // Out of the list or not at all: a value that is not one of the
             // association's own keys never reaches a donor's screen.
             ->filter(fn ($key) => in_array($key, Beneficiary::CASE_CLASSIFICATIONS, true))
-            ->map(fn (string $key) => __('sanabel.case_classification.'.$key))
+            // T-217 — اسم الباب, لا صفة الشخص: «كفالة أرملة» وإن كان
+            // التصنيف على الملف «أرمل».
+            ->map(fn (string $key) => __('sanabel.sponsorship_kind.'.$key))
             ->values()
             ->all();
     }

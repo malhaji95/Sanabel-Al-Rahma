@@ -34,14 +34,16 @@ it('says «يتيم» on a file the association classified as one', function () 
     expect(kindsOn($this->region, ['orphan']))->toBe(['يتيم']);
 });
 
-it('says «أرمل» and «طالب علم», which are the other two they named', function () {
-    expect(kindsOn($this->region, ['widowed']))->toBe(['أرمل'])
+it('says «أرملة» and «طالب علم», which are the other two they named', function () {
+    // T-217 — the door is «أرملة» even where the file's own classification
+    // reads «أرمل», because the door is not a description of a person.
+    expect(kindsOn($this->region, ['widowed']))->toBe(['أرملة'])
         ->and(kindsOn($this->region, ['student']))->toBe(['طالب علم']);
 });
 
 it('says all of them when a file carries more than one', function () {
     expect(kindsOn($this->region, ['widowed', 'orphan', 'student']))
-        ->toBe(['أرمل', 'يتيم', 'طالب علم']);
+        ->toBe(['أرملة', 'يتيم', 'طالب علم']);
 });
 
 it('says nothing at all on a file nobody has classified', function () {
