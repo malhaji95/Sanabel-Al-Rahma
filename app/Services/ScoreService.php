@@ -164,7 +164,26 @@ class ScoreService
         $hours = $now->diffInHours($deadline, false);
 
         return match (true) {
-            $hours <= 48 => 100,          // includes an already-passed deadline
+            /*
+             | T-219 — «تصبح حالة عادية غير عاجلة», 1 November.
+             |
+             | A passed deadline used to score the highest band for ever,
+             | deliberately: a need that went unanswered does not stop being
+             | a need. But the association reads the badge as a date, not as
+             | a grievance, and a file whose date passed two months ago was
+             | still flying the red warning on the donor's page, which
+             | emptied the word of meaning for the files that are urgent now.
+             |
+             | So the date decides, and nothing else: once it is behind us
+             | the case is an ordinary one, and the researcher who still
+             | considers it urgent sets a new date on the file.
+             |
+             | Past assessments keep the figure they were scored with — the
+             | snapshot of rule 8 is untouched — so this changes what is
+             | scored from here, never what was scored before.
+             */
+            $now->greaterThan($deadline) => 0,
+            $hours <= 48 => 100,
             $hours <= 24 * 7 => 75,
             $hours <= 24 * 30 => 50,
             $hours <= 24 * 90 => 25,
