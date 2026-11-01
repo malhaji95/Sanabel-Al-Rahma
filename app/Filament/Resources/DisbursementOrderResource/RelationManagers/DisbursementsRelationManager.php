@@ -6,10 +6,13 @@ use App\Filament\Resources\BeneficiaryResource;
 use App\Filament\Resources\DisbursementOrderResource;
 use App\Models\Disbursement;
 use App\Services\DisbursementService;
+use App\Services\Money;
 use Filament\Forms;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -132,6 +135,109 @@ class DisbursementsRelationManager extends RelationManager
                         fn () => app(DisbursementService::class)->reconcile($record, auth()->user()),
                         __('sanabel.disbursement.reconciled'),
                     )),
+            ])
+            ->bulkActions([
+                /*
+                 | T-216 — «زر التحويل الجماعي يحفظ نتيجة كل حوالة لحالها,
+                 | حتى لو نجح بعضها وفشل بعضها», 1 November.
+                 |
+                 | An order of forty families was forty modals, each asking
+                 | for one reference. This asks for all of them at once and
+                 | is still forty transfers: every row carries its own
+                 | reference and is saved on its own, so the twelfth failing
+                 | leaves the eleven before it paid and the rest to be tried.
+                 |
+                 | A row left blank is not an error and not a failure — it is
+                 | a line the treasurer has not moved yet, and it stays
+                 | approved, waiting. A row marked as failed takes a reason,
+                 | which is the same thing the single button asks for.
+                 |
+                 | Nothing here reaches past the service: each row goes
+                 | through `execute()` or `fail()` exactly as one button
+                 | would, with the same guard against the hand that approved
+                 | it also moving the money.
+                 */
+                Tables\Actions\BulkAction::make('executeMany')
+                    ->label(__('sanabel.disbursement.execute_many'))
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('success')
+                    ->modalDescription(__('sanabel.disbursement.execute_many_help'))
+                    ->visible(fn () => auth()->user()?->can_('execute_disbursement'))
+                    ->form(fn (Collection $records): array => $records
+                        ->where('status', 'approved')
+                        ->map(fn (Disbursement $line) => Forms\Components\Fieldset::make('line-'.$line->getKey())
+                            ->label($line->beneficiary?->file_number.' — '.number_format($line->amount).' '.Money::short($line->currency))
+                            ->columns(3)
+                            ->schema([
+                                Forms\Components\TextInput::make('ref_'.$line->getKey())
+                                    ->label(__('sanabel.disbursement.transfer_ref'))
+                                    ->helperText(__('sanabel.disbursement.leave_blank_to_skip'))
+                                    ->requiredIf('outcome_'.$line->getKey(), 'executed'),
+
+                                Forms\Components\Select::make('outcome_'.$line->getKey())
+                                    ->label(__('sanabel.disbursement.outcome'))
+                                    ->options([
+                                        'skip' => __('sanabel.disbursement.outcome_skip'),
+                                        'executed' => __('sanabel.disbursement.outcome_executed'),
+                                        'failed' => __('sanabel.disbursement.outcome_failed'),
+                                    ])
+                                    ->default('skip')
+                                    ->live(),
+
+                                Forms\Components\TextInput::make('why_'.$line->getKey())
+                                    ->label(__('sanabel.disbursement.failure_reason'))
+                                    ->requiredIf('outcome_'.$line->getKey(), 'failed')
+                                    ->visible(fn (Forms\Get $get) => $get('outcome_'.$line->getKey()) === 'failed'),
+                            ]))
+                        ->values()
+                        ->all())
+                    ->action(function (Collection $records, array $data) {
+                        $service = app(DisbursementService::class);
+                        $done = 0;
+                        $failed = 0;
+                        $refused = [];
+
+                        foreach ($records->where('status', 'approved') as $line) {
+                            $outcome = $data['outcome_'.$line->getKey()] ?? 'skip';
+
+                            if ($outcome === 'skip') {
+                                continue;
+                            }
+
+                            /*
+                             | Each row is saved on its own and its refusal is
+                             | collected rather than thrown: one line the
+                             | treasurer may not move — because they approved
+                             | it themselves — must not undo the ones already
+                             | written above it.
+                             */
+                            try {
+                                $outcome === 'failed'
+                                    ? $service->fail($line, (string) $data['why_'.$line->getKey()])
+                                    : $service->execute(
+                                        $line,
+                                        auth()->user(),
+                                        (string) $data['ref_'.$line->getKey()],
+                                    );
+
+                                $outcome === 'failed' ? $failed++ : $done++;
+                            } catch (\RuntimeException $e) {
+                                $refused[] = $line->beneficiary?->file_number.': '.$e->getMessage();
+                            }
+                        }
+
+                        Notification::make()
+                            ->title(__('sanabel.disbursement.execute_many_done', [
+                                'done' => $done,
+                                'failed' => $failed,
+                                'refused' => count($refused),
+                            ]))
+                            ->body($refused === [] ? null : implode("\n", $refused))
+                            ->color($refused === [] ? 'success' : 'warning')
+                            ->persistent()
+                            ->send();
+                    })
+                    ->deselectRecordsAfterCompletion(),
             ])
             ->paginated([25, 50, 100]);
     }
