@@ -119,7 +119,13 @@ it('adds a family to the basket, reserves it and records the transfer', function
     expect(Donation::where('transaction_ref', 'TRX-PORTAL-1')->exists())->toBeTrue();
 });
 
-it('refuses a basket amount beyond the remaining need', function () {
+/*
+ | T-201 — «أزل رسالة الخطأ بالأحمر واجعلها فقط بالأخضر مشابهة», 1 November.
+ | A basket amount beyond the remaining need used to be refused; it is now
+ | taken down to the need. The family is still never over-credited, which is
+ | what this guard was written for — only the way of saying so has changed.
+ */
+it('never credits a family beyond its remaining need, however much is offered', function () {
     $case = publishedCase($this->region);
     $user = donorFor();
     $remaining = app(CoverageService::class)->remainingNeed($case);
@@ -131,7 +137,9 @@ it('refuses a basket amount beyond the remaining need', function () {
         ])
         ->set('amount', $remaining + 1)
         ->call('add')
-        ->assertHasErrors('amount');
+        ->assertHasNoErrors();
+
+    expect($user->donor->baskets()->first()->items()->first()->amount)->toBe($remaining);
 });
 
 it('surfaces a duplicate transaction ref to the donor as a review message', function () {

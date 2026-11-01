@@ -37,7 +37,6 @@
                 wire:model="amount"
                 x-model.number="typed"
                 min="1"
-                max="{{ $remaining }}"
                 inputmode="numeric"
                 class="field tabular"
             >
@@ -62,6 +61,16 @@
             </div>
         @endif
 
+        {{-- T-201 — «أزل رسالة الخطأ بالأحمر واجعلها فقط بالأخضر مشابهة»,
+             1 November, over a red browser bubble reading «يجب أن تكون
+             القيمة أقل من أو تساوي ٥٠٠٠».
+
+             That bubble was the browser's own, raised by `max` on the field.
+             A donor who offers more than a family needs is not making a
+             mistake, and telling them so in red for their generosity is the
+             wrong answer twice over. The ceiling is off the field; the green
+             line already says what happens, and the box takes what the
+             family needs and no more. --}}
         <p
             x-show="typed >= remaining && remaining > 0"
             x-cloak

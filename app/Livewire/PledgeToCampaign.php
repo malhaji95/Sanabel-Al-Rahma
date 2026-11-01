@@ -44,7 +44,7 @@ class PledgeToCampaign extends Component
     public function pledge(): void
     {
         $this->validate([
-            'amount' => ['required', 'integer', 'min:1', 'max:'.max(1, $this->remaining)],
+            'amount' => ['required', 'integer', 'min:1'],
         ], attributes: ['amount' => __('sanabel.public.amount')]);
 
         $donor = auth()->user()?->donor;
@@ -57,8 +57,26 @@ class PledgeToCampaign extends Component
 
         $campaign = Campaign::where('is_published', true)->findOrFail($this->campaignId);
 
+        /*
+         | T-201 — the same courtesy the family box was given on 1 November:
+         | a donor who offers more than the campaign is short is not shown a
+         | red refusal, the campaign takes what is left of its goal.
+         |
+         | Read from the campaign rather than from `$this->remaining`, which
+         | has been to the browser and back. `reserve()` checks the goal again
+         | under a lock before anything is held.
+         */
+        $takeable = app(CoverageService::class)->campaignRemaining($campaign);
+        $amount = min((int) $this->amount, max(0, $takeable));
+
+        if ($amount < 1) {
+            $this->notice = __('sanabel.public.campaign_closed');
+
+            return;
+        }
+
         $basket = app(BasketService::class)->openFor($donor);
-        app(BasketService::class)->addCampaign($basket, $campaign, (int) $this->amount);
+        app(BasketService::class)->addCampaign($basket, $campaign, $amount);
 
         $this->notice = __('sanabel.public.added_to_basket');
         $this->added = true;

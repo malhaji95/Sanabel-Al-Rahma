@@ -89,7 +89,7 @@ class AddToBasket extends Component
     public function add(): void
     {
         $this->validate([
-            'amount' => ['required', 'integer', 'min:1', 'max:'.max(1, $this->remaining)],
+            'amount' => ['required', 'integer', 'min:1'],
         ], attributes: ['amount' => __('sanabel.public.amount')]);
 
         $donor = auth()->user()->donor;
@@ -103,13 +103,29 @@ class AddToBasket extends Component
         // Looked up by file number: the browse screen never holds a database id.
         $case = Beneficiary::published()->where('file_number', $this->fileNumber)->firstOrFail();
 
+        $month = Carbon::createFromFormat('Y-m', $this->coverageMonth)->startOfMonth();
+
+        /*
+         | T-201 — a donor may offer more than the family is short, and the
+         | family is credited with what it is short and not a pound more.
+         |
+         | The ceiling is read here rather than from `$this->remaining`: that
+         | property travels to the browser and back, so it is the donor's to
+         | edit. The reservation still checks it again under a row lock in
+         | `BasketService::reserve()` (rule 6); this is the courtesy, that is
+         | the guard.
+         */
+        $takeable = app(CoverageService::class)->remainingNeed($case, month: $month);
+        $amount = min((int) $this->amount, max(0, $takeable));
+
+        if ($amount < 1) {
+            $this->notice = __('sanabel.public.fully_covered', ['month' => $this->monthLabel()]);
+
+            return;
+        }
+
         $basket = app(BasketService::class)->openFor($donor);
-        app(BasketService::class)->addItem(
-            $basket,
-            $case,
-            (int) $this->amount,
-            Carbon::createFromFormat('Y-m', $this->coverageMonth)->startOfMonth(),
-        );
+        app(BasketService::class)->addItem($basket, $case, $amount, $month);
 
         $this->notice = __('sanabel.public.added_to_basket');
         $this->added = true;

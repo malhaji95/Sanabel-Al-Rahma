@@ -9,7 +9,6 @@
                 type="number"
                 wire:model="amount"
                 min="1"
-                max="{{ $remaining }}"
                 inputmode="numeric"
                 class="field tabular"
             >
