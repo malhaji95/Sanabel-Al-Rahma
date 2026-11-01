@@ -40,6 +40,23 @@ class BrowseCases extends Component
     #[Url]
     public bool $zakat = false;
 
+    /*
+     | T-208 — «وموجود فلتر للكفلات», 1 November. T-205 wrote the kind of
+     | sponsorship on the card; this is the other half of it, the door a
+     | donor who came for one kind of family can walk through.
+     |
+     | One of the association's classifications, or null for all of them.
+     | DonorCaseList holds it to the association's own list, so a value typed
+     | into the query string widens nothing and narrows to nothing.
+     */
+    #[Url]
+    public ?string $kind = null;
+
+    public function updatedKind(): void
+    {
+        $this->resetPage();
+    }
+
     public function updatedSupportType(): void
     {
         $this->resetPage();
@@ -63,10 +80,23 @@ class BrowseCases extends Component
         // withCovered: the donor's list keeps a family whose month is answered,
         // at the bottom and marked as such (T-83). The page is ranked, loaded
         // and masked behind one cache (T-87).
-        $list = app(DonorCaseList::class)
-            ->page($this->supportType, $this->regionId, $page, $perPage, withCovered: true, zakatOnly: $this->zakat);
+        $cases = app(DonorCaseList::class);
+
+        $list = $cases->page(
+            $this->supportType,
+            $this->regionId,
+            $page,
+            $perPage,
+            withCovered: true,
+            zakatOnly: $this->zakat,
+            kind: $this->kind,
+        );
 
         return view('livewire.browse-cases', [
+            // T-208 — the doors that have somebody behind them, in the
+            // association's own order. Empty when the association has closed
+            // the switch on the words, and then the row of chips is not drawn.
+            'kinds' => $cases->kinds(),
             'cases' => collect($list['cards']),
             'total' => $list['total'],
             'hasMore' => $list['total'] > $page * $perPage,

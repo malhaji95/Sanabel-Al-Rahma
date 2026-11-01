@@ -140,8 +140,11 @@ class RankingService
         ?int $regionId = null,
         bool $withCovered = false,
         bool $zakatOnly = false,
+        // T-208 — «وموجود فلتر للكفالات», 1 November. One of the
+        // association's own classifications, or null for all of them.
+        ?string $kind = null,
     ): Collection {
-        $families = $this->rankingRows($supportType, $regionId, $zakatOnly);
+        $families = $this->rankingRows($supportType, $regionId, $zakatOnly, $kind);
 
         if ($families->isEmpty()) {
             return collect();
@@ -223,9 +226,27 @@ class RankingService
      *
      * @return Collection<int,object>
      */
-    private function rankingRows(?string $supportType, ?int $regionId, bool $zakatOnly = false): Collection
-    {
+    private function rankingRows(
+        ?string $supportType,
+        ?int $regionId,
+        bool $zakatOnly = false,
+        ?string $kind = null,
+    ): Collection {
         $query = Beneficiary::query()->published();
+
+        /*
+         | T-208 — «وموجود فلتر للكفالات», 1 November. A donor who came to
+         | sponsor an orphan was reading all four hundred files to find one.
+         |
+         | The filter is the association's own classification, the same words
+         | T-205 put on the card, and it is held to their list: a key the
+         | association has not declared narrows nothing rather than narrowing
+         | to nothing, so a hand-edited query string cannot ask the list a
+         | question about a word nobody wrote.
+         */
+        if ($kind !== null && in_array($kind, Beneficiary::CASE_CLASSIFICATIONS, true)) {
+            $query->whereJsonContains('beneficiaries.case_classifications', $kind);
+        }
 
         /*
          | T-98 — «زكاة مستحقة»: the families the association has judged a
@@ -286,6 +307,29 @@ class RankingService
     {
         return $this->rankingRows(null, null)
             ->mapWithKeys(fn (object $family) => [(int) $family->id => $this->needOf($family)])
+            ->all();
+    }
+
+    /**
+     * Every classification written on a published family, once each.
+     *
+     * T-208 — what the filter on the donor's list offers. It reads the
+     * published, in-scope families through the same scopes the list itself
+     * goes through, so a supervisor's chips are their own region's doors.
+     *
+     * @return array<int,string>
+     */
+    public function publishedKinds(): array
+    {
+        return collect(
+            Beneficiary::query()->published()->applyScopes()->toBase()
+                ->whereNotNull('beneficiaries.case_classifications')
+                ->pluck('beneficiaries.case_classifications')
+        )
+            ->flatMap(fn ($json) => is_string($json) ? (json_decode($json, true) ?: []) : (array) $json)
+            ->filter(fn ($key) => is_string($key))
+            ->unique()
+            ->values()
             ->all();
     }
 

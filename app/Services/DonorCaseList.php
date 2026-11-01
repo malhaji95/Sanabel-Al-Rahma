@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Http\Resources\MaskedCaseResource;
+use App\Models\Beneficiary;
 use App\Models\Scopes\RegionScope;
 use App\Models\Setting;
 use Illuminate\Support\Facades\Auth;
@@ -49,20 +50,71 @@ class DonorCaseList
         int $perPage,
         bool $withCovered = true,
         bool $zakatOnly = false,
+        // T-208 — one of the association's classifications, or null for all.
+        ?string $kind = null,
     ): array {
         $seconds = (int) config('sanabel.public_list_cache_seconds');
 
-        $build = fn () => $this->build($supportType, $regionId, $page, $perPage, $withCovered, $zakatOnly);
+        $kind = $this->allowedKind($kind);
+
+        $build = fn () => $this->build($supportType, $regionId, $page, $perPage, $withCovered, $zakatOnly, $kind);
 
         if ($seconds <= 0) {
             return $build();
         }
 
         return Cache::remember(
-            $this->key($supportType, $regionId, $page, $perPage, $withCovered, $zakatOnly),
+            $this->key($supportType, $regionId, $page, $perPage, $withCovered, $zakatOnly, $kind),
             $seconds,
             $build,
         );
+    }
+
+    /**
+     * The classifications a donor may narrow the list by, and their words.
+     *
+     * T-208 — data, not code: the list is the classifications actually
+     * written on published files in the asker's own scope, so a door a donor
+     * is shown always has somebody behind it, and a door the association
+     * stops using disappears on its own.
+     *
+     * Behind the same switch as the words on the card. Rule 2 is why: to
+     * filter by «يتيم» and be shown a family is to be told that family is an
+     * orphan file, so a filter publishes the classification exactly as the
+     * badge does. The association closes one and both close.
+     *
+     * @return array<string,string>
+     */
+    public function kinds(): array
+    {
+        if (! Setting::value('show_sponsorship_kind', config('sanabel.setting_defaults.show_sponsorship_kind'))) {
+            return [];
+        }
+
+        $seconds = (int) config('sanabel.public_list_cache_seconds');
+
+        $build = fn () => $this->ranking->publishedKinds();
+
+        $present = $seconds <= 0
+            ? $build()
+            : Cache::remember(
+                implode(':', ['sanabel.cases.kinds', Setting::fingerprint(), $this->scope()]),
+                $seconds,
+                $build,
+            );
+
+        // The association's own order, so the chips do not shuffle between
+        // one page and the next.
+        return collect(Beneficiary::CASE_CLASSIFICATIONS)
+            ->filter(fn (string $key) => in_array($key, $present, true))
+            ->mapWithKeys(fn (string $key) => [$key => __('sanabel.case_classification.'.$key)])
+            ->all();
+    }
+
+    /** A key the association has declared, or nothing at all. */
+    private function allowedKind(?string $kind): ?string
+    {
+        return $kind !== null && array_key_exists($kind, $this->kinds()) ? $kind : null;
     }
 
     /** @return array{cards:array<int,array>,total:int} */
@@ -73,6 +125,7 @@ class DonorCaseList
         int $perPage,
         bool $withCovered,
         bool $zakatOnly,
+        ?string $kind = null,
     ): array {
         /*
          | T-189 — «الفلاتر: جميع الحالات, دعم شهري, دعم لمرة واحدة»,
@@ -85,6 +138,7 @@ class DonorCaseList
             $regionId,
             $withCovered,
             $zakatOnly,
+            $kind,
         );
 
         return [
@@ -107,6 +161,7 @@ class DonorCaseList
         int $perPage,
         bool $withCovered,
         bool $zakatOnly,
+        ?string $kind = null,
     ): string {
         return implode(':', [
             'sanabel.cases',
@@ -120,6 +175,8 @@ class DonorCaseList
             // T-98 — a filtered list is a different list, so it is a different
             // key. Without this the zakat list would be served the general one.
             $zakatOnly ? 'zakat' : 'any',
+            // T-208 — likewise: a list narrowed to one door is its own list.
+            $kind ?? 'any-kind',
         ]);
     }
 

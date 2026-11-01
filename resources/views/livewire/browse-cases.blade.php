@@ -82,9 +82,63 @@
         </div>
     </div>
 
+    {{--
+        T-208 — «وموجود فلتر للكفلات», 1 November.
+
+        A row of its own rather than a fourth control crammed into the line
+        above: these are the association's own doors, there may be seven of
+        them, and a donor who came to sponsor an orphan should meet them
+        before the grid rather than hunt for a select box.
+
+        Drawn only when the association publishes the words at all — the
+        filter and the badge are the same disclosure (rule 2), so they are
+        behind the same switch.
+    --}}
+    @if (filled($kinds))
+        <div
+            class="mb-6 flex flex-wrap items-center gap-2"
+            role="group"
+            aria-label="{{ __('sanabel.public.sponsorship_kind_filter') }}"
+        >
+            <span class="text-sm" style="color: var(--text-muted);">
+                {{ __('sanabel.public.sponsorship_kind_filter') }}
+            </span>
+
+            <button
+                type="button"
+                wire:click="$set('kind', null)"
+                aria-pressed="{{ $kind === null ? 'true' : 'false' }}"
+                class="rounded-full border px-3.5 py-1.5 text-sm font-medium transition"
+                @style([
+                    'border-color: var(--border); background-color: var(--card); color: var(--text-muted)' => $kind !== null,
+                    'border-color: var(--accent); background-color: var(--accent); color: var(--accent-contrast)' => $kind === null,
+                ])
+            >{{ __('sanabel.public.sponsorship_kind_any') }}</button>
+
+            @foreach ($kinds as $key => $label)
+                <button
+                    type="button"
+                    wire:click="$set('kind', '{{ $key }}')"
+                    aria-pressed="{{ $kind === $key ? 'true' : 'false' }}"
+                    class="rounded-full border px-3.5 py-1.5 text-sm font-medium transition"
+                    @style([
+                        'border-color: var(--border); background-color: var(--card); color: var(--text-muted)' => $kind !== $key,
+                        'border-color: var(--accent); background-color: var(--accent); color: var(--accent-contrast)' => $kind === $key,
+                    ])
+                >{{ $label }}</button>
+            @endforeach
+        </div>
+    @endif
+
     <div wire:loading.class="opacity-50" class="transition-opacity">
         @if ($cases->isEmpty())
-            <x-empty-state :title="$zakat ? __('sanabel.public.zakat_only_empty') : __('sanabel.public.no_cases')" />
+            {{-- T-208 — an empty list says which filter emptied it, so the
+                 donor knows there is a chip to let go of. --}}
+            <x-empty-state :title="match (true) {
+                $kind !== null => __('sanabel.public.sponsorship_kind_empty', ['kind' => $kinds[$kind] ?? '']),
+                $zakat => __('sanabel.public.zakat_only_empty'),
+                default => __('sanabel.public.no_cases'),
+            }" />
         @else
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach ($cases as $case)
