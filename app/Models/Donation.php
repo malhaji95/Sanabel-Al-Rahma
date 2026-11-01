@@ -26,6 +26,7 @@ class Donation extends Model
     private const EVIDENCE_FIELDS = ['transfer_record_media_id', 'updated_at'];
 
     protected $fillable = [
+        'reference_no',
         'donor_id', 'route', 'designation', 'amount', 'currency', 'transaction_ref', 'receipt_media_id',
         'status', 'verified_by', 'verified_at', 'reject_reason', 'fund_id', 'basket_id',
         'transfer_record_media_id',
@@ -33,6 +34,30 @@ class Donation extends Model
     ];
 
     protected $casts = ['verified_at' => 'datetime', 'amount' => 'integer'];
+
+    /**
+     * T-203 — «ضروري كل تبرع ياخذ رقم تذكرة أو طلب», 1 November.
+     *
+     * Issued here rather than by whoever writes the row, so that no path into
+     * the table can leave one without a number: the basket, the general gift,
+     * the guest gift, a reversal, a seeder and a test all pass through this.
+     *
+     * `transaction_ref` is the bank's number and stays the bank's. This is
+     * the platform's, and it is the one to quote in a message or on the
+     * telephone: the association can read it back before the donor has sent
+     * anything, and a donor who mistyped the bank's reference still has one.
+     *
+     * The year and a running count inside it, as a payment order (DO-26-…)
+     * and a complaint (CMP-26-…) already are. Soft-deleted rows are counted,
+     * so a number is never handed out twice.
+     */
+    public static function nextReference(): string
+    {
+        $year = now()->format('y');
+        $count = self::withTrashed()->whereYear('created_at', now()->year)->count() + 1;
+
+        return sprintf('DN-%s-%05d', $year, $count);
+    }
 
     /**
      * The record of the transfer the association made onward, uploaded by
@@ -97,6 +122,11 @@ class Donation extends Model
      */
     protected static function booted(): void
     {
+        // T-203 — no path into this table may leave a donation unnumbered.
+        static::creating(function (self $m) {
+            $m->reference_no ??= self::nextReference();
+        });
+
         static::updating(function (self $m) {
             $wasVerified = $m->getOriginal('status') === 'verified';
 

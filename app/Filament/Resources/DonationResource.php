@@ -150,6 +150,11 @@ class DonationResource extends Resource
     {
         return $table
             ->columns([
+                // T-203 — the platform's own number, which is what the desk
+                // quotes to a donor on the telephone. The bank's is beside it.
+                Tables\Columns\TextColumn::make('reference_no')
+                    ->label(__('sanabel.donation.reference_no'))
+                    ->searchable()->copyable()->sortable(),
                 Tables\Columns\TextColumn::make('transaction_ref')->label(__('sanabel.donation.transaction_ref'))->searchable()->copyable(),
                 Tables\Columns\TextColumn::make('donor.name_ar')->label(__('sanabel.donation.donor'))->searchable(),
                 Tables\Columns\TextColumn::make('amount')->label(__('sanabel.donation.amount'))->numeric()->sortable(),
