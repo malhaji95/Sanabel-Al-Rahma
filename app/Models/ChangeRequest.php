@@ -70,6 +70,23 @@ class ChangeRequest extends Model
         // reason: a husband who finds work after the file is approved
         // is corrected this way and not by reopening the file.
         'spouse_work_status', 'spouse_profession_ar', 'spouse_workplace_ar', 'spouse_work_income',
+        /*
+         | T-218 — «٩ صح», 1 November, answering a gap we reported rather
+         | than one they found.
+         |
+         | T-172 added the spouse's work to this list and left the spouse's
+         | own name and number off it, which they had never been on since
+         | T-128. So a misspelt wife's name, or a digit wrong in her
+         | identity number, could not be corrected on a live file at all —
+         | not by a request, not by an edit. The association was asked and
+         | said to add them.
+         |
+         | They go through the same two hands as everything else here: one
+         | account raises the correction and another approves it. And the
+         | number is encrypted at rest like the file-holder's own, so the
+         | request carries a value nobody reads off the database.
+         */
+        'spouse_name_ar', 'spouse_national_id_encrypted',
         // The four consents (T-69). A consent is a fact about what the
         // family agreed to, so correcting one goes the same way as
         // correcting anything else on a live file.
