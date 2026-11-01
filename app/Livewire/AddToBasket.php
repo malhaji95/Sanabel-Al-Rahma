@@ -92,6 +92,18 @@ class AddToBasket extends Component
             'amount' => ['required', 'integer', 'min:1'],
         ], attributes: ['amount' => __('sanabel.public.amount')]);
 
+        /*
+         | T-220 — «حساب عيلة وبدها تتبرع؟ هاد الخيار مرفوض وغير ممكن»,
+         | 1 November. The box is not drawn for a household's account, and
+         | the refusal is here too: a screen that does not offer something
+         | is not the same as a path that will not do it.
+         */
+        if (auth()->user()->isFamily()) {
+            $this->notice = __('sanabel.public.family_may_not_give');
+
+            return;
+        }
+
         $donor = auth()->user()->donor;
 
         if (! $donor) {

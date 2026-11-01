@@ -143,7 +143,7 @@
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach ($cases as $case)
                     <x-masked-case-card :case="$case">
-                        @auth
+                        @if (auth()->check() && ! auth()->user()->isFamily())
                             <livewire:add-to-basket
                                 :file-number="$case['file_number']"
                                 :remaining="$case['remaining_amount']"
@@ -190,7 +190,7 @@
                                     {{ __('sanabel.public.earmark_needs_account') }}
                                 </p>
                             </div>
-                        @endauth
+                        @endif
 
                         {{-- The opportunity's own address, and a way to send it
                              on. T-102 — it used to be labelled «تبرع الآن», the

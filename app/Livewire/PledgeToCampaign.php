@@ -47,6 +47,14 @@ class PledgeToCampaign extends Component
             'amount' => ['required', 'integer', 'min:1'],
         ], attributes: ['amount' => __('sanabel.public.amount')]);
 
+        // T-220 — the campaign box is the other place money is typed, and
+        // it is closed to a household's account for the same reason.
+        if (auth()->user()?->isFamily()) {
+            $this->notice = __('sanabel.public.family_may_not_give');
+
+            return;
+        }
+
         $donor = auth()->user()?->donor;
 
         if (! $donor) {

@@ -139,6 +139,19 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasRole('admin');
     }
 
+    /**
+     * A household's own account.
+     *
+     * T-220 — «تقصد حساب عيلة وبدها تتبرع؟ هاد الخيار مرفوض وغير ممكن»,
+     * 1 November. T-194 landed this account on its own page and left the
+     * donor portal reachable by typing its address: the signpost was taken
+     * down and the door left open. The association closed it.
+     */
+    public function isFamily(): bool
+    {
+        return $this->hasRole('beneficiary');
+    }
+
     /** council is read-only everywhere — see PermissionService::denyWrites(). */
     public function isReadOnly(): bool
     {

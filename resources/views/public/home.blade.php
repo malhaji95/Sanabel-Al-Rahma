@@ -210,7 +210,7 @@
                          «تبرع الآن» tile beside these cards goes straight to
                          the payment page, which is a different thing and not
                          a replacement for it. --}}
-                    @auth
+                    @if (auth()->check() && ! auth()->user()->isFamily())
                         <livewire:add-to-basket
                             :file-number="$case['file_number']"
                             :remaining="$case['remaining_amount']"
@@ -218,7 +218,7 @@
                             :coverage-month="$case['coverage_month'] ?? null"
                             :key="'home-basket-' . $case['file_number'] . '-' . ($case['coverage_month'] ?? '')"
                         />
-                    @endauth
+                    @endif
 
                     <a href="{{ route('opportunity', $case['file_number']) }}"
                        class="btn-secondary mt-2 w-full justify-center gap-1 no-underline">
