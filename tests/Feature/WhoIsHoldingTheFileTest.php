@@ -43,7 +43,10 @@ it('sends a file back to the field with the note that sent it', function () {
 
     $case->refresh();
 
-    expect($case->status)->toBe('pending_visit')
+    // T-206 — «أُعيد للتعديل», not «بانتظار الزيارة». The two were one word
+    // until the executive director sent a file back and the field app showed
+    // it as never visited; a file handed back with a note is its own state.
+    expect($case->status)->toBe('returned')
         ->and($case->reject_reason_ar)->toBe('ينقص إثبات الإيجار وصورة الهوية.')
         // The sign-off below the step is given back: whoever picks the file
         // up next signs it themselves.

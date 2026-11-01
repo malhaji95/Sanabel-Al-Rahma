@@ -37,9 +37,12 @@ it('shows a delegate their own files and not the association money', function ()
     $delegate = userWithRole('delegate', ['region_id' => placeIn($this->region, 'village')->id]);
     $other = userWithRole('delegate', ['region_id' => placeIn($this->region, 'village')->id]);
 
-    // Two of mine waiting on a visit, one of them sent back with a note, and
-    // one that belongs to the delegate at the next desk.
-    foreach ([[$delegate, 'pending_visit', null], [$delegate, 'pending_visit', 'ينقص إثبات الإيجار'], [$other, 'pending_visit', null]] as [$owner, $status, $note]) {
+    // One of mine waiting on a visit, one of mine sent back to me with a
+    // note, and one that belongs to the delegate at the next desk.
+    //
+    // T-206 — the returned file is no longer a `pending_visit` carrying a
+    // note; it has a state of its own and a card of its own.
+    foreach ([[$delegate, 'pending_visit', null], [$delegate, 'returned', 'ينقص إثبات الإيجار'], [$other, 'pending_visit', null]] as [$owner, $status, $note]) {
         familyOf($this->region)->forceFill([
             'created_by' => $owner->id, 'status' => $status, 'reject_reason_ar' => $note,
         ])->save();
@@ -53,11 +56,11 @@ it('shows a delegate their own files and not the association money', function ()
 
     // His own work, counted on his own files.
     expect($cards)->toHaveKey(__('sanabel.dashboard.my_awaiting_visit'))
-        ->and($cards[__('sanabel.dashboard.my_awaiting_visit')]->getValue())->toBe(2)
+        ->and($cards[__('sanabel.dashboard.my_awaiting_visit')]->getValue())->toBe(1)
         ->and($cards[__('sanabel.dashboard.my_awaiting_supervisor')]->getValue())->toBe(1)
-        // And the one sent back to him says so on the card itself.
-        ->and((string) $cards[__('sanabel.dashboard.my_awaiting_visit')]->getDescription())
-        ->toBe(__('sanabel.dashboard.my_returned', ['count' => 1]));
+        // And the one sent back to him is counted on a card of its own,
+        // rather than hidden in a line under the files nobody has visited.
+        ->and($cards[__('sanabel.dashboard.my_returned_files')]->getValue())->toBe(1);
 
     // Nothing about the association's cash, which he can neither read nor act on.
     expect($cards)->not->toHaveKey(__('sanabel.dashboard.pending_verification'))
