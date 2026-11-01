@@ -102,7 +102,35 @@ class NeedEngine
             ->filter(fn (Livestock $l) => $l->countsAsIncome())
             ->sum('monthly_income');
 
-        $stableIncome = (int) $incomes->where('is_stable', true)->sum('amount') + $livestockIncome;
+        /*
+         | T-221 — «ينجمع تلقائياً», 1 November, choosing (ب) of the two we
+         | put to them: the figures written on the people are summed into the
+         | household's income by the engine, and the income step stops being
+         | the place those same figures are typed a second time.
+         |
+         | T-121 recorded what a person's work pays and deliberately kept it
+         | out of the score, because the same money was also written as an
+         | `incomes` row and counting both would count it twice. So the
+         | researcher told the engine a salary twice or not at all, and had
+         | to know which.
+         |
+         | The three places a person's own earnings are written: the head of
+         | the file, the spouse, and each member of the household. Read here
+         | rather than mirrored into an `incomes` row, exactly as livestock
+         | income is, so the two can never drift apart.
+         |
+         | What this does not do is tell a work row typed by hand from any
+         | other row — `source_type` is free text. The guard against the
+         | double count is the income step itself, which no longer asks for
+         | those rows and shows the researcher the figure already counted.
+         */
+        $personWorkIncome = (int) $beneficiary->work_income
+            + (int) $beneficiary->spouse_work_income
+            + (int) $members->sum('work_income');
+
+        $stableIncome = (int) $incomes->where('is_stable', true)->sum('amount')
+            + $livestockIncome
+            + $personWorkIncome;
         // This month's money against this month's need (approved 24 Sep 2026).
         // A payment another body made for the same month counts here and only
         // here: approved 11 October, it answers the need like a partial
@@ -136,6 +164,9 @@ class NeedEngine
                 'adjustments_total' => $adjustmentsTotal,
                 'external_support' => $external,
                 'livestock_income' => $livestockIncome,
+                // T-221 — written down beside the rest, so an old assessment
+                // still says where its income figure came from (rule 8).
+                'person_work_income' => $personWorkIncome,
             ],
         ];
     }

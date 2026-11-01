@@ -1163,6 +1163,30 @@ class BeneficiaryResource extends Resource
                         ->helperText(__('sanabel.beneficiary.answered_no_clears'))
                         ->columnSpanFull(),
 
+                    /*
+                     | T-221 — «ينجمع تلقائياً», 1 November.
+                     |
+                     | What the people of this household earn is written on
+                     | the people, and the engine now sums it into the
+                     | household's income by itself. So the researcher is
+                     | shown the figure that is already counted, before the
+                     | table that used to be where they typed it again.
+                     |
+                     | A reading, never a field: it is not saved anywhere and
+                     | cannot be typed over. The numbers behind it are edited
+                     | where they belong, on each person.
+                     */
+                    Forms\Components\Placeholder::make('person_work_income')
+                        ->label(__('sanabel.income.from_people'))
+                        ->content(fn (?Beneficiary $record) => number_format(
+                            (int) $record?->work_income
+                            + (int) $record?->spouse_work_income
+                            + (int) ($record?->members()->sum('work_income') ?? 0)
+                        ).' '.Money::short())
+                        ->helperText(__('sanabel.income.from_people_help'))
+                        ->visible(fn (?Beneficiary $record) => (bool) $record)
+                        ->columnSpanFull(),
+
                     Forms\Components\Repeater::make('incomes')
                         ->visible(fn (Forms\Get $get) => $get('has_income') === 'yes')
                         ->relationship()

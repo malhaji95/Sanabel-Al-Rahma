@@ -5,15 +5,19 @@ use Filament\Facades\Filament;
 
 /*
  | T-197 — «بخصوص خانة المبلغ الذي يتقاضاه من عمله: نحتاج شرح عنها», 29
- | October, and the list of sources they named with it: the spouse, the
- | children, the dependants, a monthly handout from an association or from
- | neighbours or relatives, the rent of a shop or a plot, a taxi — and a
- | yearly sum divided by twelve.
+ | October, and the list of sources they named with it.
  |
- | The field is read by nobody and deducted from nothing: it says who in the
- | household carries an income. The deduction is made from the «الدخل» step
- | alone, and the old sentence said only the first half of that, so a
- | researcher could not tell whether writing it twice would count it twice.
+ | T-221 — «ينجمع تلقائياً», 1 November, which moved the answer. The field
+ | used to be read by nobody and deducted from nothing: a researcher wrote
+ | the salary on the person, and then wrote the same salary again as an
+ | income row, and only the second one counted. Both halves had to be
+ | remembered, and getting it wrong in either direction was silent — write
+ | it once and the family looked poorer than it is; write it twice in the
+ | table and it counted twice.
+ |
+ | Now the engine sums what is written on the people, and the income table
+ | is for what is not written on a person: a handout, the rent of a plot, a
+ | pension.
  */
 
 beforeEach(function () {
@@ -25,24 +29,25 @@ beforeEach(function () {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
 });
 
-it('says where the amount is counted, not only where it is not', function () {
+it('tells the researcher the amount is counted from here, and not to repeat it', function () {
     $help = __('sanabel.beneficiary.work_income_help');
 
-    expect($help)->toContain('خطوة «الدخل»')
-        // The half that was missing: write it there as well, and it is not
-        // counted twice.
-        ->and($help)->toContain('ولا يُحتسب مرّتين');
+    expect($help)->toContain('يُجمَع تلقائيًّا')
+        ->and($help)->toContain('لا تُعِد كتابته');
 });
 
-it('names every source the association listed', function () {
+it('names the sources that are still typed by hand, and the ones that are not', function () {
     $help = __('sanabel.income.sources_help');
 
-    foreach (['الزوج', 'الأولاد', 'المعالين', 'جمعية', 'جيران', 'أقارب', 'أجرة محل', 'سيارة أجرة'] as $source) {
+    // What the table is for now: what nobody's own page carries.
+    foreach (['جمعية', 'جيران', 'أقارب', 'أجرة محل', 'معاش تقاعدي'] as $source) {
         expect($help)->toContain($source);
     }
 
-    // «والسنوي ÷ ١٢», which is the one instruction a researcher gets wrong.
-    expect($help)->toContain('اثني عشر');
+    // And what it is no longer for, said in as many words.
+    expect($help)->toContain('فلا تكتبه هنا مرّة ثانية')
+        // «والسنوي ÷ ١٢», the one instruction a researcher gets wrong.
+        ->and($help)->toContain('اثني عشر');
 });
 
 it('puts the list in front of the researcher on the income step', function () {
@@ -57,12 +62,13 @@ it('puts the list in front of the researcher on the income step', function () {
     )->toContain(e(__('sanabel.income.sources_help')));
 });
 
-it('still deducts from the income rows alone, and never from the person’s field', function () {
-    $case = familyOf($this->region, adults: 1, children: 0);
+it('shows the figure already counted from the people, above the table', function () {
+    $case = familyOf($this->region, adults: 2, children: 0);
+    $case->forceFill(['work_income' => 300_000, 'spouse_work_income' => 150_000])->save();
 
-    // A head who earns, with nothing written on the income step: the family
-    // has no recorded income, which is what the engine reads.
-    $case->forceFill(['work_income' => 500_000])->save();
-
-    expect($case->fresh()->incomes()->sum('amount'))->toBe(0);
+    expect(
+        Livewire\Livewire::test(EditBeneficiary::class, ['record' => $case->fresh()->getRouteKey()])
+            ->html()
+    )->toContain(e(__('sanabel.income.from_people')))
+        ->toContain(number_format(450_000));
 });
