@@ -49,10 +49,26 @@ trait DeniesReadOnlyRoles
      * deputy hold every key anyway; and the administrator keeps the reading
      * it has always had, because T-105 took its decisions away and left its
      * reads alone deliberately.
+     *
+     * T-202 — «يجب على المدير التنفيذي رؤية كل شيء كي يستطيع متابعة عمل
+     * الجميع لمعرفة في حال تأخر أي حدث في سير العملية», 1 November, after
+     * signing in and finding no «التبرعات» in the menu.
+     *
+     * They were right, and the reason was this list. The executive director
+     * holds the approvals — the file, the change, the campaign, the payment —
+     * but not `verify_payment`, nor `donate`, nor `browse_job_market`; and
+     * since T-115 the key to a screen is the key to the thing on it. So the
+     * three screens where other people's work queues up were the three they
+     * could not see.
+     *
+     * Joining the overseers opens the screens and opens nothing else: this
+     * is read, and every write still goes through `canWrite()` with a key
+     * they either hold or do not. Their own keys are untouched.
      */
     protected function oversees(User $user): bool
     {
-        return $user->isAdmin() || $user->hasRole('council', 'board_director', 'deputy_board_director');
+        return $user->isAdmin()
+            || $user->hasRole('council', 'board_director', 'deputy_board_director', 'executive_director');
     }
 
     /**

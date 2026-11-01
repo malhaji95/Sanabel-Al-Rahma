@@ -20,12 +20,17 @@ class DonationPolicy
             // that name files, in DonationResource: the association's general
             // money is the treasurer's to allocate.
             || $this->canWrite($user, 'confirm_disbursement')
-            || $user->isAdmin() || $user->hasRole('council') || $user->hasRole('donor');
+            // T-202 — and whoever oversees the work reads the queue the work
+            // waits in. This policy was written before `oversees()` existed
+            // and kept its own list, which is how the executive director came
+            // to hold every approval over money and not the screen it sits on.
+            || $this->oversees($user)
+            || $user->hasRole('donor');
     }
 
     public function view(User $user, Donation $donation): bool
     {
-        if ($user->isAdmin() || $user->hasRole('council') || $this->canWrite($user, 'verify_payment')) {
+        if ($this->oversees($user) || $this->canWrite($user, 'verify_payment')) {
             return true;
         }
 
