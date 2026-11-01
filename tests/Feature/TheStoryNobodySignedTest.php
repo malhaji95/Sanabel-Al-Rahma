@@ -56,7 +56,10 @@ it('says on the list which files are waiting for a signature', function () {
 
     Livewire\Livewire::actingAs($officer)
         ->test(ListBeneficiaries::class)
-        ->filterTable('story_awaiting')
+        // T-211 — the toggle became a choice of three, because the state it
+        // could not ask about was the one the association went looking for:
+        // a published file with no story written at all.
+        ->filterTable('story_state', 'awaiting')
         ->assertCanSeeTableRecords([$waiting])
         ->assertCanNotSeeTableRecords([$signed]);
 });

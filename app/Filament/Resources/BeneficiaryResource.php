@@ -2100,13 +2100,30 @@ class BeneficiaryResource extends Resource
                  | T-163 — a file whose story is written and not yet signed.
                  | Nothing on this list used to say so, so nobody signed it.
                  */
+                /*
+                 | T-211 — «هذه الحالة عم بيعطيني إنه منشور, ولكن هو مش
+                 | منشور, هو قاعد ينتظر القصة. فهذي لازم يبيّنها»,
+                 | 30 October.
+                 |
+                 | The column caught one of the two ways a file can be short
+                 | of a story — written and unsigned — and left the other
+                 | blank. So a published file that nobody has written a
+                 | story for at all looked exactly like one whose story is
+                 | signed and live: an empty cell. The three states are
+                 | three words now, and only the finished one is silent.
+                 */
                 Tables\Columns\TextColumn::make('story_approved_at')
-                    ->label(__('sanabel.beneficiary.story_awaiting'))
-                    ->badge()->color('warning')
-                    ->state(fn (Beneficiary $record) => filled($record->story_ar)
-                        && $record->story_approved_at === null
-                            ? __('sanabel.beneficiary.story_awaiting')
-                            : null)
+                    ->label(__('sanabel.beneficiary.story_state'))
+                    ->badge()
+                    ->color(fn (Beneficiary $record) => blank($record->story_ar) ? 'danger' : 'warning')
+                    ->state(fn (Beneficiary $record) => match (true) {
+                        $record->story_approved_at !== null => null,
+                        // An anonymised file has no story on purpose, and is
+                        // not waiting for one (T-65).
+                        $record->isAnonymised() => null,
+                        blank($record->story_ar) => __('sanabel.beneficiary.story_missing'),
+                        default => __('sanabel.beneficiary.story_awaiting'),
+                    })
                     ->placeholder('')
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('anonymised_at')
@@ -2179,6 +2196,28 @@ class BeneficiaryResource extends Resource
 
                             return new HtmlString(
                                 '<span class="text-'.$colour.'-600 dark:text-'.$colour.'-400">'.e($reason).'</span>'
+                            );
+                        }
+
+                        /*
+                         | T-211 — «عم بيعطيني إنه منشور, ولكن هو مش منشور,
+                         | هو قاعد ينتظر القصة», 30 October.
+                         |
+                         | «منشور» is true of the file and not of the whole
+                         | of it: the family is on the donor's list, and the
+                         | paragraph that explains them to a donor is either
+                         | unwritten or unsigned. The badge kept its word and
+                         | says underneath what is still owed, because that
+                         | is the line somebody reads before believing the
+                         | file is done with.
+                         */
+                        if ($record->status === 'published'
+                            && $record->story_approved_at === null
+                            && ! $record->isAnonymised()) {
+                            return new HtmlString(
+                                '<span class="text-warning-600 dark:text-warning-400">'
+                                .e(__('sanabel.beneficiary.'.(blank($record->story_ar) ? 'story_missing' : 'story_awaiting')))
+                                .'</span>'
                             );
                         }
 
@@ -2317,12 +2356,34 @@ class BeneficiaryResource extends Resource
                  | were waiting: the button is inside the file, and nothing on
                  | the list said which files had one.
                  */
-                Tables\Filters\Filter::make('story_awaiting')
-                    ->label(__('sanabel.beneficiary.story_awaiting'))
-                    ->toggle()
-                    ->query(fn (Builder $query) => $query
-                        ->whereNotNull('story_ar')
-                        ->whereNull('story_approved_at')),
+                /*
+                 | T-211 — and the same three states to filter by, because
+                 | the one the association went looking for was the one the
+                 | toggle could not ask about: a published file with no
+                 | story written at all.
+                 */
+                Tables\Filters\SelectFilter::make('story_state')
+                    ->label(__('sanabel.beneficiary.story_state'))
+                    ->options([
+                        'unapproved' => __('sanabel.beneficiary.story_unapproved'),
+                        'missing' => __('sanabel.beneficiary.story_missing'),
+                        'awaiting' => __('sanabel.beneficiary.story_awaiting'),
+                        'approved' => __('sanabel.beneficiary.story_signed'),
+                    ])
+                    ->query(fn (Builder $query, array $data) => match ($data['value'] ?? null) {
+                        // Either way of being short of one, which is the
+                        // question the dashboard card asks.
+                        'unapproved' => $query->whereNull('story_approved_at')->whereNull('anonymised_at'),
+                        // An empty string is as storyless as a null, and the
+                        // textarea writes one of the two depending on who
+                        // saved the file last.
+                        'missing' => $query->whereNull('anonymised_at')
+                            ->where(fn (Builder $q) => $q->whereNull('story_ar')->orWhere('story_ar', '')),
+                        'awaiting' => $query->whereNotNull('story_ar')->where('story_ar', '!=', '')
+                            ->whereNull('story_approved_at'),
+                        'approved' => $query->whereNotNull('story_approved_at'),
+                        default => $query,
+                    }),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),

@@ -251,6 +251,29 @@ class OverviewStats extends BaseWidget
                 ->description($where(__('sanabel.dashboard.rejected_files_help')))
                 ->color('danger')
                 ->url($this->cases('rejected')),
+
+            /*
+             | T-211 — «أو ننقلها على الصفحة الرئيسية اللي عند المدير العام:
+             | اعتماد القصة لازم تكون موجودة هون», 30 October.
+             |
+             | A published file whose story is unwritten or unsigned is
+             | already on the donor's list, carrying no word about the
+             | family. Nothing counted them, so nobody went looking, and the
+             | list is where the signature is given.
+             */
+            Stat::make(__('sanabel.dashboard.published_without_story'),
+                Beneficiary::where('status', 'published')
+                    ->whereNull('story_approved_at')
+                    ->whereNull('anonymised_at')
+                    ->count())
+                ->description($where(__('sanabel.dashboard.published_without_story_help')))
+                ->color('warning')
+                ->url(BeneficiaryResource::getUrl('index', [
+                    'tableFilters' => [
+                        'status' => ['value' => 'published'],
+                        'story_state' => ['value' => 'unapproved'],
+                    ],
+                ])),
         ];
     }
 
