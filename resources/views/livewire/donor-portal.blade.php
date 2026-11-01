@@ -94,6 +94,9 @@
             <table class="w-full text-sm">
                 <thead style="background-color: var(--page); color: var(--text-muted);">
                     <tr>
+                        {{-- T-203 — the platform's own number first, because it is
+                             the one the association can quote back. --}}
+                        <th class="px-4 py-3 text-start font-medium">{{ __('sanabel.donation.reference_no') }}</th>
                         <th class="px-4 py-3 text-start font-medium">{{ __('sanabel.donation.transaction_ref') }}</th>
                         <th class="px-4 py-3 text-start font-medium">{{ __('sanabel.donation.amount') }}</th>
                         <th class="px-4 py-3 text-start font-medium">{{ __('sanabel.designation.label') }}</th>
@@ -107,6 +110,7 @@
                 <tbody class="divide-y" style="border-color: var(--border);">
                     @foreach ($donations as $donation)
                         <tr>
+                            <td class="tabular px-4 py-3 text-xs font-medium" dir="ltr">{{ $donation['reference_no'] }}</td>
                             <td class="tabular px-4 py-3 text-xs" dir="ltr">{{ $donation['transaction_ref'] }}</td>
                             <td class="tabular px-4 py-3 font-medium">{{ number_format($donation['amount']) }}</td>
                             <td class="px-4 py-3 text-xs" style="color: var(--text-muted);">{{ $donation['designation_label'] }}</td>

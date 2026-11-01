@@ -8,6 +8,7 @@ use App\Models\Donation;
 use App\Payments\PaymentGateway;
 use App\Services\MediaService;
 use App\Services\TransferRouting;
+use Illuminate\Support\Collection;
 use Livewire\Component;
 
 /**
@@ -65,12 +66,48 @@ class DonorPortal extends Component
         $this->notice = __('sanabel.public.transfer_recorded');
     }
 
+    /**
+     * T-204 — the file numbers behind one transfer, confirmed or not.
+     *
+     * Masked either way: `MaskedCaseResource` is the only thing a donor is
+     * ever served a family through (rule 2), and a file number is all of a
+     * family that appears here.
+     *
+     * @return Collection<int,string>
+     */
+    private function fileNumbersOn(Donation $donation): Collection
+    {
+        $families = $donation->allocations
+            ->map(fn ($allocation) => $allocation->beneficiary)
+            ->filter();
+
+        if ($families->isEmpty()) {
+            $families = $donation->basket?->items
+                ->map(fn ($item) => $item->beneficiary)
+                ->filter() ?? collect();
+        }
+
+        return $families
+            ->map(fn ($family) => (new MaskedCaseResource($family))->resolve()['file_number'])
+            ->unique()
+            ->values();
+    }
+
     public function render()
     {
         $donor = auth()->user()->donor;
 
         $donations = $donor
-            ? $donor->donations()->with(['allocations.beneficiary', 'transferRecord', 'receipt'])->latest('id')->take(50)->get()
+            ? $donor->donations()
+                ->with([
+                    'allocations.beneficiary',
+                    // T-204 — the basket the transfer came from, so a gift
+                    // still waiting on the treasurer can name its families.
+                    'basket.items.beneficiary',
+                    'transferRecord',
+                    'receipt',
+                ])
+                ->latest('id')->take(50)->get()
             : collect();
 
         return view('livewire.donor-portal', [
@@ -78,6 +115,8 @@ class DonorPortal extends Component
             // The same wallet the basket sends earmarked money to.
             'generalRoute' => app(TransferRouting::class)->wallet(),
             'donations' => $donations->map(fn (Donation $donation) => [
+                // T-203 — the platform's number, beside the bank's.
+                'reference_no' => $donation->reference_no,
                 'transaction_ref' => $donation->transaction_ref,
                 'amount' => $donation->amount,
                 'status' => $donation->status,
@@ -110,10 +149,24 @@ class DonorPortal extends Component
                     ? app(MediaService::class)->temporaryUrl($donation->receipt, 15)
                     : null,
                 'created_at' => $donation->created_at->translatedFormat('Y-m-d'),
-                'cases' => $donation->allocations
-                    ->filter(fn ($a) => $a->beneficiary !== null)
-                    ->map(fn ($a) => (new MaskedCaseResource($a->beneficiary))->resolve()['file_number'])
-                    ->values(),
+                /*
+                 | T-204 — «المفروض رقم ملف الفقير يكون ظاهر عنده, لو بدون
+                 | تأكيد الطلب; إذا ما كان موجود رح يسبب لنا مشكلة»,
+                 | 1 November, over a row reading «مخصص لملفات محددة» with a
+                 | dash where the file numbers belong.
+                 |
+                 | The dash was right and useless. Allocations are written
+                 | when the treasurer matches the transfer, so between the
+                 | donor sending the money and the desk confirming it the
+                 | row said «earmarked» and named nothing — and a donor who
+                 | cannot see which family they paid for cannot check that
+                 | the association matched it to the right one.
+                 |
+                 | The basket is where the donor chose those families, and it
+                 | is theirs. So: the allocations once they exist, and the
+                 | basket until they do.
+                 */
+                'cases' => $this->fileNumbersOn($donation),
             ]),
         ])->layout('layouts.app');
     }
