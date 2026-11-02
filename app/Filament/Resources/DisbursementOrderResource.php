@@ -107,6 +107,36 @@ class DisbursementOrderResource extends Resource
                         __('sanabel.disbursement.approved_duly_done'),
                     )),
 
+                /*
+                 | T-227 — «يُلغى أمر الصرف غير المنفّذ من صاحب الصلاحية
+                 | المحددة», 1 November. The hand that approves an order is
+                 | the hand that may withdraw it; the treasurer who raised it
+                 | cannot undo an approval on their own.
+                 |
+                 | A reason is demanded on the screen as well as in the
+                 | service, because the screen is where it is written and the
+                 | service is where it is guaranteed.
+                 */
+                Tables\Actions\Action::make('cancelOrder')
+                    ->label(__('sanabel.disbursement.cancel_order'))
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->visible(fn (DisbursementOrder $record) => ! in_array($record->status, ['settled', 'cancelled'], true)
+                        && auth()->user()?->can_('approve_disbursement'))
+                    ->modalDescription(__('sanabel.disbursement.cancel_order_help'))
+                    ->form([
+                        Forms\Components\Textarea::make('reason')
+                            ->label(__('sanabel.disbursement.cancel_reason'))
+                            ->rows(3)
+                            ->required(),
+                    ])
+                    ->action(fn (DisbursementOrder $record, array $data) => static::run(
+                        fn () => app(DisbursementService::class)->cancelOrder(
+                            $record, auth()->user(), $data['reason'] ?? '',
+                        ),
+                        __('sanabel.disbursement.order_cancelled'),
+                    )),
+
                 Tables\Actions\EditAction::make(),
             ])
             ->defaultSort('id', 'desc')

@@ -22,6 +22,8 @@ class DisbursementOrder extends Model
         'approved_at' => 'datetime',
         'settled_at' => 'datetime',
         'approved_duly' => 'boolean',
+        // T-227 — who withdrew this order, and when.
+        'cancelled_at' => 'datetime',
     ];
 
     public const STATUSES = ['draft', 'pending_approval', 'approved', 'executing', 'settled', 'cancelled'];

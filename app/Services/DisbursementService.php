@@ -10,7 +10,6 @@ use App\Models\DisbursementOrder;
 use App\Models\DonationAllocation;
 use App\Models\Setting;
 use App\Models\User;
-use App\Services\Money;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -688,6 +687,68 @@ class DisbursementService
                 'reference_no' => $reference,
             ]));
         }
+    }
+
+    /**
+     * T-227 — withdrawing an order that has not been paid.
+     *
+     * «يُلغى أمر الصرف غير المنفّذ… يُسجّل سبب الإلغاء واسم المسؤول وتاريخه.
+     *  يُنشأ أمر صرف جديد بالبيانات المصححة، ويمر بكامل مراحل المراجعة
+     *  والاعتماد من البداية», 1 November.
+     *
+     * Not an edit. The association was explicit that an approved amount is
+     * never quietly corrected: the order is withdrawn whole, with a reason
+     * on the record, and a fresh one is raised and re-approved from the
+     * start. This writes the withdrawal; raising the replacement is the
+     * ordinary path, unchanged.
+     *
+     * Refused the moment any line has moved. «غير المنفّذ» is the whole
+     * condition: once a pound has left, the correction is a reversal, which
+     * is a different act with different evidence.
+     *
+     * The lines go back to `confirmed`, which is where they were before the
+     * treasurer gathered them, so they may join the corrected order. What
+     * they drew from the family's earmarked donations (T-213) stays drawn:
+     * the family is still owed the money, and only the paperwork changed.
+     */
+    public function cancelOrder(DisbursementOrder $order, User $actor, string $reasonAr): DisbursementOrder
+    {
+        if (blank(trim($reasonAr))) {
+            throw new \RuntimeException(__('sanabel.disbursement.cancel_reason_required'));
+        }
+
+        if (in_array($order->status, ['settled', 'cancelled'], true)) {
+            throw new \RuntimeException(__('sanabel.disbursement.order_already_closed'));
+        }
+
+        $paid = $order->disbursements()
+            ->whereIn('status', ['executed', 'received', 'disputed', 'reconciled'])
+            ->exists();
+
+        if ($paid) {
+            throw new \RuntimeException(__('sanabel.disbursement.cannot_cancel_paid'));
+        }
+
+        return DB::transaction(function () use ($order, $actor, $reasonAr) {
+            $order->disbursements()
+                ->whereIn('status', ['in_order', 'approved'])
+                ->get()
+                ->each(fn (Disbursement $line) => $line->forceFill([
+                    'status' => 'confirmed',
+                    'disbursement_order_id' => null,
+                    'approved_by' => null,
+                    'approved_at' => null,
+                ])->save());
+
+            $order->forceFill([
+                'status' => 'cancelled',
+                'cancelled_by' => $actor->getKey(),
+                'cancelled_at' => now(),
+                'cancel_reason_ar' => $reasonAr,
+            ])->save();
+
+            return $order->refresh();
+        });
     }
 
     /** Executing while any line is still waiting; settled once none is. */
