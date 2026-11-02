@@ -152,8 +152,18 @@
         @else
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 @foreach ($cases as $case)
-                    <x-masked-case-card :case="$case">
-                        @if (auth()->check() && ! auth()->user()->isFamily())
+                    <x-masked-case-card :case="$case" :rates="$rates">
+                        @if ($sponsorships)
+                            {{--
+                                T-210 — no giving box here yet. The basket
+                                funds a family's monthly need, which is not
+                                what a sponsorship costs, and offering it
+                                under this heading would be the very thing
+                                they wrote to stop. The file's own page is
+                                the way through until the sponsorship has a
+                                path of its own.
+                            --}}
+                        @elseif (auth()->check() && ! auth()->user()->isFamily())
                             <livewire:add-to-basket
                                 :file-number="$case['file_number']"
                                 :remaining="$case['remaining_amount']"

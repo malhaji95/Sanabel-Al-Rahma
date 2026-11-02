@@ -844,7 +844,13 @@ class MaskedCaseResource extends JsonResource
      * by it: the words are a judgement about a family, and the association
      * decides whether they are published.
      *
-     * @return array<int,string>
+     * T-210 — the association's own key beside the word, because the
+     * sponsorships page has to find the price of this door and a translated
+     * label is not a key. It publishes nothing the label does not already
+     * publish: both say «this file is an orphan file», which is the one
+     * disclosure the switch above governs.
+     *
+     * @return array<string,string>
      */
     private function sponsorshipKinds(Beneficiary $case): array
     {
@@ -858,8 +864,7 @@ class MaskedCaseResource extends JsonResource
             ->filter(fn ($key) => in_array($key, Beneficiary::CASE_CLASSIFICATIONS, true))
             // T-217 — اسم الباب, لا صفة الشخص: «كفالة أرملة» وإن كان
             // التصنيف على الملف «أرمل».
-            ->map(fn (string $key) => __('sanabel.sponsorship_kind.'.$key))
-            ->values()
+            ->mapWithKeys(fn (string $key) => [$key => __('sanabel.sponsorship_kind.'.$key)])
             ->all();
     }
 

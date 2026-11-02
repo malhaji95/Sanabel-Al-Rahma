@@ -27,7 +27,10 @@ function kindsOn($region, array $classifications): array
     $case = publishedCase($region);
     $case->forceFill(['case_classifications' => $classifications])->save();
 
-    return (new MaskedCaseResource($case->fresh()))->resolve()['sponsorship_kinds'];
+    // T-210 — the resource carries the association's own key beside each
+    // word now, so the sponsorships page can find that door's price. What is
+    // read on the screen is still the word, which is what these assert.
+    return array_values((new MaskedCaseResource($case->fresh()))->resolve()['sponsorship_kinds']);
 }
 
 it('says «يتيم» on a file the association classified as one', function () {
@@ -72,6 +75,16 @@ it('draws them on the card the donor actually reads', function () {
         ->assertOk()
         ->assertSee('يتيم')
         ->assertSee('طالب علم');
+});
+
+it('carries the association’s own key beside the word, so a price can be found', function () {
+    // T-210 — «كل كفالة يظهر فيها مبلغها الشهري المحدد». A translated label
+    // is not a key, and the price is held per key.
+    $case = publishedCase($this->region);
+    $case->forceFill(['case_classifications' => ['orphan', 'widowed']])->save();
+
+    expect((new MaskedCaseResource($case->fresh()))->resolve()['sponsorship_kinds'])
+        ->toBe(['orphan' => 'يتيم', 'widowed' => 'أرملة']);
 });
 
 it('keeps «طالب علم» in the list the association fills on the file', function () {

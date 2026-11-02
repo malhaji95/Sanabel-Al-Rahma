@@ -4,7 +4,13 @@
     Every value comes from MaskedCaseResource: a file number, an area, bands and
     labels. No name, no address, no exact age, no exact rent, no raw score.
 --}}
-@props(['case', 'showNote' => null])
+{{--
+    T-210 — `rates` is the published price of each sponsorship door, keyed by
+    the association's own key. Null means this is not the sponsorships page
+    and no sponsorship block is drawn, which is every other screen; an array,
+    even an empty one, means it is.
+--}}
+@props(['case', 'showNote' => null, 'rates' => null])
 
 @php
     /*
@@ -105,6 +111,46 @@
             @endif
         </div>
     </header>
+
+    {{--
+        T-210 — «كل كفالة يظهر فيها مبلغها الشهري المحدد ومدتها … ولا نريد أن
+        يظهر مبلغ احتياج الأسرة الكامل على أنه قيمة الكفالة», 1 November.
+
+        The two figures are about different things, and the sentence under
+        them says so: the need is what this household is short, the
+        sponsorship is what the management set for this door. A door whose
+        price has not been set yet says that, rather than letting the eye
+        fall on the need and read it as the price.
+    --}}
+    @if (is_array($rates))
+        @foreach ($case['sponsorship_kinds'] ?? [] as $kindKey => $kindLabel)
+            <div class="mt-3 rounded-xl border p-3 text-sm"
+                 style="border-color: var(--accent); background-color: var(--card);">
+                <p class="font-semibold">
+                    {{ __('sanabel.public.sponsorship_door_title', ['kind' => $kindLabel]) }}
+                </p>
+
+                @if (isset($rates[$kindKey]))
+                    <p class="tabular mt-1">
+                        {{ __('sanabel.public.sponsorship_value') }}:
+                        <span class="font-bold">{{ number_format($rates[$kindKey]['amount']) }}</span>
+                        {{ App\Services\Money::short($rates[$kindKey]['currency']) }}
+                    </p>
+                    <p class="tabular">
+                        {{ __('sanabel.public.sponsorship_duration') }}:
+                        {{ __('sanabel.sponsorship_rate.months_value', ['count' => $rates[$kindKey]['months']]) }}
+                    </p>
+                    <p class="mt-1 text-xs" style="color: var(--text-muted);">
+                        {{ __('sanabel.public.sponsorship_not_the_need') }}
+                    </p>
+                @else
+                    <p class="mt-1 text-xs" style="color: var(--text-muted);">
+                        {{ __('sanabel.public.sponsorship_value_pending') }}
+                    </p>
+                @endif
+            </div>
+        @endforeach
+    @endif
 
     <dl class="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
         <div>

@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Region;
+use App\Models\SponsorshipRate;
 use App\Services\DonorCaseList;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -124,6 +125,14 @@ class BrowseCases extends Component
             // T-228 — which page this is: its heading, and whether the
             // hadith the association wrote for «الحالات» sits above it.
             'sponsorships' => $this->sponsorships,
+            /*
+             | T-210 — the price of each door, which the sponsorships page
+             | reads and the list of cases does not. Null rather than an
+             | empty list on the list of cases: the card draws no
+             | sponsorship block at all there, and an empty list means
+             | «this is the sponsorships page and no price is set yet».
+             */
+            'rates' => $this->sponsorships ? SponsorshipRate::published() : null,
             'cases' => collect($list['cards']),
             'total' => $list['total'],
             'hasMore' => $list['total'] > $page * $perPage,
