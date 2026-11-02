@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\ChangeRequestResource\Pages;
 use App\Models\ChangeRequest;
+use App\Models\Scopes\RegionScope;
 use App\Services\CaseService;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -11,6 +12,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 /** T-13 — post-approval edits go through review. A material field forces a recompute. */
 class ChangeRequestResource extends Resource
@@ -50,6 +52,37 @@ class ChangeRequestResource extends Resource
             Forms\Components\KeyValue::make('payload_json')->label(__('sanabel.change_request.after'))->disabled()->columnSpanFull(),
             Forms\Components\Textarea::make('reason_ar')->label(__('sanabel.actions.reason'))->disabled()->columnSpanFull(),
         ])->columns(2);
+    }
+
+    /**
+     * T-209 — only requests about files this account may open.
+     *
+     * «المندوب يبحث فقط ضمن الملفات المسموح له بالاطلاع عليها في منطقته …
+     * والبحث لازم يطبق الصلاحيات على مستوى البيانات نفسها, وليس فقط إخفاء
+     * النتائج من الشاشة», 1 November.
+     *
+     * So it is the query and not the column: a delegate who types a file
+     * number from another area gets no row to read, rather than a row with
+     * its file number hidden.
+     *
+     * Asked through the household rather than by joining the region table,
+     * because the household already carries the rule — one definition of
+     * «my region», which cannot drift from the one on the file itself.
+     *
+     * And asked only of the accounts that rule binds. For everybody else
+     * the query is returned untouched, so a request about a file that has
+     * since been closed and soft-deleted is still there for the people
+     * whose job is to read it (rule 3).
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        $user = auth()->user();
+
+        if (! in_array($user?->role?->key, RegionScope::SCOPED_ROLES, true) || ! $user->region_id) {
+            return parent::getEloquentQuery();
+        }
+
+        return parent::getEloquentQuery()->whereHas('beneficiary');
     }
 
     public static function table(Table $table): Table
