@@ -32,6 +32,7 @@ use App\Services\DependencyRules;
 use App\Services\DistributionService;
 use App\Services\DonationService;
 use App\Services\MembershipService;
+use App\Services\RankingService;
 use App\Services\ReferralService;
 use App\Services\SponsorshipService;
 use Illuminate\Database\Seeder;
@@ -563,9 +564,43 @@ class SyntheticDataSeeder extends Seeder
          | which was an area only because the seeder was filing families on
          | areas; once they moved to their localities the list came back empty
          | and the approval refused it.
+         |
+         | T-231 — and the area of a family the list can actually find.
+         |
+         | T-178 fixed the half it saw. The other half stayed: the family it
+         | reads is `$cases[0]`, and `$cases[0]` is a one-time file — every
+         | third one is, counting from the first — while `generateList()`
+         | draws from uncovered *monthly* families. So the area was the area
+         | of a file that could never be on the list, and whenever no
+         | uncovered monthly family happened to live under it the list came
+         | back empty and `approve()` refused it, rightly. Seen once in a
+         | full run, as «Generate the list before approving it»: a flake in
+         | the demonstration, not in the rule.
+         |
+         | Asked of the ranking with the same support type the list uses, so
+         | the area is one the list is guaranteed to find somebody in. The
+         | test on it cannot prove that, because these families are random
+         | and unseeded: it passed under the old code too. What the test
+         | holds is the property that broke; what makes it hold on every
+         | arrangement rather than most is this line.
+         |
+         | The guard below is unreachable while two files in three are
+         | monthly, and it is a skip rather than a throw only for that
+         | reason. It is not the T-225 kind of silence: there, a whole
+         | feature was invisible in every run because the seeder never wrote
+         | the data; here there is genuinely nothing to demonstrate.
          */
+        $candidate = app(RankingService::class)->fundingList('monthly')->first();
+
+        if (! $candidate) {
+            return;
+        }
+
+        $area = Beneficiary::find($candidate['beneficiary_id'])
+            ?->region?->ancestorOfType('area')?->id;
+
         $distribution = Distribution::create([
-            'region_id' => $cases[0]->region?->ancestorOfType('area')?->id ?? $cases[0]->region_id,
+            'region_id' => $area ?? $cases[0]->region?->ancestorOfType('area')?->id ?? $cases[0]->region_id,
             'title_ar' => 'سلال غذائية — الدفعة الأولى',
             'total_amount' => 100_000,
             'per_family_amount' => 20_000,
