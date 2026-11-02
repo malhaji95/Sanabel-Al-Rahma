@@ -48,6 +48,21 @@ class DisbursementService
     {
         $period = ($period ?? $this->coverage->currentMonth())->copy()->startOfMonth();
 
+        /*
+         | T-229 — before anything about the amount: whether this file may
+         | be paid at all.
+         |
+         | Checked here rather than on the screen, because the screen is one
+         | of several ways in — a bulk confirmation, a seeder, a command, a
+         | later screen — and money leaving a refused file is not a thing to
+         | be prevented by a form.
+         */
+        if (! $beneficiary->mayReceiveMoney()) {
+            throw new \RuntimeException(__('sanabel.disbursement.file_may_not_receive', [
+                'status' => __('sanabel.status.'.$beneficiary->status),
+            ]));
+        }
+
         if ($amount <= 0) {
             throw new \RuntimeException(__('sanabel.disbursement.amount_positive'));
         }

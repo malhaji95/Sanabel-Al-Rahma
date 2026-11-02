@@ -34,6 +34,30 @@ class Beneficiary extends Model
         'needs_reassessment', 'suspended', 'graduated', 'rejected', 'merged',
     ];
 
+    /*
+     | T-229 — the statuses on which the association's money may be
+     | committed. Found while reading the demonstration, not reported: a
+     | payment could be confirmed on a file in any status at all, a rejected
+     | one included. The amount was checked against the household's need and
+     | the need survives a rejection, so the ceiling was positive and the
+     | line was written.
+     |
+     | Approved and published are the decided ones, and a file whose
+     | reassessment is due is kept here deliberately: the association is
+     | already helping that household, and stopping its aid because a form
+     | has come due would be a decision nobody asked for. Everything else is
+     | refused — the ones not decided yet, the one refused, the one
+     | suspended, the one graduated out of need, and the duplicate folded
+     | into another file, which would otherwise be paid twice.
+     */
+    public const MAY_RECEIVE_MONEY = ['approved', 'published', 'needs_reassessment'];
+
+    /** Whether the association may commit money on this file at all. */
+    public function mayReceiveMoney(): bool
+    {
+        return in_array($this->status, self::MAY_RECEIVE_MONEY, true);
+    }
+
     /**
      * The eight categories zakat may be paid to, in the order of the verse.
      * A file is classified by choosing one of them; the reason is never typed
