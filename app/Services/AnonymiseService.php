@@ -168,12 +168,17 @@ class AnonymiseService
     ];
 
     /**
-     * JSON columns that cannot be null, emptied rather than marked so the
-     * column still holds valid JSON.
+     * Columns that cannot be null, emptied rather than marked so what is
+     * read back is still a list and not a marker string.
      *
      * change_requests.payload_json is the one that matters: it holds the very
      * value a change moved a field to, so a request to change a telephone
      * number carries that number in it.
+     *
+     * T-230 encrypted that column at rest, and it is still emptied here.
+     * Encryption is not anonymisation: the key is one compromise away from
+     * being a key somebody else holds, and anonymising a file means the
+     * value is gone, not that it is hard to read.
      *
      * @var array<class-string<Model>,array<int,string>>
      */

@@ -349,7 +349,22 @@ class CaseService
             'entity_id' => $target->getKey(),
             'beneficiary_id' => $case->getKey(),
             'payload_json' => $payload,
-            'old_json' => array_intersect_key($target->getAttributes(), $payload),
+            /*
+             | T-230 — the previous value as the model reads it, not as the
+             | table holds it.
+             |
+             | `getAttributes()` is the raw row, so for an encrypted column
+             | it handed over the ciphertext: the approver comparing «before»
+             | against «after» was shown a base64 block on one side and a
+             | telephone number on the other. Read through the casts both
+             | sides are the same kind of thing, and the column they are
+             | stored in is encrypted either way.
+             */
+            'old_json' => collect($payload)
+                ->keys()
+                ->filter(fn (string $field) => array_key_exists($field, $target->getAttributes()))
+                ->mapWithKeys(fn (string $field) => [$field => $target->{$field}])
+                ->all(),
             'reason_ar' => $reasonAr,
             'is_material' => ChangeRequest::isMaterial($payload),
             'requested_by' => $requester->getKey(),

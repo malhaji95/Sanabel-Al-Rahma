@@ -3,6 +3,7 @@
 namespace App\Models\Concerns;
 
 use App\Models\AuditLog;
+use App\Services\SecurityAlerts;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
@@ -15,6 +16,10 @@ trait Auditable
     /** Attributes never written into the audit log (rule 10). */
     protected array $auditRedacted = [
         'national_id_encrypted', 'national_id_hash', 'phone_encrypted', 'wallet_encrypted',
+        // T-230 — T-218 made the spouse's identity number a changeable
+        // field and nobody added it here, so a direct correction of it
+        // wrote the number into the log in clear. Same rule, same list.
+        'spouse_national_id_encrypted',
         'landlord_phone_encrypted', 'contact_encrypted', 'password', 'remember_token',
         // T-95 — the account's own secrets and its address. That a sign-in
         // address changed is the signal an auditor needs; the address itself
@@ -54,9 +59,22 @@ trait Auditable
         }
     }
 
+    /**
+     * The columns this model keeps out of the log.
+     *
+     * T-230 — a model may add its own. `ChangeRequest` has to: its personal
+     * data is inside a column whose own name says nothing about it.
+     *
+     * @return array<int,string>
+     */
+    protected function auditRedactedKeys(): array
+    {
+        return $this->auditRedacted;
+    }
+
     protected function auditPayload(array $attributes): array
     {
-        foreach ($this->auditRedacted as $key) {
+        foreach ($this->auditRedactedKeys() as $key) {
             if (array_key_exists($key, $attributes)) {
                 $attributes[$key] = '[redacted]';
             }
@@ -85,7 +103,7 @@ trait Auditable
          | The service decides which, and sends nothing at all until the
          | association has named a recipient.
          */
-        app(\App\Services\SecurityAlerts::class)->consider($entry);
+        app(SecurityAlerts::class)->consider($entry);
     }
 
     public function auditEntries()

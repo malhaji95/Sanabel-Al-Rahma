@@ -85,6 +85,11 @@ class ChangeRequest extends Model
          | account raises the correction and another approves it. And the
          | number is encrypted at rest like the file-holder's own, so the
          | request carries a value nobody reads off the database.
+         |
+         | That last sentence was written here before it was true: the
+         | payload was a plain array until T-230 encrypted the column, so
+         | for a time this comment described an encryption that did not
+         | exist. It describes one now.
          */
         'spouse_name_ar', 'spouse_national_id_encrypted',
         // The four consents (T-69). A consent is a fact about what the
@@ -130,12 +135,43 @@ class ChangeRequest extends Model
         'requested_by', 'status', 'reviewed_by', 'reviewed_at', 'review_note_ar', 'created_by',
     ];
 
+    /*
+     | T-230 — encrypted at rest, both of them.
+     |
+     | The payload is the proposed new value of a changeable field, and that
+     | list includes every encrypted column on the file: the telephone, the
+     | identity number, the spouse's identity number, the wallet. Cast as a
+     | plain array it put each of them in clear in a second place, while the
+     | file itself encrypted them.
+     |
+     | The columns are text rather than json for this reason: an encrypted
+     | cast writes a ciphertext string, and Postgres refuses that in a json
+     | column.
+     */
     protected $casts = [
-        'payload_json' => 'array',
-        'old_json' => 'array',
+        'payload_json' => 'encrypted:array',
+        'old_json' => 'encrypted:array',
         'is_material' => 'boolean',
         'reviewed_at' => 'datetime',
     ];
+
+    /**
+     * T-230 — and out of the audit log, which is read by more people.
+     *
+     * Rule 10 is absolute: no identity number, name, telephone or wallet in
+     * a log. The trait's list works by column name, and on this model the
+     * column is called `payload_json` — so every change request written
+     * since the first day put the whole payload into `after_json`, with
+     * whatever personal value it carried. The column name told the
+     * redaction nothing.
+     *
+     * Both columns go, not only the payload: `old_json` holds the same kind
+     * of value, one version older.
+     */
+    protected function auditRedactedKeys(): array
+    {
+        return array_merge($this->auditRedacted, ['payload_json', 'old_json']);
+    }
 
     public function requester(): BelongsTo
     {
