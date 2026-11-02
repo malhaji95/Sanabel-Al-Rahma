@@ -1,10 +1,8 @@
 <?php
 
-use App\Livewire\BrowseCases;
 use App\Models\Setting;
 use App\Services\DonorCaseList;
 use Illuminate\Support\Facades\Cache;
-use Livewire\Livewire;
 
 /*
  | T-208 — «وموجود فلتر للكفلات», 1 November.
@@ -21,6 +19,10 @@ use Livewire\Livewire;
  | And the filter is the badge's disclosure, not a lesser one: to narrow the
  | list to «يتيم» and be shown a family is to be told that family is an orphan
  | file. Rule 2, so one switch closes both.
+ |
+ | T-228 moved the row itself off the list of cases and onto a page of its
+ | own. What is tested here is the doors and what they narrow; the page is
+ | tested in SponsorshipsOnTheirOwnPageTest.
  */
 
 beforeEach(function () {
@@ -44,7 +46,7 @@ function fileNumbersForKind(?string $kind): array
     Cache::flush();
 
     return collect(app(DonorCaseList::class)
-        ->page('all', null, 1, 50, withCovered: true, kind: $kind)['cards'])
+        ->page('all', null, 1, 50, withCovered: true, kinds: $kind === null ? [] : [$kind])['cards'])
         ->pluck('file_number')
         ->all();
 }
@@ -125,36 +127,26 @@ it('closes the filter with the same switch that closes the words on the card', f
         ->and(fileNumbersForKind('widowed'))->toContain($widow->file_number);
 });
 
-it('draws the row of doors on the page, and the chosen one narrows the grid', function () {
-    $orphan = classifiedCase($this->region, ['orphan']);
-    $widow = classifiedCase($this->region, ['widowed']);
+it('keeps every door it is given, so a family behind two is listed once', function () {
+    $both = classifiedCase($this->region, ['orphan', 'widowed']);
+    $student = classifiedCase($this->region, ['student']);
 
-    Livewire::test(BrowseCases::class)
-        ->assertSee('باب الكفالة:')
-        ->assertSee('يتيم')
-        ->assertSee('أرملة')
-        ->assertSee($orphan->file_number)
-        ->assertSee($widow->file_number)
-        ->set('kind', 'orphan')
-        ->assertSee($orphan->file_number)
-        ->assertDontSee($widow->file_number);
+    // T-228 — the sponsorships page asks about all the doors at once.
+    $numbers = collect(app(DonorCaseList::class)
+        ->page('all', null, 1, 50, withCovered: true, kinds: ['orphan', 'widowed', 'student'])['cards'])
+        ->pluck('file_number');
+
+    expect($numbers)->toHaveCount(2)
+        ->and($numbers)->toContain($both->file_number, $student->file_number);
 });
 
-it('does not draw the row when the association has closed the switch', function () {
+it('offers only the classifications the association called sponsorships', function () {
     classifiedCase($this->region, ['orphan']);
+    classifiedCase($this->region, ['poor', 'needy']);
 
-    Setting::updateOrCreate(['key' => 'show_sponsorship_kind'], ['value_json' => false]);
-    Setting::forgetLoaded();
-
-    Livewire::test(BrowseCases::class)->assertDontSee('باب الكفالة:');
-});
-
-it('says which door emptied the list when a chosen one has nobody left in the region', function () {
-    classifiedCase($this->region, ['orphan']);
-    classifiedCase(regionWithRates(), ['widowed']);
-
-    Livewire::test(BrowseCases::class)
-        ->set('regionId', $this->region->id)
-        ->set('kind', 'widowed')
-        ->assertSee('لا توجد حالياً حالة منشورة تحت باب «أرملة»');
+    // Every door is a classification; not every classification is a door.
+    expect(array_keys(app(DonorCaseList::class)->kinds()))
+        ->toBe(['poor', 'needy', 'orphan'])
+        ->and(array_keys(app(DonorCaseList::class)->sponsorshipDoors()))
+        ->toBe(['orphan']);
 });

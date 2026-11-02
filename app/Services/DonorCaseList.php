@@ -50,21 +50,22 @@ class DonorCaseList
         int $perPage,
         bool $withCovered = true,
         bool $zakatOnly = false,
-        // T-208 — one of the association's classifications, or null for all.
-        ?string $kind = null,
+        // T-208, T-228 — any of the association's classifications; empty for
+        // all of them.
+        array $kinds = [],
     ): array {
         $seconds = (int) config('sanabel.public_list_cache_seconds');
 
-        $kind = $this->allowedKind($kind);
+        $kinds = $this->allowedKinds($kinds);
 
-        $build = fn () => $this->build($supportType, $regionId, $page, $perPage, $withCovered, $zakatOnly, $kind);
+        $build = fn () => $this->build($supportType, $regionId, $page, $perPage, $withCovered, $zakatOnly, $kinds);
 
         if ($seconds <= 0) {
             return $build();
         }
 
         return Cache::remember(
-            $this->key($supportType, $regionId, $page, $perPage, $withCovered, $zakatOnly, $kind),
+            $this->key($supportType, $regionId, $page, $perPage, $withCovered, $zakatOnly, $kinds),
             $seconds,
             $build,
         );
@@ -112,10 +113,37 @@ class DonorCaseList
             ->all();
     }
 
-    /** A key the association has declared, or nothing at all. */
-    private function allowedKind(?string $kind): ?string
+    /**
+     * The sponsorship doors, and their words.
+     *
+     * T-228 — «في صفحة الكفالات لازم يظهر كل كفاله، ايش نوعها يتيم ارمله
+     * طالب», 1 November. Of the eight classifications a file may carry,
+     * these are the ones the association called kinds of sponsorship; the
+     * rest are grounds for a payment rather than a door a donor walks
+     * through. The list is config, and a door still has to have somebody
+     * behind it before it is drawn.
+     *
+     * @return array<string,string>
+     */
+    public function sponsorshipDoors(): array
     {
-        return $kind !== null && array_key_exists($kind, $this->kinds()) ? $kind : null;
+        $declared = (array) config('sanabel.sponsorship_kinds');
+
+        return collect($this->kinds())
+            ->filter(fn (string $label, string $key) => in_array($key, $declared, true))
+            ->all();
+    }
+
+    /** The keys the association has declared, and nothing else. */
+    private function allowedKinds(array $kinds): array
+    {
+        $offered = $this->kinds();
+
+        return collect($kinds)
+            ->filter(fn ($key) => is_string($key) && array_key_exists($key, $offered))
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /** @return array{cards:array<int,array>,total:int} */
@@ -126,7 +154,7 @@ class DonorCaseList
         int $perPage,
         bool $withCovered,
         bool $zakatOnly,
-        ?string $kind = null,
+        array $kinds = [],
     ): array {
         /*
          | T-189 — «الفلاتر: جميع الحالات, دعم شهري, دعم لمرة واحدة»,
@@ -139,7 +167,7 @@ class DonorCaseList
             $regionId,
             $withCovered,
             $zakatOnly,
-            $kind,
+            $kinds,
         );
 
         return [
@@ -162,7 +190,7 @@ class DonorCaseList
         int $perPage,
         bool $withCovered,
         bool $zakatOnly,
-        ?string $kind = null,
+        array $kinds = [],
     ): string {
         return implode(':', [
             'sanabel.cases',
@@ -176,8 +204,10 @@ class DonorCaseList
             // T-98 — a filtered list is a different list, so it is a different
             // key. Without this the zakat list would be served the general one.
             $zakatOnly ? 'zakat' : 'any',
-            // T-208 — likewise: a list narrowed to one door is its own list.
-            $kind ?? 'any-kind',
+            // T-208, T-228 — likewise: a list narrowed to a set of doors
+            // is its own list, and the order of the set must not make two
+            // keys out of one question.
+            $kinds === [] ? 'any-kind' : implode(',', collect($kinds)->sort()->values()->all()),
         ]);
     }
 

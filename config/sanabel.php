@@ -287,6 +287,22 @@ return [
         'pending_legal_review' => true,
     ],
 
+    /*
+     | T-228 — «في صفحة الكفالات لازم يظهر كل كفاله، ايش نوعها يتيم ارمله
+     | طالب», 1 November. Which of the association's classifications is a
+     | sponsorship door, in their own words.
+     |
+     | Data rather than code (§5): the eight classifications on a file mix
+     | the sponsorship kinds with the zakat categories — فقير and مسكين and
+     | غارم are grounds for a payment, not kinds of sponsorship — so the
+     | three they named are the doors, and adding a fourth is one line here
+     | rather than a change to any query.
+     |
+     | A door is still only drawn when a published file carries it, so this
+     | list widens nothing on its own.
+     */
+    'sponsorship_kinds' => ['orphan', 'widowed', 'student'],
+
     'setting_defaults' => [
         /*
          | T-95 — OPS-03. Who hears a security alert: the roles the association

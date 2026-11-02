@@ -52,6 +52,8 @@
                 ['label' => __('sanabel.public.basket'), 'href' => route('donor.basket')],
                 ['label' => __('sanabel.favourites.title'), 'href' => route('donor.favourites')],
                 ['label' => __('sanabel.public.zakat_due'), 'href' => route('cases.browse', ['zakat' => 1])],
+                // T-228 — الكفالات على صفحتها.
+                ['label' => __('sanabel.public.sponsorships'), 'href' => route('sponsorships.browse')],
             ] as $item)
                 <a href="{{ $item['href'] }}" class="block px-4 py-2.5 text-sm no-underline hover:opacity-80">
                     {{ $item['label'] }}

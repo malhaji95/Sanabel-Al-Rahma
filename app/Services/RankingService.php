@@ -140,11 +140,17 @@ class RankingService
         ?int $regionId = null,
         bool $withCovered = false,
         bool $zakatOnly = false,
-        // T-208 — «وموجود فلتر للكفالات», 1 November. One of the
-        // association's own classifications, or null for all of them.
-        ?string $kind = null,
+        /*
+         | T-208 — «وموجود فلتر للكفالات», 1 November, and T-228 — a page of
+         | sponsorships rather than a chip on the list of cases.
+         |
+         | Any of the association's own classifications; empty for all of
+         | them. A set rather than one key because the sponsorships page
+         | opens on every door at once, and a chip narrows it to one.
+         */
+        array $kinds = [],
     ): Collection {
-        $families = $this->rankingRows($supportType, $regionId, $zakatOnly, $kind);
+        $families = $this->rankingRows($supportType, $regionId, $zakatOnly, $kinds);
 
         if ($families->isEmpty()) {
             return collect();
@@ -230,7 +236,7 @@ class RankingService
         ?string $supportType,
         ?int $regionId,
         bool $zakatOnly = false,
-        ?string $kind = null,
+        array $kinds = [],
     ): Collection {
         $query = Beneficiary::query()->published();
 
@@ -244,8 +250,17 @@ class RankingService
          | to nothing, so a hand-edited query string cannot ask the list a
          | question about a word nobody wrote.
          */
-        if ($kind !== null && in_array($kind, Beneficiary::CASE_CLASSIFICATIONS, true)) {
-            $query->whereJsonContains('beneficiaries.case_classifications', $kind);
+        $kinds = array_values(array_intersect($kinds, Beneficiary::CASE_CLASSIFICATIONS));
+
+        if ($kinds !== []) {
+            // T-228 — a family behind any one of the asked-for doors. The
+            // sponsorships page asks about all of them at once; one chip
+            // asks about one.
+            $query->where(function ($grouped) use ($kinds) {
+                foreach ($kinds as $key) {
+                    $grouped->orWhereJsonContains('beneficiaries.case_classifications', $key);
+                }
+            });
         }
 
         /*

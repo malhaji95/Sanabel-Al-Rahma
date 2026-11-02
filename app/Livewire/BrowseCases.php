@@ -41,16 +41,24 @@ class BrowseCases extends Component
     public bool $zakat = false;
 
     /*
-     | T-208 — «وموجود فلتر للكفلات», 1 November. T-205 wrote the kind of
-     | sponsorship on the card; this is the other half of it, the door a
-     | donor who came for one kind of family can walk through.
+     | T-208 — «وموجود فلتر للكفلات», 1 November; T-228 — «مابدنا الكفالات,
+     | تظهر في الحالات / ولكن, في صفحة الكفالات لازم يظهر كل كفاله, ايش
+     | نوعها يتيم ارمله طالب», the same day.
      |
      | One of the association's classifications, or null for all of them.
-     | DonorCaseList holds it to the association's own list, so a value typed
-     | into the query string widens nothing and narrows to nothing.
+     | It is read only on the sponsorships page: on the list of cases the
+     | row of doors is not drawn and this stays null, which is what they
+     | asked for.
      */
     #[Url]
     public ?string $kind = null;
+
+    /*
+     | Whether this is the sponsorships page rather than the list of cases.
+     | Protected, so it is the class that decides and not the browser:
+     | `BrowseSponsorships` is the same list behind its own doors.
+     */
+    protected bool $sponsorships = false;
 
     public function updatedKind(): void
     {
@@ -82,6 +90,22 @@ class BrowseCases extends Component
         // and masked behind one cache (T-87).
         $cases = app(DonorCaseList::class);
 
+        /*
+         | T-228 — the doors, and only on the page they were asked for.
+         |
+         | On the list of cases there are none, so nothing narrows and every
+         | family shows. On the sponsorships page they are the association's
+         | three kinds, and the page opens on all of them at once: «لازم يظهر
+         | كل كفاله». A chip narrows it to one.
+         */
+        $doors = $this->sponsorships ? $cases->sponsorshipDoors() : [];
+
+        // A door nobody declared is not a question, so it is let go of
+        // rather than answered with an empty grid.
+        if ($this->kind !== null && ! array_key_exists($this->kind, $doors)) {
+            $this->kind = null;
+        }
+
         $list = $cases->page(
             $this->supportType,
             $this->regionId,
@@ -89,14 +113,17 @@ class BrowseCases extends Component
             $perPage,
             withCovered: true,
             zakatOnly: $this->zakat,
-            kind: $this->kind,
+            kinds: $this->kind !== null ? [$this->kind] : array_keys($doors),
         );
 
         return view('livewire.browse-cases', [
             // T-208 — the doors that have somebody behind them, in the
             // association's own order. Empty when the association has closed
             // the switch on the words, and then the row of chips is not drawn.
-            'kinds' => $cases->kinds(),
+            'kinds' => $doors,
+            // T-228 — which page this is: its heading, and whether the
+            // hadith the association wrote for «الحالات» sits above it.
+            'sponsorships' => $this->sponsorships,
             'cases' => collect($list['cards']),
             'total' => $list['total'],
             'hasMore' => $list['total'] > $page * $perPage,

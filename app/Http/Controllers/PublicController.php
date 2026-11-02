@@ -55,6 +55,10 @@ class PublicController extends Controller
             'campaigns' => $campaigns,
             'monthlyFunding' => $this->monthlyFunding($campaigns),
             'cases' => $urgent,
+            // T-228 — whether there is a sponsorships page to send anybody
+            // to. Empty when the association has closed the words, or when
+            // no published file carries one of the kinds.
+            'sponsorshipDoors' => app(DonorCaseList::class)->sponsorshipDoors(),
             'stats' => app(PlatformStats::class)->all(),
             'features' => $cards->get('feature', collect()),
             'tiles' => $cards->get('tile', collect()),

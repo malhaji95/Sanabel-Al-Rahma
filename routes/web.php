@@ -5,6 +5,7 @@ use App\Http\Controllers\FieldController;
 use App\Http\Controllers\PublicController;
 use App\Http\Middleware\KeepFamiliesOutOfTheDonorPortal;
 use App\Livewire\BrowseCases;
+use App\Livewire\BrowseSponsorships;
 use App\Livewire\DonorBasket;
 use App\Livewire\DonorFavourites;
 use App\Livewire\DonorPortal;
@@ -35,6 +36,13 @@ Route::get('/campaigns', [PublicController::class, 'campaigns'])->name('campaign
  */
 Route::get('/campaigns/{campaign}', [PublicController::class, 'campaign'])->name('campaign.public');
 Route::get('/cases', BrowseCases::class)->name('cases.browse');
+
+/*
+ | T-228 — «مابدنا الكفالات, تظهر في الحالات / ولكن, في صفحة الكفالات لازم
+ | يظهر كل كفاله, ايش نوعها يتيم ارمله طالب», 1 November. The row of doors
+ | T-208 put on the list of cases has a page of its own.
+ */
+Route::get('/sponsorships', BrowseSponsorships::class)->name('sponsorships.browse');
 
 // One address per family file, so an opportunity can be sent on. It serves the
 // same masked card the list serves — nothing here that the list does not show.

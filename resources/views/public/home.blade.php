@@ -229,11 +229,21 @@
             @endforeach
         </div>
 
-        <div class="mt-5 text-center">
+        <div class="mt-5 flex flex-wrap items-center justify-center gap-3">
             <a href="{{ route('cases.browse') }}" class="btn-secondary inline-flex items-center gap-1 no-underline">
                 {{ __('sanabel.public.all_cases') }}
                 <x-brand.icon name="chevron-left" class="h-4 w-4" />
             </a>
+
+            {{-- T-228 — the sponsorships have a page of their own, so there
+                 is somewhere to send the donor who came for one kind of
+                 family. Drawn only when there are doors to walk through. --}}
+            @if (filled($sponsorshipDoors ?? []))
+                <a href="{{ route('sponsorships.browse') }}" class="btn-secondary inline-flex items-center gap-1 no-underline">
+                    {{ __('sanabel.public.all_sponsorships') }}
+                    <x-brand.icon name="chevron-left" class="h-4 w-4" />
+                </a>
+            @endif
         </div>
     </section>
 

@@ -9,6 +9,7 @@
         the attribution travels with it because a hadith without its grading
         is a hadith nobody can check.
     --}}
+    @unless ($sponsorships)
     <section class="card mb-6 text-center" aria-labelledby="cases-hadith">
         <p class="text-sm" style="color: var(--text-muted);">{{ __('sanabel.cases_intro.said') }}</p>
 
@@ -25,12 +26,18 @@
             {{ __('sanabel.cases_intro.choose') }}
         </p>
     </section>
+    @endunless
 
     <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-            <h1 class="text-2xl">{{ __('sanabel.public.cases') }}</h1>
+            {{-- T-228 — the same list, under the name of the page it is on. --}}
+            <h1 class="text-2xl">
+                {{ $sponsorships ? __('sanabel.public.sponsorships') : __('sanabel.public.cases') }}
+            </h1>
             <p class="mt-1 text-sm" style="color: var(--text-muted);">
-                {{ __('sanabel.public.cases_count', ['count' => $total]) }}
+                {{ $sponsorships
+                    ? __('sanabel.public.sponsorships_count', ['count' => $total])
+                    : __('sanabel.public.cases_count', ['count' => $total]) }}
             </p>
         </div>
 
@@ -83,16 +90,18 @@
     </div>
 
     {{--
-        T-208 — «وموجود فلتر للكفلات», 1 November.
+        T-208 — «وموجود فلتر للكفلات», 1 November, and T-228 the same day:
+        «مابدنا الكفالات, تظهر في الحالات».
 
         A row of its own rather than a fourth control crammed into the line
-        above: these are the association's own doors, there may be seven of
-        them, and a donor who came to sponsor an orphan should meet them
-        before the grid rather than hunt for a select box.
+        above: these are the association's own doors, and a donor who came to
+        sponsor an orphan should meet them before the grid rather than hunt
+        for a select box. It is drawn on the sponsorships page and nowhere
+        else — on the list of cases there are no doors to draw.
 
-        Drawn only when the association publishes the words at all — the
-        filter and the badge are the same disclosure (rule 2), so they are
-        behind the same switch.
+        And only when the association publishes the words at all: the filter
+        and the badge are the same disclosure (rule 2), so they are behind
+        the same switch.
     --}}
     @if (filled($kinds))
         <div
@@ -137,6 +146,7 @@
             <x-empty-state :title="match (true) {
                 $kind !== null => __('sanabel.public.sponsorship_kind_empty', ['kind' => $kinds[$kind] ?? '']),
                 $zakat => __('sanabel.public.zakat_only_empty'),
+                $sponsorships => __('sanabel.public.no_sponsorships'),
                 default => __('sanabel.public.no_cases'),
             }" />
         @else
