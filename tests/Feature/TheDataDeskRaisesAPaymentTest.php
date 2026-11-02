@@ -94,7 +94,7 @@ it('walks one payment the whole way, and tells the desk it has gone', function (
         ->where('template_key', 'disbursement_order_approved')->exists())->toBeTrue();
 
     // The treasurer transfers it, and the desk that asked hears the end of it.
-    $service->execute($line->refresh(), $treasurer, 'TRX-PAID-1');
+    $service->execute($line->refresh(), $treasurer, 'TRX-PAID-1', proof: transferProof());
 
     expect($line->refresh()->status)->toBe('executed')
         ->and(AppNotification::where('recipient_id', $supervisor->id)

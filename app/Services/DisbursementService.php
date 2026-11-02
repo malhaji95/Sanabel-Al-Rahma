@@ -11,6 +11,7 @@ use App\Models\DonationAllocation;
 use App\Models\Setting;
 use App\Models\User;
 use App\Services\Money;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -31,6 +32,9 @@ class DisbursementService
     public function __construct(
         private readonly CoverageService $coverage,
         private readonly NotificationService $notifications,
+        // T-226 — the transfer's own evidence, stored like every other
+        // document the system keeps.
+        private readonly MediaService $media,
     ) {}
 
     /**
@@ -344,15 +348,46 @@ class DisbursementService
         return $disbursement->refresh();
     }
 
-    /** The treasurer moves the money and names the transfer that carried it. */
-    public function execute(Disbursement $disbursement, User $treasurer, string $transferRef, ?int $proofMediaId = null): Disbursement
-    {
+    /**
+     * The treasurer moves the money and names the transfer that carried it.
+     *
+     * T-226 — «ما منقبل تحويل بدون مرجع قابل للمطابقة وإثبات تنفيذ»,
+     * 1 November.
+     *
+     * The reference was already required and the proof was not: this method
+     * took an id that no screen ever supplied, so every transfer the system
+     * has recorded is unevidenced. It takes the uploaded file now and stores
+     * it against the line, and it refuses a transfer that carries neither a
+     * new file nor a proof already on the record.
+     *
+     * `$proof` is the file the treasurer just uploaded; `$proofMediaId` is
+     * kept for a caller that already holds a stored document.
+     */
+    public function execute(
+        Disbursement $disbursement,
+        User $treasurer,
+        string $transferRef,
+        ?int $proofMediaId = null,
+        ?UploadedFile $proof = null,
+    ): Disbursement {
         if ($disbursement->status !== 'approved') {
             throw new \RuntimeException(__('sanabel.disbursement.approve_before_executing'));
         }
 
         // T-105 — whoever authorised the payment does not also move the money.
         $this->refuseSameHand($disbursement, $treasurer, ['approved_by']);
+
+        if ($proof) {
+            $proofMediaId = $this->media
+                ->store($proof, $disbursement, 'transfer_proof', $treasurer)
+                ->getKey();
+        }
+
+        $proofMediaId ??= $disbursement->proof_media_id;
+
+        if (! $proofMediaId) {
+            throw new \RuntimeException(__('sanabel.disbursement.proof_required'));
+        }
 
         $disbursement->forceFill([
             'status' => 'executed',

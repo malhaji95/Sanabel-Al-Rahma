@@ -65,7 +65,7 @@ it('tells nobody in the household when the order is merely approved', function (
 it('tells them once the transfer is recorded with its reference', function () {
     $line = lineReadyToPay($this->region, $this->officer, $this->treasurer, $this->director);
 
-    app(DisbursementService::class)->execute($line, $this->treasurer, 'TRF-99001');
+    app(DisbursementService::class)->execute($line, $this->treasurer, 'TRF-99001', proof: transferProof());
 
     $messages = messagesFor($line->beneficiary->user_id, 'disbursement_to_confirm');
 
@@ -86,7 +86,7 @@ it('tells them once the transfer is recorded with its reference', function () {
 it('puts the figure in the message, which is what the household confirms', function () {
     $line = lineReadyToPay($this->region, $this->officer, $this->treasurer, $this->director);
 
-    app(DisbursementService::class)->execute($line, $this->treasurer, 'TRF-99002');
+    app(DisbursementService::class)->execute($line, $this->treasurer, 'TRF-99002', proof: transferProof());
 
     $message = messagesFor($line->beneficiary->user_id, 'disbursement_to_confirm')->first();
 
@@ -101,7 +101,7 @@ it('puts the figure in the message, which is what the household confirms', funct
 it('still puts no figure in the messages that go to the desks', function () {
     $line = lineReadyToPay($this->region, $this->officer, $this->treasurer, $this->director);
 
-    app(DisbursementService::class)->execute($line, $this->treasurer, 'TRF-99005');
+    app(DisbursementService::class)->execute($line, $this->treasurer, 'TRF-99005', proof: transferProof());
 
     // T-141 stands where it was written: a desk is told which order moved,
     // never how much somebody else was paid.
@@ -121,7 +121,7 @@ it('sends nothing to a household that has no account yet', function () {
     $service->approve($order->refresh(), $this->director);
 
     // No account, no recipient, and no crash on the way past it.
-    $service->execute($line->refresh(), $this->treasurer, 'TRF-99003');
+    $service->execute($line->refresh(), $this->treasurer, 'TRF-99003', proof: transferProof());
 
     expect($line->refresh()->status)->toBe('executed')
         ->and(AppNotification::where('template_key', 'disbursement_to_confirm')->count())->toBe(0);
@@ -130,7 +130,7 @@ it('sends nothing to a household that has no account yet', function () {
 it('still tells the accountant and the officer who asked, as it did before', function () {
     $line = lineReadyToPay($this->region, $this->officer, $this->treasurer, $this->director);
 
-    app(DisbursementService::class)->execute($line, $this->treasurer, 'TRF-99004');
+    app(DisbursementService::class)->execute($line, $this->treasurer, 'TRF-99004', proof: transferProof());
 
     expect(messagesFor($this->officer->id, 'disbursement_executed'))->not->toBeEmpty();
 });

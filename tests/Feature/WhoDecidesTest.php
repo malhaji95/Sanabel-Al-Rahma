@@ -107,10 +107,10 @@ it('stops one person taking two steps of the same payment, whatever their role h
     $service->approve($order->refresh(), $treasurer);
 
     // Approve then execute: the hand that authorised it does not move it.
-    expect(fn () => $service->execute($line->refresh(), $treasurer, 'TRX-1'))
+    expect(fn () => $service->execute($line->refresh(), $treasurer, 'TRX-1', proof: transferProof()))
         ->toThrow(RuntimeException::class, __('sanabel.disbursement.no_same_hand'));
 
-    $executed = $service->execute($line->refresh(), $everything, 'TRX-1');
+    $executed = $service->execute($line->refresh(), $everything, 'TRX-1', proof: transferProof());
 
     // Execute then reconcile.
     expect(fn () => $service->reconcile($executed->refresh(), $everything))

@@ -87,7 +87,7 @@ it('counts what actually left through an approved order', function () {
     // Approved is not out of the door.
     expect(reportFor()['money']['disbursed'])->toBe(0);
 
-    $service->execute($line->refresh(), userWithRole('treasurer'), 'TRF-REP-1');
+    $service->execute($line->refresh(), userWithRole('treasurer'), 'TRF-REP-1', proof: transferProof());
 
     expect(reportFor()['money']['disbursed'])->toBe(8_000);
 });

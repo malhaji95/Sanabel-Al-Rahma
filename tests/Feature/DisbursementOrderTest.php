@@ -47,7 +47,7 @@ it('walks one payment from confirmation to reconciliation', function () {
         ->and($order->approved_by)->toBe($this->director->id)
         ->and($line->refresh()->status)->toBe('approved');
 
-    $this->service->execute($line, $this->treasurer, 'TRF-900');
+    $this->service->execute($line, $this->treasurer, 'TRF-900', proof: transferProof());
 
     expect($line->refresh()->status)->toBe('executed')
         ->and($line->transfer_ref)->toBe('TRF-900')
@@ -147,7 +147,7 @@ it('does not stop the order when one payment fails to land', function () {
         // The other line is still waiting, so the order is still running.
         ->and($order->refresh()->status)->toBe('executing');
 
-    $this->service->execute($b->refresh(), $this->treasurer, 'TRF-901');
+    $this->service->execute($b->refresh(), $this->treasurer, 'TRF-901', proof: transferProof());
 
     expect($order->refresh()->status)->toBe('settled');
 });
@@ -157,7 +157,7 @@ it('keeps every step in its own order', function () {
     $line = $this->service->confirm($family, 5_000, $this->officer);
 
     // Not executed before it is approved.
-    expect(fn () => $this->service->execute($line, $this->treasurer, 'TRF-902'))
+    expect(fn () => $this->service->execute($line, $this->treasurer, 'TRF-902', proof: transferProof()))
         ->toThrow(RuntimeException::class);
 
     $order = $this->service->gather([$line], $this->treasurer);

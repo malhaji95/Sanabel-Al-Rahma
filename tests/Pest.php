@@ -19,7 +19,9 @@ use Database\Seeders\RoleAndPermissionSeeder;
 use Database\Seeders\SettingSeeder;
 use Filament\Forms\Components\Wizard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 pest()->extend(TestCase::class)
@@ -391,4 +393,18 @@ function statementsOpenedBy(string $source, string $opening): array
     }
 
     return $found;
+}
+
+/**
+ * T-226 — the receipt a transfer may not be recorded without.
+ *
+ * The association's rule of 1 November: «ما منقبل تحويل بدون مرجع قابل
+ * للمطابقة وإثبات تنفيذ». Every test that moves money carries one, because
+ * the service refuses a transfer that does not.
+ */
+function transferProof(): UploadedFile
+{
+    Storage::fake(config('sanabel.media_disk'));
+
+    return UploadedFile::fake()->image('receipt.jpg');
 }

@@ -71,7 +71,7 @@ it('tells the accountant when a transfer has left', function () {
     app(DisbursementService::class)->approve($order, userWithRole('executive_director'));
 
     $line = $order->disbursements()->firstOrFail();
-    app(DisbursementService::class)->execute($line, userWithRole('treasurer'), 'TRX-OUT-1');
+    app(DisbursementService::class)->execute($line, userWithRole('treasurer'), 'TRX-OUT-1', proof: transferProof());
 
     expect(AppNotification::where('recipient_id', $accountant->id)
         ->where('template_key', 'disbursement_executed')->exists())->toBeTrue()

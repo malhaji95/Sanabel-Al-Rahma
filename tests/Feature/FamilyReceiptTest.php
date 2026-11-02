@@ -26,7 +26,7 @@ beforeEach(function () {
         $this->service->submit($order);
         $this->service->approve($order, userWithRole('executive_director'));
 
-        return $this->service->execute($line->refresh(), $this->treasurer, 'TRF-FAM-'.$amount);
+        return $this->service->execute($line->refresh(), $this->treasurer, 'TRF-FAM-'.$amount, proof: transferProof());
     };
 });
 

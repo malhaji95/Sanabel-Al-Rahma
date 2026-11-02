@@ -100,13 +100,34 @@ class DisbursementsRelationManager extends RelationManager
                     ->color('success')
                     ->visible(fn (Disbursement $record) => $record->status === 'approved'
                         && auth()->user()?->can_('execute_disbursement'))
+                    /*
+                     | T-226 — «ما منقبل تحويل بدون مرجع قابل للمطابقة
+                     | وإثبات تنفيذ», 1 November.
+                     |
+                     | The reference was already required. The proof was
+                     | not asked for at all: the service took one and the
+                     | form never offered a box for it, so every transfer
+                     | the system has ever recorded is unevidenced.
+                     */
                     ->form([
                         Forms\Components\TextInput::make('transfer_ref')
                             ->label(__('sanabel.disbursement.transfer_ref'))->required(),
+
+                        Forms\Components\FileUpload::make('proof')
+                            ->label(__('sanabel.disbursement.proof'))
+                            ->helperText(__('sanabel.disbursement.proof_help'))
+                            ->required()
+                            ->maxSize(8192)
+                            ->storeFiles(false)
+                            ->columnSpanFull(),
                     ])
                     ->action(fn (Disbursement $record, array $data) => DisbursementOrderResource::run(
-                        fn () => app(DisbursementService::class)
-                            ->execute($record, auth()->user(), $data['transfer_ref']),
+                        fn () => app(DisbursementService::class)->execute(
+                            $record,
+                            auth()->user(),
+                            $data['transfer_ref'],
+                            proof: $data['proof'] ?? null,
+                        ),
                         __('sanabel.disbursement.executed'),
                     )),
 
@@ -174,6 +195,21 @@ class DisbursementsRelationManager extends RelationManager
                                     ->helperText(__('sanabel.disbursement.leave_blank_to_skip'))
                                     ->requiredIf('outcome_'.$line->getKey(), 'executed'),
 
+                                /*
+                                 | T-226 — each transfer carries its own
+                                 | receipt here too. The batch is a
+                                 | convenience over the single button, never
+                                 | a lighter rule than it: a row marked
+                                 | transferred without its evidence is
+                                 | refused exactly as one typed alone is.
+                                 */
+                                Forms\Components\FileUpload::make('proof_'.$line->getKey())
+                                    ->label(__('sanabel.disbursement.proof'))
+                                    ->maxSize(8192)
+                                    ->storeFiles(false)
+                                    ->requiredIf('outcome_'.$line->getKey(), 'executed')
+                                    ->visible(fn (Forms\Get $get) => $get('outcome_'.$line->getKey()) === 'executed'),
+
                                 Forms\Components\Select::make('outcome_'.$line->getKey())
                                     ->label(__('sanabel.disbursement.outcome'))
                                     ->options([
@@ -218,6 +254,7 @@ class DisbursementsRelationManager extends RelationManager
                                         $line,
                                         auth()->user(),
                                         (string) $data['ref_'.$line->getKey()],
+                                        proof: $data['proof_'.$line->getKey()] ?? null,
                                     );
 
                                 $outcome === 'failed' ? $failed++ : $done++;

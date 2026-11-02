@@ -54,6 +54,18 @@ function approvedOrderOf(int $count): DisbursementOrder
 /** The bulk action, answered row by row. */
 function payInBulk(DisbursementOrder $order, array $answers): void
 {
+    /*
+     | T-226 — a row marked transferred carries its own receipt here too.
+     | The batch is a convenience over the single button, never a lighter
+     | rule than it, so the test supplies what the screen now demands.
+     */
+    foreach ($answers as $key => $value) {
+        if (str_starts_with($key, 'outcome_') && $value === 'executed') {
+            $id = substr($key, strlen('outcome_'));
+            $answers['proof_'.$id] ??= transferProof();
+        }
+    }
+
     Livewire\Livewire::actingAs(test()->treasurer)
         ->test(DisbursementsRelationManager::class, [
             'ownerRecord' => $order,

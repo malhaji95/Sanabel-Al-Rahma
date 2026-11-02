@@ -40,7 +40,7 @@ function paidLine($region, $officer, $treasurer, $director): Disbursement
     $order = $service->gather([$line], $treasurer);
     $service->submit($order);
     $service->approve($order->refresh(), $director);
-    $service->execute($line->refresh(), $treasurer, 'TRF-7001');
+    $service->execute($line->refresh(), $treasurer, 'TRF-7001', proof: transferProof());
 
     return $line->refresh();
 }
