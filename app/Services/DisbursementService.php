@@ -249,6 +249,22 @@ class DisbursementService
 
     public function addTo(DisbursementOrder $order, Disbursement $disbursement): Disbursement
     {
+        /*
+         | T-234 — «لو كانت الأسرة معتمدة وقت إنشاء أمر الصرف، وبعدها تم
+         |  إيقافها أو رفضها قبل تنفيذ التحويل، هل النظام يمنع التحويل
+         |  تلقائيا؟», 3 November.
+         |
+         | The answer was no, and they were right to ask. T-229 put the gate
+         | on creating the payment and nowhere else, so a family's standing
+         | was read once, at the moment the line was written, and never
+         | again. Everything after it asked about the line, not about the
+         | household: joining an order, the approval, the transfer itself.
+         |
+         | So the question is asked again at every step where money moves a
+         | stage closer to leaving. Here is the first of them.
+         */
+        $this->refuseIfFileNoLongerEligible($disbursement);
+
         if ($order->isFrozen()) {
             throw new \RuntimeException(__('sanabel.disbursement.order_frozen'));
         }
@@ -329,6 +345,38 @@ class DisbursementService
                 $order,
                 $approver,
                 ['ref' => $order->reference_no],
+            );
+        }
+
+        /*
+         | T-234 — the second asking. An order raised a week ago may hold a
+         | family suspended since, and approving it would authorise a
+         | payment the association has already decided against.
+         |
+         | The whole order is refused rather than the one line dropped, and
+         | the file numbers are named so the treasurer takes them out and
+         | submits again. Dropping a line quietly would change what an
+         | approver is signing after they pressed the button, and the order
+         | freezing on approval is the rule this system is built on.
+         */
+        $ineligible = $order->disbursements()
+            ->whereIn('status', ['in_order', 'approved'])
+            ->with('beneficiary')
+            ->get()
+            ->reject(fn (Disbursement $line) => $line->beneficiary?->mayReceiveMoney() ?? false);
+
+        if ($ineligible->isNotEmpty()) {
+            $this->refuse(
+                __('sanabel.disbursement.order_holds_ineligible', [
+                    'files' => $ineligible->pluck('beneficiary.file_number')->filter()->implode('، '),
+                ]),
+                'order_holds_ineligible',
+                $order,
+                $approver,
+                [
+                    'ref' => $order->reference_no,
+                    'files' => $ineligible->pluck('beneficiary.file_number')->filter()->values()->all(),
+                ],
             );
         }
 
@@ -430,6 +478,18 @@ class DisbursementService
                 ['line_status' => $disbursement->status],
             );
         }
+
+        /*
+         | T-234 — the last asking, and the one that actually guarantees it.
+         |
+         | Even where an order was approved while every family stood, this
+         | is the moment money leaves, and the household's standing is read
+         | here afresh. In the bulk screen each row goes through this method
+         | on its own, so one family suspended since the approval stops its
+         | own transfer and the rest are paid — which is what they asked
+         | for: every family checked independently.
+         */
+        $this->refuseIfFileNoLongerEligible($disbursement, $treasurer);
 
         // T-105 — whoever authorised the payment does not also move the money.
         $this->refuseSameHand($disbursement, $treasurer, ['approved_by']);
@@ -674,6 +734,37 @@ class DisbursementService
         ]);
 
         throw new \RuntimeException($message);
+    }
+
+    /**
+     * T-234 — is this line's household still one the association pays?
+     *
+     * Asked at every step where money moves a stage closer to leaving, so
+     * that a standing read at the start is never trusted at the end. The
+     * refusal is written to the oversight log like every other (T-233), and
+     * it names the status that stopped it so the desk is not left guessing.
+     */
+    private function refuseIfFileNoLongerEligible(Disbursement $disbursement, ?User $actor = null): void
+    {
+        $case = $disbursement->beneficiary;
+
+        if ($case && $case->mayReceiveMoney()) {
+            return;
+        }
+
+        $this->refuse(
+            __('sanabel.disbursement.file_may_not_receive', [
+                'status' => $case ? __('sanabel.status.'.$case->status) : '—',
+            ]),
+            'file_no_longer_eligible',
+            $disbursement,
+            $actor,
+            [
+                'file_number' => $case?->file_number,
+                'file_status' => $case?->status,
+                'amount' => $disbursement->amount,
+            ],
+        );
     }
 
     /** How many days the household has to answer. Data, not a figure here. */
