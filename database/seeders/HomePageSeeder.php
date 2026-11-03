@@ -122,10 +122,23 @@ class HomePageSeeder extends Seeder
         foreach ([
             ['الرئيسية', '/'],
             ['الحالات', '/cases'],
-            // Monthly support is what a sponsorship is: the same published
-            // list, narrowed to the families whose need renews every month.
-            ['كفالات', '/cases?supportType=monthly'],
-            ['الحملات', '/campaigns'],
+            /*
+             | T-232 — «نعتمد إضافة الكفالات إلى التنقل العلوي», 3 November.
+             |
+             | The row was here already, and it pointed at the reading we
+             | held before they decided otherwise: «monthly support is what
+             | a sponsorship is», so it opened the whole monthly list. Since
+             | T-228 a sponsorship is its own page behind the association's
+             | own doors, and that is where the word belongs.
+             |
+             | The bar is content (T-89), so on a system already running
+             | this row is edited from the panel; what changes here is only
+             | what a fresh install ships with.
+             */
+            ['الكفالات', '/sponsorships'],
+            // The visitor's word is «فزعة» (T-232); the address does not
+            // move, because their decision was the name and nothing else.
+            ['فزعة', '/campaigns'],
             // T-98 — the files the association has judged zakat may be spent
             // on. One list, one ranking, one set of masked cards.
             ['زكاة مستحقة', '/cases?zakat=1'],

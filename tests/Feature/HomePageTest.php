@@ -61,8 +61,8 @@ it('draws every band of the page from rows the association edits', function () {
         ->assertSee('كرامة المحتاج أولويتنا')
         // the closing cards
         ->assertSee('الهيئة الشرعية')
-        // the bar and the footer
-        ->assertSee('الحملات')
+        // the bar and the footer — T-232, the visitor's word is «فزعة»
+        ->assertSee('فزعة')
         ->assertSee('الشفافية المالية');
 });
 
@@ -366,15 +366,28 @@ it('shows the partners band at the foot of the page, and only once they add one'
         ->and($html)->toContain('جمعية شريكة');
 })->group('APP-06');
 
-it('puts كفالات and زكاة on the bar, and still refuses a heading that leads nowhere', function () {
+it('puts الكفالات and زكاة and فزعة on the bar, each leading where it says', function () {
     $this->seed(HomePageSeeder::class);
 
     $nav = ContentCard::block('nav_link')->published()->pluck('link', 'title_ar');
 
-    expect($nav)->toHaveKey('كفالات')
-        ->and($nav['كفالات'])->toContain('supportType=monthly')
+    /*
+     | T-232 — «نعتمد إضافة الكفالات إلى التنقل العلوي» and «نعتمد اسم فزعة
+     | في جميع المواضع الظاهرة للزائر», 3 November.
+     |
+     | This test used to assert the two readings they have now replaced:
+     | that «كفالات» meant the monthly list, which was our own reading
+     | before T-228 gave sponsorships a page, and that the bar said
+     | «الحملات». Both were right when written and are not any more.
+     */
+    expect($nav)->toHaveKey('الكفالات')
+        ->and($nav['الكفالات'])->toContain('/sponsorships')
         ->and($nav)->toHaveKey('زكاة مستحقة')
-        ->and($nav)->toHaveKey('الحملات')
+        // The name moved; the address did not, because that is all they
+        // decided — the routes and the tables stay as they are.
+        ->and($nav)->toHaveKey('فزعة')
+        ->and($nav['فزعة'])->toContain('/campaigns')
+        ->and($nav)->not->toHaveKey('الحملات')
         // «هدية» waits for the feature. A heading leading to a page that
         // cannot do what it says is worse than its absence.
         ->and($nav)->not->toHaveKey('هدية');
