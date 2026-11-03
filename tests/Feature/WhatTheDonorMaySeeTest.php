@@ -177,8 +177,15 @@ it('describes a dependant without a name, a birth year or an age in years', func
     expect($girl)->not->toBeNull()
         // The one question they asked about age, and the only one answered.
         ->and($girl['is_under_15'])->toBeTrue()
-        // T-106 — «الصفة» is its own key now, out of the survey's own list.
-        ->and($girl['occupation_label'])->toBe(__('sanabel.masked.is_student'))
+        /*
+         | T-106 — «الصفة» is its own key now, out of the survey's own list.
+         |
+         | T-235 — and in the feminine, because this dependant is a girl.
+         | This line used to assert «يدرس» of her, which is the very thing
+         | the association photographed and asked us to correct: the test
+         | was holding the bug in place.
+         */
+        ->and($girl['occupation_label'])->toBe(__('sanabel.masked.is_student_f'))
         // «يتيم اذا كانت ارملة» — and this applicant is a widow.
         ->and($girl['is_orphan'])->toBeTrue();
 })->group('AUTH-03');

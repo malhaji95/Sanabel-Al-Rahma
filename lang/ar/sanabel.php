@@ -313,6 +313,18 @@ return [
         'duplicate_checked' => 'تم التأكد من عدم تكرار الرقم الوطني للعائلة',
         // T-162 — ما أُضيف إلى سطر كل فرد معال.
         'quran_memorizer' => 'حافظ للقرآن',
+        /*
+         | T-235 — «لازم لما تكون أنثى، يتم وضع تاء التأنيث: يتيمة، تدرس,
+         | وغيرها», 3 November, with a photograph of a daughter's row
+         | reading «ابنة … يتيم … طفلة … يدرس».
+         |
+         | T-185 and T-193 feminised the lists a word is chosen from —
+         | «طالبة», «بالغة», «متزوجة» — and these three were missed because
+         | none of them comes from a list: they are printed from a flag.
+         | «طفلة» was right on the same row, which is what made the rest
+         | read as a mistake rather than as a convention.
+         */
+        'quran_memorizer_f' => 'حافظة للقرآن',
         // T-164 — ما يُعرض على صفحة الحالة بدل الجملتين.
         'home_impression' => 'الانطباع العام عن المنزل',
         'missing_items' => 'نواقص احتياجات المنزل',
@@ -338,8 +350,11 @@ return [
         'dependents' => 'الأفراد المعالون',
         'under_15' => 'أقل من 15 سنة',
         'orphan' => 'يتيم',
+        'orphan_f' => 'يتيمة',
         'is_student' => 'يدرس',
+        'is_student_f' => 'تدرس',
         'works' => 'يعمل',
+        'works_f' => 'تعمل',
         'head_count' => 'العدد :count',
         'none_recorded' => 'لا يوجد',
     ],

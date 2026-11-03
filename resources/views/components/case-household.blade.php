@@ -166,9 +166,9 @@
                                 <span class="badge" style="color: var(--text-muted);">{{ __('sanabel.masked.under_15') }}</span>
                             @endif
 
-                            @if ($dependent['is_orphan'])
+                            @if ($dependent['orphan_label'] ?? null)
                                 <span class="badge bg-gold-100 text-gold-800 dark:bg-gold-900/50 dark:text-gold-100">
-                                    {{ __('sanabel.masked.orphan') }}
+                                    {{ $dependent['orphan_label'] }}
                                 </span>
                             @endif
 
@@ -190,9 +190,9 @@
                                 @endif
                             @endforeach
 
-                            @if ($dependent['is_quran_memorizer'] ?? false)
+                            @if ($dependent['quran_memorizer_label'] ?? null)
                                 <span class="badge" style="color: var(--accent);">
-                                    {{ __('sanabel.masked.quran_memorizer') }}
+                                    {{ $dependent['quran_memorizer_label'] }}
                                 </span>
                             @endif
 

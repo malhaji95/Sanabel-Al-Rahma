@@ -128,6 +128,19 @@ class MaskedCaseResource extends JsonResource
          | years, and not one sentence anybody wrote.
          */
         'age_band_label', 'school_stage_label', 'is_quran_memorizer', 'severity_label',
+        /*
+         | T-235 — the two words beside the two flags above, feminised where
+         | the dependant is a girl. They are declared here because the leak
+         | test holds every key on a row to this list, and it was right to
+         | stop them: a key added quietly is how a name reaches a donor.
+         |
+         | They publish nothing their flags do not. `is_orphan` already says
+         | this child is an orphan and `is_quran_memorizer` already says they
+         | have memorised it; these carry the same two facts as the word that
+         | is printed, so that «يتيمة» can be written where «يتيم» would be
+         | wrong. No name, no birth year, no age in years.
+         */
+        'orphan_label', 'quran_memorizer_label',
     ];
 
     /**
@@ -708,6 +721,11 @@ class MaskedCaseResource extends JsonResource
                     'gender_label' => $member->gender ? __('sanabel.gender.'.$member->gender) : null,
                     'is_under_15' => $member->birth_year ? $member->age() < 15 : null,
                     'is_orphan' => $widowed ? (bool) $member->is_orphan : false,
+                    // T-235 — the word, feminised where the child is a girl.
+                    // The flag above stays the fact; this is what is read.
+                    'orphan_label' => $widowed && $member->is_orphan
+                        ? __('sanabel.masked.'.($member->gender === 'female' ? 'orphan_f' : 'orphan'))
+                        : null,
                     'marital_label' => $member->marital_status
                         ? __('sanabel.'.($member->gender === 'female' ? 'marital_status_f' : 'marital_status').'.'.$member->marital_status)
                         : null,
@@ -736,6 +754,11 @@ class MaskedCaseResource extends JsonResource
                         ? $this->fromList('sanabel.school_stage', $member->school_stage)
                         : null,
                     'is_quran_memorizer' => (bool) $member->is_quran_memorizer,
+                    // T-235 — «حافظة» for a girl.
+                    'quran_memorizer_label' => $member->is_quran_memorizer
+                        ? __('sanabel.masked.'.($member->gender === 'female'
+                            ? 'quran_memorizer_f' : 'quran_memorizer'))
+                        : null,
                     // How heavy it is, beside what it is called. Behind the
                     // same switch as the naming, and silent when it is closed.
                     'severity_label' => $this->switched('show_health_condition')
@@ -768,9 +791,16 @@ class MaskedCaseResource extends JsonResource
             );
         }
 
+        /*
+         | T-235 — and the fallback too. T-185 feminised the list above and
+         | left this below it, so a daughter with no occupation written on
+         | her row read «يدرس» beside «طفلة».
+         */
+        $f = $member->gender === 'female';
+
         return match (true) {
-            (bool) $member->is_student => __('sanabel.masked.is_student'),
-            (bool) $member->works => __('sanabel.masked.works'),
+            (bool) $member->is_student => __('sanabel.masked.'.($f ? 'is_student_f' : 'is_student')),
+            (bool) $member->works => __('sanabel.masked.'.($f ? 'works_f' : 'works')),
             default => null,
         };
     }
