@@ -7,6 +7,7 @@ use App\Models\Banner;
 use App\Models\Beneficiary;
 use App\Models\Campaign;
 use App\Models\ContentCard;
+use App\Models\Gift;
 use App\Models\Page;
 use App\Models\Post;
 use App\Models\Setting;
@@ -188,6 +189,31 @@ class PublicController extends Controller
             // eager-loads the family it reads, and only Eloquent can.
             'monthly' => $this->monthlyFunding($campaign->newCollection([$campaign]))[$campaign->id] ?? null,
         ]);
+    }
+
+    /**
+     * T-241 — the gift card itself, read at its own private address.
+     *
+     * Open to anybody who holds the link, because the recipient has no
+     * account and was never asked for one. What the page carries is the two
+     * names, the design, and the amount only where the donor said to show
+     * it. Never the recipient's number, never a family, never a file.
+     *
+     * A card that has not been issued is a 404 rather than a message: the
+     * transfer behind it is not verified yet, and a page that says «soon»
+     * is a page that confirms the token is real.
+     */
+    public function giftCard(string $token): View
+    {
+        $gift = Gift::query()
+            ->where('token', $token)
+            ->where('status', 'issued')
+            ->with(['card', 'campaign'])
+            ->first();
+
+        abort_unless($gift, 404);
+
+        return view('public.gift-card', ['gift' => $gift]);
     }
 
     /**

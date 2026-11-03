@@ -5,9 +5,9 @@ namespace App\Services;
 use App\Exceptions\DuplicateTransactionRef;
 use App\Models\Basket;
 use App\Models\Donation;
-use App\Models\User;
 use App\Models\DonationAllocation;
 use App\Models\Fund;
+use App\Models\User;
 use App\Support\DatabaseErrors;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -92,6 +92,15 @@ class DonationService
             ])->save();
 
             $this->allocate($donation);
+
+            /*
+             | T-241 — requirement 9: «إصدار وإرسال البطاقة بعد التحقق من
+             | نجاح التبرع». Here and nowhere earlier: a card saying money
+             | was given in somebody's name must not exist while the
+             | transfer is still a claim. A card with an hour on it waits
+             | for its hour; the scheduler picks it up.
+             */
+            app(GiftService::class)->issueDue($donation);
 
             $donation->donor->refreshBadge();
 
@@ -192,6 +201,28 @@ class DonationService
      */
     private function allocate(Donation $donation): void
     {
+        /*
+         | T-241 — a gift aimed at a project is earmarked money, and this is
+         | «الحفاظ على تخصيص التبرعات» with the machinery that was already
+         | here: one allocation row per card, naming the campaign and no
+         | family, which is what `donation_allocations` has always allowed.
+         |
+         | A general gift allocates nothing, exactly like the general giving
+         | T-103 added: the association spends it at its discretion.
+         */
+        $gifts = $donation->gifts()->whereNotNull('campaign_id')->get();
+
+        foreach ($gifts as $gift) {
+            DonationAllocation::create([
+                'donation_id' => $donation->getKey(),
+                'campaign_id' => $gift->campaign_id,
+                'amount' => $gift->amount,
+                'currency' => $gift->currency,
+            ]);
+
+            $gift->campaign?->closeFundingIfMet();
+        }
+
         $basket = $donation->basket;
 
         if (! $basket) {

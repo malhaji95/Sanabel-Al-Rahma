@@ -96,6 +96,12 @@ class Donation extends Model
         return $this->belongsTo(Basket::class);
     }
 
+    /** T-241 — the cards given on this transfer, where it is a gift. */
+    public function gifts(): HasMany
+    {
+        return $this->hasMany(Gift::class);
+    }
+
     public function allocations(): HasMany
     {
         return $this->hasMany(DonationAllocation::class);

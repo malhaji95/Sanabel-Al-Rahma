@@ -22,3 +22,6 @@ Schedule::command('sanabel:chase-receipts')->dailyAt('06:45');
 
 // T-240 — tasks left untouched past the association's working-day window.
 Schedule::command('sanabel:chase-tasks')->dailyAt('07:00');
+
+// T-241 — gift cards whose scheduled hour has come.
+Schedule::command('sanabel:issue-gifts')->everyFifteenMinutes()->withoutOverlapping();

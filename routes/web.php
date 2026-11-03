@@ -62,6 +62,13 @@ Route::get('/cases/{fileNumber}', [PublicController::class, 'case'])->name('oppo
  */
 Route::get('/donate', GeneralDonation::class)->name('donate.general');
 
+/*
+ | T-241 — the gift card, at a private address. No account, because the
+ | recipient has none, and a token rather than an id so one card's address
+ | cannot be guessed from another's.
+ */
+Route::get('/gift/card/{token}', [PublicController::class, 'giftCard'])->name('gift.card');
+
 Route::get('/login', [LoginController::class, 'show'])->name('login')->middleware('guest');
 
 // T-57 — the public login form had no limit at all, while the panels carried

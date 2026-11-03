@@ -336,6 +336,14 @@ return [
         'data_task_escalation_roles' => ['executive_director', 'deputy_executive_director'],
         'weekend_days' => ['friday', 'saturday'],
 
+        /*
+         | T-241 — «اختيار مبلغ جاهز أو إدخال مبلغ مخصص». The ready amounts
+         | are the association's own and move from the settings screen; the
+         | custom amount is whatever the donor types, so this list narrows
+         | nothing.
+         */
+        'gift_amounts' => [50000, 100000, 250000, 500000],
+
         'reopen_reasons' => [
             'عودة الحاجة بعد الإغلاق أو التخرّج',
             'زوال سبب الإيقاف',
