@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AuditLog;
 use App\Models\Beneficiary;
 use App\Models\Complaint;
 use App\Models\Disbursement;
@@ -10,8 +11,10 @@ use App\Models\DisbursementOrder;
 use App\Models\DonationAllocation;
 use App\Models\Setting;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -58,21 +61,37 @@ class DisbursementService
          | be prevented by a form.
          */
         if (! $beneficiary->mayReceiveMoney()) {
-            throw new \RuntimeException(__('sanabel.disbursement.file_may_not_receive', [
-                'status' => __('sanabel.status.'.$beneficiary->status),
-            ]));
+            $this->refuse(
+                __('sanabel.disbursement.file_may_not_receive', [
+                    'status' => __('sanabel.status.'.$beneficiary->status),
+                ]),
+                'file_may_not_receive',
+                $beneficiary,
+                $officer,
+                ['file_number' => $beneficiary->file_number, 'file_status' => $beneficiary->status, 'amount' => $amount],
+            );
         }
 
         if ($amount <= 0) {
-            throw new \RuntimeException(__('sanabel.disbursement.amount_positive'));
+            $this->refuse(
+                __('sanabel.disbursement.amount_positive'),
+                'amount_positive',
+                $beneficiary,
+                $officer,
+                ['file_number' => $beneficiary->file_number, 'amount' => $amount],
+            );
         }
 
         $ceiling = $this->remainingForPeriod($beneficiary, $period);
 
         if ($amount > $ceiling) {
-            throw new \RuntimeException(__('sanabel.disbursement.over_monthly_need', [
-                'ceiling' => number_format($ceiling),
-            ]));
+            $this->refuse(
+                __('sanabel.disbursement.over_monthly_need', ['ceiling' => number_format($ceiling)]),
+                'over_monthly_need',
+                $beneficiary,
+                $officer,
+                ['file_number' => $beneficiary->file_number, 'amount' => $amount, 'ceiling' => $ceiling],
+            );
         }
 
         /*
@@ -294,11 +313,23 @@ class DisbursementService
     public function approve(DisbursementOrder $order, User $approver): DisbursementOrder
     {
         if ($order->status !== 'pending_approval') {
-            throw new \RuntimeException(__('sanabel.disbursement.not_awaiting_approval'));
+            $this->refuse(
+                __('sanabel.disbursement.not_awaiting_approval'),
+                'not_awaiting_approval',
+                $order,
+                $approver,
+                ['ref' => $order->reference_no, 'order_status' => $order->status],
+            );
         }
 
         if ($order->created_by !== null && $order->created_by === $approver->getKey()) {
-            throw new \RuntimeException(__('sanabel.disbursement.no_self_approval'));
+            $this->refuse(
+                __('sanabel.disbursement.no_self_approval'),
+                'no_self_approval',
+                $order,
+                $approver,
+                ['ref' => $order->reference_no],
+            );
         }
 
         return DB::transaction(function () use ($order, $approver) {
@@ -345,7 +376,13 @@ class DisbursementService
     public function reject(Disbursement $disbursement, User $approver, string $reasonAr): Disbursement
     {
         if (! in_array($disbursement->status, ['in_order', 'approved'], true)) {
-            throw new \RuntimeException(__('sanabel.disbursement.cannot_reject'));
+            $this->refuse(
+                __('sanabel.disbursement.cannot_reject'),
+                'cannot_reject',
+                $disbursement,
+                $approver,
+                ['line_status' => $disbursement->status],
+            );
         }
 
         // T-213 — a line set aside gives its earmarked money back, so the
@@ -385,7 +422,13 @@ class DisbursementService
         ?UploadedFile $proof = null,
     ): Disbursement {
         if ($disbursement->status !== 'approved') {
-            throw new \RuntimeException(__('sanabel.disbursement.approve_before_executing'));
+            $this->refuse(
+                __('sanabel.disbursement.approve_before_executing'),
+                'approve_before_executing',
+                $disbursement,
+                $treasurer,
+                ['line_status' => $disbursement->status],
+            );
         }
 
         // T-105 — whoever authorised the payment does not also move the money.
@@ -400,7 +443,13 @@ class DisbursementService
         $proofMediaId ??= $disbursement->proof_media_id;
 
         if (! $proofMediaId) {
-            throw new \RuntimeException(__('sanabel.disbursement.proof_required'));
+            $this->refuse(
+                __('sanabel.disbursement.proof_required'),
+                'proof_required',
+                $disbursement,
+                $treasurer,
+                ['ref' => $transferRef],
+            );
         }
 
         $disbursement->forceFill([
@@ -588,9 +637,43 @@ class DisbursementService
     {
         foreach ($columns as $column) {
             if ($disbursement->{$column} !== null && (int) $disbursement->{$column} === $actor->getKey()) {
-                throw new \RuntimeException(__('sanabel.disbursement.no_same_hand'));
+                $this->refuse(__('sanabel.disbursement.no_same_hand'), 'no_same_hand', $disbursement, $actor);
             }
         }
+    }
+
+    /**
+     * T-233 — a refused attempt to move money leaves a trace.
+     *
+     * «وتوثقوا محاولات الصرف المرفوضة في سجل الرقابة», 3 November.
+     *
+     * Every guard in this service used to throw and vanish: the screen
+     * showed the sentence and the attempt left nothing behind. So an
+     * account trying the same refused payment again and again, or trying to
+     * approve its own order, was invisible to whoever reads the log — and
+     * the log is the one place a pattern like that would show.
+     *
+     * Written before the throw and outside any transaction the caller may
+     * open, so a rollback cannot take the record of the attempt with it.
+     *
+     * Rule 10 — the entry carries the reason, the file number and the
+     * amount that was asked for, which are what the notifications already
+     * carry. No name, no telephone, no wallet, no identity number.
+     */
+    private function refuse(string $message, string $reason, ?Model $subject = null, ?User $actor = null, array $detail = []): never
+    {
+        $actor ??= Auth::user();
+
+        AuditLog::create([
+            'actor_id' => $actor?->getKey(),
+            'actor_role' => $actor?->role?->key,
+            'action' => 'disbursement_refused',
+            'entity_type' => $subject ? $subject::class : Disbursement::class,
+            'entity_id' => $subject?->getKey(),
+            'after_json' => array_merge(['reason' => $reason], $detail),
+        ]);
+
+        throw new \RuntimeException($message);
     }
 
     /** How many days the household has to answer. Data, not a figure here. */
@@ -729,11 +812,23 @@ class DisbursementService
     public function cancelOrder(DisbursementOrder $order, User $actor, string $reasonAr): DisbursementOrder
     {
         if (blank(trim($reasonAr))) {
-            throw new \RuntimeException(__('sanabel.disbursement.cancel_reason_required'));
+            $this->refuse(
+                __('sanabel.disbursement.cancel_reason_required'),
+                'cancel_reason_required',
+                $order,
+                $actor,
+                ['ref' => $order->reference_no],
+            );
         }
 
         if (in_array($order->status, ['settled', 'cancelled'], true)) {
-            throw new \RuntimeException(__('sanabel.disbursement.order_already_closed'));
+            $this->refuse(
+                __('sanabel.disbursement.order_already_closed'),
+                'order_already_closed',
+                $order,
+                $actor,
+                ['ref' => $order->reference_no, 'order_status' => $order->status],
+            );
         }
 
         $paid = $order->disbursements()
@@ -741,7 +836,13 @@ class DisbursementService
             ->exists();
 
         if ($paid) {
-            throw new \RuntimeException(__('sanabel.disbursement.cannot_cancel_paid'));
+            $this->refuse(
+                __('sanabel.disbursement.cannot_cancel_paid'),
+                'cannot_cancel_paid',
+                $order,
+                $actor,
+                ['ref' => $order->reference_no],
+            );
         }
 
         return DB::transaction(function () use ($order, $actor, $reasonAr) {
