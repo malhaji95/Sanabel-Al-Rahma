@@ -53,6 +53,33 @@ class DisbursementsRelationManager extends RelationManager
                             ? __('sanabel.disbursement.open_case')
                             : null),
 
+                /*
+                 | T-238 — «لازم يكون فحص أهلية الأسرة قبل تنفيذ التحويل
+                 | البنكي الفعلي، وليس فقط عند تسجيل «تم التحويل» بعد خروج
+                 | المال», 3 November.
+                 |
+                 | A fair point about a manual system: the treasurer goes to
+                 | the bank and comes back to record it, so a refusal at
+                 | recording refuses a transfer that already happened. This
+                 | is the same question answered on the screen, before they
+                 | go, beside the line they would be paying.
+                 |
+                 | Drawn only where it is bad news. A row saying nothing is
+                 | a row that may be paid, and a column of «مستحقة» beside
+                 | forty families teaches the eye to stop reading it.
+                 */
+                Tables\Columns\TextColumn::make('eligible_now')
+                    ->label(__('sanabel.disbursement.eligible_now'))
+                    ->state(fn (Disbursement $record) => app(DisbursementService::class)->mayBeTransferred($record)
+                        ? null
+                        : __('sanabel.disbursement.not_eligible_now'))
+                    ->badge()
+                    ->color('danger')
+                    ->tooltip(fn (Disbursement $record) => app(DisbursementService::class)->mayBeTransferred($record)
+                        ? null
+                        : __('sanabel.disbursement.not_eligible_now_help'))
+                    ->placeholder(''),
+
                 Tables\Columns\TextColumn::make('beneficiary.region.name_ar')
                     ->label(__('sanabel.beneficiary.region'))
                     ->toggleable(),

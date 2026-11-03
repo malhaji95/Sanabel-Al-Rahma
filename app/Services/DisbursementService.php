@@ -366,17 +366,39 @@ class DisbursementService
             ->reject(fn (Disbursement $line) => $line->beneficiary?->mayReceiveMoney() ?? false);
 
         if ($ineligible->isNotEmpty()) {
+            $files = $ineligible->pluck('beneficiary.file_number')->filter()->values();
+
+            /*
+             | T-237 — «ويرجع الأمر للموظف المسؤول عن تجهيزه حتى يستبعد
+             | السطر غير المؤهل، وبعدها يعيد تقديم الأمر للاعتماد»,
+             | 3 November.
+             |
+             | T-234 refused the approval and left the order sitting in the
+             | approver's queue, which is the wrong desk: the approver
+             | cannot take a line out, and the person who can was never
+             | told. So it goes back to draft, where `remove()` works and
+             | `submit()` will accept it again, and the hand that raised it
+             | is told why by file number.
+             |
+             | Committed before the refusal is thrown, because the return is
+             | the outcome of this attempt and not a casualty of it.
+             */
+            DB::transaction(function () use ($order, $files) {
+                $order->forceFill(['status' => 'draft', 'submitted_at' => null])->save();
+
+                $this->notifications->send(
+                    $order->created_by,
+                    'disbursement_order_returned',
+                    ['ref' => $order->reference_no, 'file_number' => $files->implode('، ')],
+                );
+            });
+
             $this->refuse(
-                __('sanabel.disbursement.order_holds_ineligible', [
-                    'files' => $ineligible->pluck('beneficiary.file_number')->filter()->implode('، '),
-                ]),
+                __('sanabel.disbursement.order_holds_ineligible', ['files' => $files->implode('، ')]),
                 'order_holds_ineligible',
                 $order,
                 $approver,
-                [
-                    'ref' => $order->reference_no,
-                    'files' => $ineligible->pluck('beneficiary.file_number')->filter()->values()->all(),
-                ],
+                ['ref' => $order->reference_no, 'files' => $files->all()],
             );
         }
 
@@ -734,6 +756,24 @@ class DisbursementService
         ]);
 
         throw new \RuntimeException($message);
+    }
+
+    /**
+     * T-238 — may this line be transferred right now?
+     *
+     * «بما أن التحويل البنكي عندنا يدوي، لازم يكون فحص أهلية الأسرة قبل
+     * تنفيذ التحويل البنكي الفعلي، وليس فقط عند تسجيل «تم التحويل» بعد خروج
+     * المال», 3 November.
+     *
+     * A fair point about a manual system. `execute()` is called after the
+     * treasurer has been to the bank, so refusing there refuses a transfer
+     * that has already happened. This is the same question asked before
+     * they go, so the screen can show it beside the line and the money is
+     * never moved for a household the system would refuse.
+     */
+    public function mayBeTransferred(Disbursement $disbursement): bool
+    {
+        return (bool) $disbursement->beneficiary?->mayReceiveMoney();
     }
 
     /**

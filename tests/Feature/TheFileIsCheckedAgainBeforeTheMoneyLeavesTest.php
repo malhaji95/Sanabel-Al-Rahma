@@ -98,8 +98,16 @@ it('refuses to approve an order that holds a family no longer standing, and name
         expect($e->getMessage())->toContain($gone->beneficiary->file_number);
     }
 
-    // Nothing was approved: the order is whole and still waiting.
-    expect($order->refresh()->status)->toBe('pending_approval')
+    /*
+     | Nothing was approved, and the order is whole.
+     |
+     | T-237 — it waits on its preparer now, not on the approver. This line
+     | asserted «pending_approval» when it was written, which was right
+     | then: the association decided on 3 November that a refused order
+     | goes back to the desk that can take the line out, and the approver's
+     | desk is the one desk that cannot.
+     */
+    expect($order->refresh()->status)->toBe('draft')
         ->and($good->refresh()->status)->toBe('in_order');
 });
 
