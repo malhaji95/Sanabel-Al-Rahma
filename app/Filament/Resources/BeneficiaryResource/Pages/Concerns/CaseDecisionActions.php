@@ -4,6 +4,7 @@ namespace App\Filament\Resources\BeneficiaryResource\Pages\Concerns;
 
 use App\Filament\Resources\BeneficiaryResource;
 use App\Models\Assessment;
+use App\Models\Beneficiary;
 use App\Services\AnonymiseService;
 use App\Services\AssessmentService;
 use App\Services\CaseService;
@@ -297,6 +298,44 @@ trait CaseDecisionActions
                     ])->save();
 
                     Notification::make()->title(__('sanabel.actions.story_approved'))->success()->send();
+                }),
+
+            /*
+             | T-239 — a file that has ended is reopened by a request, never
+             | by an edit. The reasons are the association's own list, so the
+             | select is empty until they fill it and the action says so
+             | rather than offering a free-text box.
+             */
+            Actions\Action::make('requestReopen')
+                ->label(__('sanabel.reopen.request'))
+                ->icon('heroicon-o-lock-open')
+                ->visible(fn () => in_array($this->record->status, Beneficiary::REOPENABLE_STATUSES, true)
+                    && auth()->user()->can_('request_change'))
+                ->modalDescription(__('sanabel.reopen.request_help'))
+                ->form([
+                    Forms\Components\Select::make('reason_ar')
+                        ->label(__('sanabel.reopen.reason'))
+                        ->options(fn () => collect(CaseService::reopenReasons())
+                            ->mapWithKeys(fn ($reason) => [$reason => $reason])
+                            ->all())
+                        ->required(),
+                    Textarea::make('note_ar')
+                        ->label(__('sanabel.reopen.note'))
+                        ->rows(3),
+                ])
+                ->action(function (array $data) {
+                    try {
+                        app(CaseService::class)->requestReopen(
+                            $this->record,
+                            auth()->user(),
+                            $data['reason_ar'] ?? '',
+                            $data['note_ar'] ?? null,
+                        );
+
+                        Notification::make()->title(__('sanabel.reopen.requested'))->success()->send();
+                    } catch (\RuntimeException $e) {
+                        Notification::make()->title($e->getMessage())->danger()->send();
+                    }
                 }),
 
             Actions\Action::make('close')

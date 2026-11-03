@@ -313,6 +313,23 @@ return [
         'security_alert_roles' => [],
 
         /*
+         | T-239 — «نحتاج قائمة أسباب منظمة» for reopening a file, 3 November.
+         |
+         | Their words, not ours, and a setting rather than a constant: the
+         | list is edited on the settings screen without a deploy, and a
+         | reason that is not on it is refused, so the record stays
+         | countable. These five are a starting list drawn from the endings
+         | the system actually has — the association rewrites them.
+         */
+        'reopen_reasons' => [
+            'عودة الحاجة بعد الإغلاق أو التخرّج',
+            'زوال سبب الإيقاف',
+            'خطأ في قرار الرفض',
+            'ظهور معطيات جديدة على الأسرة',
+            'طلب من الأسرة مع مستندات جديدة',
+        ],
+
+        /*
          | T-99 — the figures on the home page, one switch each. The
          | association asked on 15 October to be able to turn any of them off:
          | a counter reading zero on a launch day says the wrong thing, and so

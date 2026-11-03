@@ -4,6 +4,7 @@ use App\Models\AppNotification;
 use App\Models\Delivery;
 use App\Models\Distribution;
 use App\Models\DistributionItem;
+use App\Models\Donation;
 use App\Services\CaseService;
 use App\Services\DistributionService;
 
@@ -20,7 +21,7 @@ it('cannot close a case without a delivery proof', function () {
         ->toThrow(RuntimeException::class, __('sanabel.cases.close_requires_proof'));
 
     // A cash receipt names the transfer it proves (decision of 4 Oct 2026).
-    $donation = \App\Models\Donation::factory()->create(['status' => 'verified']);
+    $donation = Donation::factory()->create(['status' => 'verified']);
 
     // A delivery row with no proof is still not enough.
     Delivery::create([
@@ -38,7 +39,13 @@ it('cannot close a case without a delivery proof', function () {
         $case, $this->admin, 'cash', proofMediaId: 42, donationId: $donation->id
     );
 
-    expect(app(CaseService::class)->close($case->refresh())->status)->toBe('graduated');
+    /*
+     | T-239 — this read «graduated» and was right when it was written: that
+     | is what `close()` wrote. The association said on 3 November that the
+     | closed file and the graduated family are two different endings, so
+     | the button's own word is now the file's word too.
+     */
+    expect(app(CaseService::class)->close($case->refresh())->status)->toBe('closed');
 });
 
 it('freezes an approved distribution list and never regenerates it', function () {

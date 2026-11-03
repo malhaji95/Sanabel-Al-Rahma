@@ -137,6 +137,17 @@ class ManageSettings extends Page implements HasForms
                     ->multiple()
                     ->options(fn () => Role::orderBy('id')->pluck('name_ar', 'key'))
                     ->columnSpanFull(),
+
+                /*
+                 | T-239 — the association's own reasons for reopening a file.
+                 | Typed here rather than by us, because a list of reasons is
+                 | the association's vocabulary and the record is only
+                 | countable while the list is closed.
+                 */
+                Forms\Components\TagsInput::make('reopen_reasons')
+                    ->label(__('sanabel.settings.keys.reopen_reasons'))
+                    ->helperText(__('sanabel.settings.help.reopen_reasons'))
+                    ->columnSpanFull(),
             ]))
             ->columns(2)
             ->statePath('data');
@@ -161,7 +172,15 @@ class ManageSettings extends Page implements HasForms
             (array) ($state['security_alert_roles'] ?? [])
         )));
 
-        unset($state['platform_wallet_number'], $state['platform_wallet_holder'], $state['security_alert_roles']);
+        Setting::put('reopen_reasons', array_values(array_filter(array_map(
+            fn ($reason) => trim((string) $reason),
+            (array) ($state['reopen_reasons'] ?? [])
+        ))));
+
+        unset(
+            $state['platform_wallet_number'], $state['platform_wallet_holder'],
+            $state['security_alert_roles'], $state['reopen_reasons'],
+        );
 
         $defaults = config('sanabel.setting_defaults');
 

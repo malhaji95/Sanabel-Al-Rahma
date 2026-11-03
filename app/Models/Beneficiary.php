@@ -31,8 +31,30 @@ class Beneficiary extends Model
      */
     public const STATUSES = [
         'draft', 'pending_visit', 'returned', 'verified', 'pending_approval', 'approved', 'published',
-        'needs_reassessment', 'suspended', 'graduated', 'rejected', 'merged',
+        'needs_reassessment', 'suspended', 'graduated', 'closed', 'rejected', 'merged',
     ];
+
+    /*
+     | T-239 — «الملف المغلق / هناك التباس فيه اتوقع», 3 November.
+     |
+     | `closed` is new and `graduated` is not what it was. The button on the
+     | screen said «إغلاق الملف» and the service wrote `graduated`, so the two
+     | endings the association keeps apart in their own speech — a file closed
+     | because its aid was delivered and proved, and a family that no longer
+     | needs help — were one value in the database.
+     |
+     | The five endings, and which of them a file may come back from. A merged
+     | file may not: it is a duplicate folded into another file, and reopening
+     | it would pay one household twice. The master file is the one to reopen.
+     */
+    public const ENDED_STATUSES = ['rejected', 'suspended', 'graduated', 'closed', 'merged'];
+
+    public const REOPENABLE_STATUSES = ['rejected', 'suspended', 'graduated', 'closed'];
+
+    public function hasEnded(): bool
+    {
+        return in_array($this->status, self::ENDED_STATUSES, true);
+    }
 
     /*
      | T-229 — the statuses on which the association's money may be
@@ -239,6 +261,12 @@ class Beneficiary extends Model
     public function members(): HasMany
     {
         return $this->hasMany(HouseholdMember::class);
+    }
+
+    /** T-239 — the requests to reopen this file, decided and undecided. */
+    public function reopenRequests(): HasMany
+    {
+        return $this->hasMany(CaseReopenRequest::class);
     }
 
     public function incomes(): HasMany

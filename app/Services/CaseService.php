@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Models\Beneficiary;
+use App\Models\CaseReopenRequest;
 use App\Models\ChangeRequest;
 use App\Models\Delivery;
+use App\Models\Setting;
 use App\Models\User;
 use App\Policies\BeneficiaryPolicy;
 use Illuminate\Database\Eloquent\Model;
@@ -288,9 +290,175 @@ class CaseService
             throw new \RuntimeException(__('sanabel.cases.close_requires_proof'));
         }
 
-        $case->forceFill(['status' => 'graduated'])->save();
+        /*
+         | T-239 — `closed`, not `graduated`. The button says «إغلاق الملف»
+         | and now so does the file. Graduation is the other ending, and
+         | `graduate()` above still writes it.
+         */
+        $case->forceFill(['status' => 'closed'])->save();
 
         return $case->refresh();
+    }
+
+    /*
+     |---------------------------------------------------------------------
+     | T-239 — reopening a file that had ended.
+     |---------------------------------------------------------------------
+     |
+     | «نحتاج قائمة أسباب منظمة، وسجلًا يوضح من طلب إعادة الفتح ومن وافق
+     | عليه. ويعود الملف لمرحلة الدراسة أو التحقق المناسبة، وتُراجع أولويته
+     | حسب بياناتها الحالية», 3 November.
+     |
+     | Four decisions, and only the first is ours:
+     |
+     |   · the reasons are the association's own words, held as a setting
+     |     they edit on the settings screen. A reason not on their list is
+     |     refused, so the record stays countable.
+     |   · two hands, as everywhere else on a file: one account asks and
+     |     another decides, and not the same person twice.
+     |   · where the file goes back to is read off the file itself. An
+     |     assessment still inside its validity window is a study the
+     |     association has already done, so the file returns to the
+     |     approval desk; an expired one is no study at all, so the file
+     |     returns to a draft and walks the field path again. That is
+     |     «مرحلة الدراسة أو التحقق المناسبة» answered from the data
+     |     rather than from a table of guesses per ending.
+     |   · the priority is not set here at all. It is recomputed from the
+     |     household's current figures the moment the file is assessed
+     |     again, which is what the path above makes it do.
+     */
+
+    /** The association's own reasons for reopening a file. Data, not code. */
+    public static function reopenReasons(): array
+    {
+        return array_values(array_filter(array_map(
+            fn ($reason) => trim((string) $reason),
+            (array) Setting::value(
+                'reopen_reasons',
+                config('sanabel.setting_defaults.reopen_reasons')
+            ),
+        )));
+    }
+
+    public function requestReopen(
+        Beneficiary $case,
+        User $requester,
+        string $reasonAr,
+        ?string $noteAr = null,
+    ): CaseReopenRequest {
+        if (! in_array($case->status, Beneficiary::REOPENABLE_STATUSES, true)) {
+            throw new \RuntimeException($case->status === 'merged'
+                ? __('sanabel.reopen.merged_not_reopenable')
+                : __('sanabel.reopen.not_ended'));
+        }
+
+        $reasonAr = trim($reasonAr);
+
+        if (! in_array($reasonAr, static::reopenReasons(), true)) {
+            throw new \RuntimeException(__('sanabel.reopen.reason_not_on_list'));
+        }
+
+        // One open request at a time. Two would race each other to put the
+        // same file back, and the second would read as a decision nobody took.
+        if ($case->reopenRequests()->where('status', 'pending')->exists()) {
+            throw new \RuntimeException(__('sanabel.reopen.already_pending'));
+        }
+
+        return CaseReopenRequest::create([
+            'beneficiary_id' => $case->getKey(),
+            'from_status' => $case->status,
+            'reason_ar' => $reasonAr,
+            'note_ar' => filled($noteAr) ? trim($noteAr) : null,
+            'status' => 'pending',
+            'requested_by' => $requester->getKey(),
+        ]);
+    }
+
+    /**
+     * Where a reopened file goes back to: the approval desk if its last
+     * assessment is still valid, a fresh draft if it is not.
+     */
+    public function reopenTarget(Beneficiary $case): string
+    {
+        $validDays = (int) Setting::value(
+            'assessment_valid_days',
+            config('sanabel.setting_defaults.assessment_valid_days')
+        );
+
+        $assessedAt = $case->last_assessment_at;
+
+        return $assessedAt && $assessedAt->copy()->addDays($validDays)->isFuture()
+            ? 'pending_approval'
+            : 'draft';
+    }
+
+    public function approveReopen(
+        CaseReopenRequest $request,
+        User $decider,
+    ): CaseReopenRequest {
+        $this->guardReopenDecision($request, $decider);
+
+        return DB::transaction(function () use ($request, $decider) {
+            $case = $request->beneficiary;
+            $target = $this->reopenTarget($case);
+
+            $case->forceFill(['status' => $target])->save();
+
+            $request->forceFill([
+                'status' => 'approved',
+                'decided_by' => $decider->getKey(),
+                'decided_at' => now(),
+                'to_status' => $target,
+            ])->save();
+
+            $this->notifications->send(
+                $request->requested_by,
+                'case_reopen_approved',
+                ['file_number' => $case->file_number],
+            );
+
+            return $request->refresh();
+        });
+    }
+
+    public function refuseReopen(
+        CaseReopenRequest $request,
+        User $decider,
+        string $noteAr,
+    ): CaseReopenRequest {
+        $this->guardReopenDecision($request, $decider);
+
+        if (blank(trim($noteAr))) {
+            throw new \RuntimeException(__('sanabel.reopen.refusal_note_required'));
+        }
+
+        $request->forceFill([
+            'status' => 'refused',
+            'decided_by' => $decider->getKey(),
+            'decided_at' => now(),
+            'decision_note_ar' => trim($noteAr),
+        ])->save();
+
+        $this->notifications->send(
+            $request->requested_by,
+            'case_reopen_refused',
+            ['file_number' => $request->beneficiary?->file_number],
+        );
+
+        return $request->refresh();
+    }
+
+    private function guardReopenDecision(CaseReopenRequest $request, User $decider): void
+    {
+        if ($request->status !== 'pending') {
+            throw new \RuntimeException(__('sanabel.reopen.already_decided'));
+        }
+
+        // The hand that asks is not the hand that agrees, as on the file
+        // itself (`self_approval_blocked`).
+        if ($request->requested_by && (int) $request->requested_by === (int) $decider->getKey()) {
+            throw new \RuntimeException(__('sanabel.reopen.self_decision_blocked'));
+        }
     }
 
     public function confirmDelivery(Beneficiary $case, User $confirmer, string $type, int $proofMediaId, ?int $donationId = null): Delivery
