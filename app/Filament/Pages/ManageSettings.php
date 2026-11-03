@@ -144,6 +144,32 @@ class ManageSettings extends Page implements HasForms
                  | the association's vocabulary and the record is only
                  | countable while the list is closed.
                  */
+                /*
+                 | T-240 — who hears that a task went past its window, and
+                 | who hears about it above them. Two lists of roles, so the
+                 | day they create «مدير عمليات» it is a line on this screen.
+                 */
+                Forms\Components\Select::make('data_task_alert_roles')
+                    ->label(__('sanabel.settings.keys.data_task_alert_roles'))
+                    ->helperText(__('sanabel.settings.help.data_task_alert_roles'))
+                    ->multiple()
+                    ->options(fn () => Role::orderBy('id')->pluck('name_ar', 'key'))
+                    ->columnSpanFull(),
+
+                Forms\Components\Select::make('data_task_escalation_roles')
+                    ->label(__('sanabel.settings.keys.data_task_escalation_roles'))
+                    ->helperText(__('sanabel.settings.help.data_task_escalation_roles'))
+                    ->multiple()
+                    ->options(fn () => Role::orderBy('id')->pluck('name_ar', 'key'))
+                    ->columnSpanFull(),
+
+                Forms\Components\Select::make('weekend_days')
+                    ->label(__('sanabel.settings.keys.weekend_days'))
+                    ->helperText(__('sanabel.settings.help.weekend_days'))
+                    ->multiple()
+                    ->options(__('sanabel.weekdays'))
+                    ->columnSpanFull(),
+
                 Forms\Components\TagsInput::make('reopen_reasons')
                     ->label(__('sanabel.settings.keys.reopen_reasons'))
                     ->helperText(__('sanabel.settings.help.reopen_reasons'))
@@ -176,6 +202,13 @@ class ManageSettings extends Page implements HasForms
             fn ($reason) => trim((string) $reason),
             (array) ($state['reopen_reasons'] ?? [])
         ))));
+
+        // T-240 — the two audiences and the association's own week. Stored
+        // as they came, and held to the keys the screen offered.
+        foreach (['data_task_alert_roles', 'data_task_escalation_roles', 'weekend_days'] as $key) {
+            Setting::put($key, array_values(array_filter((array) ($state[$key] ?? []))));
+            unset($state[$key]);
+        }
 
         unset(
             $state['platform_wallet_number'], $state['platform_wallet_holder'],

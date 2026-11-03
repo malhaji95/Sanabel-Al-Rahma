@@ -19,3 +19,6 @@ Schedule::command('sanabel:flag-reassessments')->dailyAt('06:15');
 Schedule::command('sanabel:expire-referrals')->dailyAt('06:30');
 
 Schedule::command('sanabel:chase-receipts')->dailyAt('06:45');
+
+// T-240 — tasks left untouched past the association's working-day window.
+Schedule::command('sanabel:chase-tasks')->dailyAt('07:00');

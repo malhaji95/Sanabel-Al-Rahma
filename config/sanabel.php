@@ -321,6 +321,21 @@ return [
          | countable. These five are a starting list drawn from the endings
          | the system actually has — the association rewrites them.
          */
+        /*
+         | T-240 — «نعتمد مدة يومين عمل بدل 3 أيام، مع إمكانية تعديل عدد
+         | الأيام من لوحة الإعدادات دون الرجوع للمبرمج», 3 November.
+         |
+         | Two working days, and who hears about it: the desk that holds the
+         | task, and the desk above it. Roles rather than names, so «مدير
+         | عمليات» the day they create one is a line on a screen. And the
+         | association's own week, because Friday and Saturday are an
+         | assumption of ours until they say otherwise.
+         */
+        'data_task_due_working_days' => 2,
+        'data_task_alert_roles' => ['data_supervisor'],
+        'data_task_escalation_roles' => ['executive_director', 'deputy_executive_director'],
+        'weekend_days' => ['friday', 'saturday'],
+
         'reopen_reasons' => [
             'عودة الحاجة بعد الإغلاق أو التخرّج',
             'زوال سبب الإيقاف',
