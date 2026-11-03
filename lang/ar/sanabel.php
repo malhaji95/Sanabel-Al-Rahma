@@ -133,6 +133,8 @@ return [
 
     'sponsorships' => [
         'end_date_required' => 'تاريخ البداية وتاريخ النهاية مطلوبان.',
+        // T-238
+        'member_not_in_household' => 'الفرد المختار ليس من أفراد هذه الأسرة.',
     ],
 
     'distributions' => [
