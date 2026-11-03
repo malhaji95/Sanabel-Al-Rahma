@@ -137,6 +137,35 @@ class DisbursementOrderResource extends Resource
                         __('sanabel.disbursement.order_cancelled'),
                     )),
 
+                /*
+                 | T-236 — «لا تتأثر الحوالات المنفذة عند إلغاء السطور
+                 | المتبقية», 3 November. Offered only where it applies:
+                 | an order that is part way through, with money already
+                 | out of it, which is exactly where «إلغاء أمر الصرف»
+                 | refuses.
+                 */
+                Tables\Actions\Action::make('cancelRemaining')
+                    ->label(__('sanabel.disbursement.cancel_remaining'))
+                    ->icon('heroicon-o-scissors')
+                    ->color('warning')
+                    ->visible(fn (DisbursementOrder $record) => ! in_array($record->status, ['settled', 'cancelled'], true)
+                        && $record->disbursements()
+                            ->whereIn('status', ['executed', 'received', 'disputed', 'reconciled'])->exists()
+                        && auth()->user()?->can_('approve_disbursement'))
+                    ->modalDescription(__('sanabel.disbursement.cancel_remaining_help'))
+                    ->form([
+                        Forms\Components\Textarea::make('reason')
+                            ->label(__('sanabel.disbursement.cancel_reason'))
+                            ->rows(3)
+                            ->required(),
+                    ])
+                    ->action(fn (DisbursementOrder $record, array $data) => static::run(
+                        fn () => app(DisbursementService::class)->cancelRemaining(
+                            $record, auth()->user(), $data['reason'] ?? '',
+                        ),
+                        __('sanabel.disbursement.remaining_cancelled'),
+                    )),
+
                 Tables\Actions\EditAction::make(),
             ])
             ->defaultSort('id', 'desc')

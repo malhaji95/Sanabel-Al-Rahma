@@ -958,6 +958,92 @@ class DisbursementService
         });
     }
 
+    /**
+     * T-236 — «معالجة أوامر الصرف الجماعية المنفذة جزئيا، بحيث لا تتأثر
+     * الحوالات المنفذة عند إلغاء السطور المتبقية», 3 November.
+     *
+     * T-227 refuses to withdraw an order money has left, which protects the
+     * transfers already made and leaves the association with nowhere to go:
+     * forty families approved, three paid, and the thirty-seven that should
+     * not be paid stay approved for ever.
+     *
+     * So this withdraws the remainder and nothing else. What was executed,
+     * received, disputed or reconciled is not read, not written and not
+     * counted here — the one thing they asked to be sure of.
+     *
+     * The order is left `settled` rather than `cancelled`, and that is not
+     * a new word invented for the case: `settle()` has always called an
+     * order settled once no line is still waiting, and after the remainder
+     * leaves, none is. An order money went out of is not a cancelled order.
+     * The three columns T-227 added carry who withdrew the remainder, when,
+     * and why.
+     *
+     * What the returned lines drew from the family's earmarked donations
+     * stays drawn, exactly as in T-227: the family is still owed it, and
+     * only the paperwork changed.
+     */
+    public function cancelRemaining(DisbursementOrder $order, User $actor, string $reasonAr): DisbursementOrder
+    {
+        if (blank(trim($reasonAr))) {
+            $this->refuse(
+                __('sanabel.disbursement.cancel_reason_required'),
+                'cancel_reason_required',
+                $order,
+                $actor,
+                ['ref' => $order->reference_no],
+            );
+        }
+
+        if (in_array($order->status, ['settled', 'cancelled'], true)) {
+            $this->refuse(
+                __('sanabel.disbursement.order_already_closed'),
+                'order_already_closed',
+                $order,
+                $actor,
+                ['ref' => $order->reference_no, 'order_status' => $order->status],
+            );
+        }
+
+        $paid = $order->disbursements()
+            ->whereIn('status', ['executed', 'received', 'disputed', 'reconciled'])
+            ->exists();
+
+        // Nothing has been paid, so this is the whole-order withdrawal of
+        // T-227 and not this one. Kept apart deliberately: the two acts
+        // leave different records and end in different states.
+        if (! $paid) {
+            $this->refuse(
+                __('sanabel.disbursement.nothing_paid_use_cancel'),
+                'nothing_paid_use_cancel',
+                $order,
+                $actor,
+                ['ref' => $order->reference_no],
+            );
+        }
+
+        return DB::transaction(function () use ($order, $actor, $reasonAr) {
+            $order->disbursements()
+                ->whereIn('status', ['in_order', 'approved'])
+                ->get()
+                ->each(fn (Disbursement $line) => $line->forceFill([
+                    'status' => 'confirmed',
+                    'disbursement_order_id' => null,
+                    'approved_by' => null,
+                    'approved_at' => null,
+                ])->save());
+
+            $order->forceFill([
+                'cancelled_by' => $actor->getKey(),
+                'cancelled_at' => now(),
+                'cancel_reason_ar' => $reasonAr,
+            ])->save();
+
+            // No line is waiting now, so this reads «settled» — the word the
+            // system has always used for an order with nothing left in it.
+            return $this->settle($order->refresh());
+        });
+    }
+
     /** Executing while any line is still waiting; settled once none is. */
     public function settle(?DisbursementOrder $order): ?DisbursementOrder
     {
