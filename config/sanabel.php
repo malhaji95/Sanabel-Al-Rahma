@@ -303,6 +303,13 @@ return [
      */
     'sponsorship_kinds' => ['orphan', 'widowed', 'student'],
 
+    /*
+     | T-242 — the country key the gift page offers first. Syria, because
+     | that is where the association and most of its donors' families are;
+     | the field is typed over for anybody else.
+     */
+    'gift_default_country_code' => '+963',
+
     'setting_defaults' => [
         /*
          | T-95 — OPS-03. Who hears a security alert: the roles the association

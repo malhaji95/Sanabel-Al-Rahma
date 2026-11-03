@@ -146,14 +146,19 @@ it('opens a page behind every link in the footer', function () {
     }
 });
 
-it('leaves the gift card without a button until there is somewhere to send it', function () {
-    // Gift giving is not built. A button pointing somewhere approximate would
-    // be a promise the system does not keep.
+it('sends the gift card to the gift page, now that there is one', function () {
+    /*
+     | This asserted the opposite and was right when it was written: the card
+     | had no button because giving in somebody else's name was not a thing
+     | the system did, and a button pointing somewhere approximate would have
+     | been a promise it did not keep. T-241 and T-242 built the gift.
+     */
     $gift = ContentCard::block('feature')->where('title_ar', 'هدية')->first();
 
-    expect($gift->link)->toBeNull();
+    expect($gift->link)->toBe('/gift');
 
     $this->get('/')->assertOk()->assertSee('هدية');
+    $this->get('/gift')->assertOk();
 });
 
 it('lets the content manager edit the page, and keeps everyone else out', function () {
@@ -388,9 +393,11 @@ it('puts الكفالات and زكاة and فزعة on the bar, each leading whe
         ->and($nav)->toHaveKey('فزعة')
         ->and($nav['فزعة'])->toContain('/campaigns')
         ->and($nav)->not->toHaveKey('الحملات')
-        // «هدية» waits for the feature. A heading leading to a page that
-        // cannot do what it says is worse than its absence.
-        ->and($nav)->not->toHaveKey('هدية');
+        // T-242 — «هدية» used to be absent from this bar, and the comment
+        // here said it was waiting for the feature. It is not waiting any
+        // more.
+        ->and($nav)->toHaveKey('هدية')
+        ->and($nav['هدية'])->toContain('/gift');
 })->group('APP-06');
 
 it('keeps the banner off most of a phone screen, and within the pack sizes above it', function () {

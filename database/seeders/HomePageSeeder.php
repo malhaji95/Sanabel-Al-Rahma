@@ -14,12 +14,12 @@ use Illuminate\Database\Seeder;
  * wording, the order, the pictures, the destinations. This only puts the first
  * version on the page so the association edits rather than composes.
  *
- * Two honest gaps, left visible rather than papered over:
+ * One honest gap, left visible rather than papered over. The other closed on
+ * 3 November: «هدية» was a card with no destination, because giving in
+ * somebody else's name was not a thing this system did, and sending the
+ * button somewhere approximate would have been worse than leaving it off.
+ * T-241 built the gift and T-242 its page, so the card has its link.
  *
- *   - «هدية» is a card with no destination. Gift giving — donating in someone
- *     else's name — is not a thing this system does yet, and sending the
- *     button somewhere approximate would be worse than leaving it off. The
- *     card draws its button only once a link is set.
  *   - the pictures are the ones the design pack supplied. Seven of its
  *     thirteen never arrived (the archive was truncated), so those cards fall
  *     back to their icon, which is what the icon is for.
@@ -89,11 +89,12 @@ class HomePageSeeder extends Seeder
     /**
      * The bar at the top.
      *
-     * Only the destinations that exist. The design also names «هدية»,
-     * «كفالات» and «زكاة مستحقة»; each of those is a feature or a page that
-     * has still to be built or written, and a bar that promises one and
+     * Only the destinations that exist. The design also named «هدية»,
+     * «كفالات» and «زكاة مستحقة»; each of those was a feature or a page that
+     * had still to be built or written, and a bar that promises one and
      * answers 404 is worse than a bar that does not. They are added here, from
-     * the panel, the day they exist.
+     * the panel, the day they exist — «كفالات» on 3 November (T-232) and
+     * «هدية» the same day the gift itself arrived (T-242).
      */
     /*
      | T-99 — «شركاؤنا». No rows are seeded: a partner is a real organisation
@@ -111,13 +112,14 @@ class HomePageSeeder extends Seeder
     {
         /*
          | T-99 — the bar the association named on 15 October: هدية، كفالات،
-         | حملات، زكاة مستحقة. Three of the four are here, in their order, with
+         | حملات، زكاة مستحقة. All four are here now, in their order, with
          | الرئيسية and الحالات and الأخبار around them.
          |
-         | «هدية» is not. There is no gift anywhere in the system — no donation
-         | on behalf of someone, no card, no recipient — and a heading leading
-         | to a page that cannot do what it says is worse than its absence. The
-         | row goes in the day the feature does.
+         | «هدية» was the last one missing, and for the reason this file has
+         | carried from the beginning: there was no gift anywhere in the
+         | system — no donation on behalf of someone, no card, no recipient —
+         | and a heading leading to a page that cannot do what it says is
+         | worse than its absence. T-241 and T-242 built it.
          */
         foreach ([
             ['الرئيسية', '/'],
@@ -136,6 +138,15 @@ class HomePageSeeder extends Seeder
              | what a fresh install ships with.
              */
             ['الكفالات', '/sponsorships'],
+            /*
+             | T-242 — «هدية» was named in the bar the association drew on
+             | 15 October and left out of it ever since, because the note at
+             | the top of this file was true: there was no gift in the
+             | system, and a heading leading to a page that cannot do what it
+             | says is worse than its absence. The row goes in the day the
+             | feature does, and this is that day.
+             */
+            ['هدية', '/gift'],
             // The visitor's word is «فزعة» (T-232); the address does not
             // move, because their decision was the name and nothing else.
             ['فزعة', '/campaigns'],
@@ -171,8 +182,9 @@ class HomePageSeeder extends Seeder
             'body_ar' => 'أهدِ ما تحب .. يصنع سعادة لغيرك',
             'image' => 'images/home/gift.webp',
             'icon' => 'gift',
-            // No link: see the note at the top of this file.
-            'link' => null,
+            // T-242 — it had no link, because there was no gift anywhere in
+            // the system. There is one now.
+            'link' => '/gift',
         ], 2);
     }
 

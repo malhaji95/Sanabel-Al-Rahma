@@ -11,6 +11,7 @@ use App\Livewire\DonorFavourites;
 use App\Livewire\DonorPortal;
 use App\Livewire\FamilyPortal;
 use App\Livewire\GeneralDonation;
+use App\Livewire\GiveAgift;
 use Illuminate\Support\Facades\Route;
 
 // Public site — every page is CMS-driven (T-36).
@@ -61,6 +62,9 @@ Route::get('/cases/{fileNumber}', [PublicController::class, 'case'])->name('oppo
  | invented record is noise in a queue rather than money in a figure.
  */
 Route::get('/donate', GeneralDonation::class)->name('donate.general');
+
+// T-242 — the page a donor fills in to give a gift.
+Route::get('/gift', GiveAgift::class)->name('gift.give');
 
 /*
  | T-241 — the gift card, at a private address. No account, because the
