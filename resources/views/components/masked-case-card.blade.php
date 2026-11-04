@@ -143,6 +143,16 @@
                     <p class="mt-1 text-xs" style="color: var(--text-muted);">
                         {{ __('sanabel.public.sponsorship_not_the_need') }}
                     </p>
+
+                    {{-- T-246 — one card for the family, and inside it the
+                         number of orphans still free. Only on the orphan
+                         door: the count answers that door and no other. --}}
+                    @if ($kindKey === 'orphan')
+                        <livewire:sponsor-orphans
+                            :file-number="$case['file_number']"
+                            :available="$case['orphans_available'] ?? 0"
+                            :key="'sponsor-'.$case['file_number']" />
+                    @endif
                 @else
                     <p class="mt-1 text-xs" style="color: var(--text-muted);">
                         {{ __('sanabel.public.sponsorship_value_pending') }}

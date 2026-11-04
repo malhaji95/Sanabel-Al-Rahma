@@ -66,6 +66,18 @@ class MaskedCaseResource extends JsonResource
          | carry more than one, and all of them are shown.
          */
         'sponsorship_kinds',
+        /*
+         | T-246 — «إذا كانت الأسرة تضم 4 أيتام، و3 منهم متاحين للكفالة …
+         | وعند دخول المتبرع يظهر انه يوجد اكثر من يتيم ويستطيع تحديد كم
+         | يتيم يحتاج أن يكفل», 3 November.
+         |
+         | A count and nothing else: how many orphans on this file nobody is
+         | sponsoring yet. It publishes less than `sponsorship_kinds` beside
+         | it already does — that says this is an orphan file — and it is
+         | closed by the same switch. No name, no age, no order of birth,
+         | and no way to tell one child from another.
+         */
+        'orphans_available',
         // T-78 — the funding target. Figures about the appeal, not about the
         // household: a share of a need the donor is already shown.
         'target_percent', 'target_amount', 'target_remaining', 'target_complete',
@@ -217,6 +229,7 @@ class MaskedCaseResource extends JsonResource
             // association's own words. Set by whoever may approve a case
             // (T-177) and never inferred from the household.
             'sponsorship_kinds' => $this->sponsorshipKinds($case),
+            'orphans_available' => $this->orphansAvailable($case),
             'has_chronic_illness' => $this->hasChronicIllness($case),
             'rent_band' => $this->rentBand($case),
             'is_renting' => (bool) $case->housing?->isRenting(),
@@ -896,6 +909,22 @@ class MaskedCaseResource extends JsonResource
             // التصنيف على الملف «أرمل».
             ->mapWithKeys(fn (string $key) => [$key => __('sanabel.sponsorship_kind.'.$key)])
             ->all();
+    }
+
+    /**
+     * T-246 — how many of this family's orphans are still free to sponsor.
+     *
+     * Behind the same switch as the door itself: if the association has
+     * closed «نوع الكفالة» then this file does not say it is an orphan
+     * file at all, and a count of its orphans would say it louder.
+     */
+    private function orphansAvailable(Beneficiary $case): int
+    {
+        if (! $this->switched('show_sponsorship_kind')) {
+            return 0;
+        }
+
+        return $case->orphansAvailableForSponsorship()->count();
     }
 
     /** A label, never the raw score. */
