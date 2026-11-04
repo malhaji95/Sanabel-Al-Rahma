@@ -234,6 +234,10 @@ class PublicController extends Controller
                 fn (array $row) => array_map(fn (bool $dark) => $dark ? 1 : 0, $row),
                 $qr->matrix($url),
             ),
+            'legalName' => trim((string) Setting::value(
+                'association_legal_name',
+                config('sanabel.setting_defaults.association_legal_name')
+            )),
             'licenceNo' => trim((string) Setting::value(
                 'association_licence_no',
                 config('sanabel.setting_defaults.association_licence_no')

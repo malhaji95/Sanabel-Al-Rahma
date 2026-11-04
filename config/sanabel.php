@@ -371,6 +371,13 @@ return [
          | The address is still blank, and a field that is empty is simply
          | not drawn — on the gift card and anywhere else that prints it.
          */
+        /*
+         | T-255 — the name on the decision, printed with the number it was
+         | granted under. The brand name «سنابل الوفاء» stays where the
+         | identity belongs; this is the legal one, and the two sit in
+         | different places on the card for that reason.
+         */
+        'association_legal_name' => 'مؤسسة سنابل الوفاء الخيرية',
         'association_licence_no' => 'ت ر/ق/3100',
         'association_website' => '',
 

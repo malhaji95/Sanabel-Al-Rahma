@@ -383,7 +383,25 @@ it('prints the licence off the ministry’s own decision', function () {
     $this->get(route('gift.card', ['token' => $gift->token]))
         ->assertOk()
         ->assertSee(__('sanabel.gift.licence_no'))
-        ->assertSee('ت ر/ق/3100');
+        ->assertSee('ت ر/ق/3100')
+        // T-255 — and the name on that decision beside it. The brand name
+        // keeps its own place in the middle of the strip.
+        ->assertSee('مؤسسة سنابل الوفاء الخيرية')
+        ->assertSee(__('sanabel.app_name'));
+});
+
+it('follows the association if they restate their own legal name', function () {
+    $donation = pendingGiftDonation();
+    $gift = app(GiftService::class)->attach($donation, [giftRow()])->first();
+
+    app(DonationService::class)->verify($donation, $this->verifier->id);
+
+    Setting::put('association_legal_name', 'اسمٌ آخر كما يرد في قرارٍ لاحق');
+
+    $this->get(route('gift.card', ['token' => $gift->token]))
+        ->assertOk()
+        ->assertSee('اسمٌ آخر كما يرد في قرارٍ لاحق')
+        ->assertDontSee('مؤسسة سنابل الوفاء الخيرية');
 });
 
 it('leaves out an address the association has not adopted yet', function () {

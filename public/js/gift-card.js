@@ -118,9 +118,12 @@
         line(ctx, data.association, WIDTH / 2, middle + 16, 'bold 30px Tajawal, sans-serif', '#ffffff');
         line(ctx, data.tagline, WIDTH / 2, middle + 50, '20px Tajawal, sans-serif', 'rgba(255,255,255,.9)');
 
-        line(ctx, data.website, WIDTH - 60, middle - 28, '20px Tajawal, sans-serif', 'rgba(255,255,255,.9)', 'right');
-        line(ctx, data.licence, WIDTH - 60, middle + 4, '20px Tajawal, sans-serif', 'rgba(255,255,255,.9)', 'right');
-        line(ctx, data.reference, WIDTH - 60, middle + 36, '20px Tajawal, sans-serif', 'rgba(255,255,255,.9)', 'right');
+        // T-255 — the legal name first, then the number it was granted
+        // under, then the card's own reference.
+        line(ctx, data.legal, WIDTH - 60, middle - 42, 'bold 21px Tajawal, sans-serif', '#ffffff', 'right');
+        line(ctx, data.website, WIDTH - 60, middle - 12, '19px Tajawal, sans-serif', 'rgba(255,255,255,.9)', 'right');
+        line(ctx, data.licence, WIDTH - 60, middle + 18, '19px Tajawal, sans-serif', 'rgba(255,255,255,.9)', 'right');
+        line(ctx, data.reference, WIDTH - 60, middle + 48, '19px Tajawal, sans-serif', 'rgba(255,255,255,.9)', 'right');
 
         drawQr(ctx, data.qr, 60, HEIGHT - STRIP + 16, 90);
         line(ctx, data.scan, 165, middle + 10, '18px Tajawal, sans-serif', 'rgba(255,255,255,.9)', 'left');

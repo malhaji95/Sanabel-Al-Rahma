@@ -118,6 +118,10 @@ class ManageSettings extends Page implements HasForms
                  | own name. Empty until they verify the one and adopt the
                  | other, and an empty field is simply not drawn.
                  */
+                Forms\Components\TextInput::make('association_legal_name')
+                    ->label(__('sanabel.settings.keys.association_legal_name'))
+                    ->helperText(__('sanabel.settings.help.association_legal_name')),
+
                 Forms\Components\TextInput::make('association_licence_no')
                     ->label(__('sanabel.settings.keys.association_licence_no'))
                     ->helperText(__('sanabel.settings.help.association_licence_no')),
@@ -218,7 +222,7 @@ class ManageSettings extends Page implements HasForms
         ))));
 
         // T-251 — two free-text strings, trimmed and stored as typed.
-        foreach (['association_licence_no', 'association_website'] as $key) {
+        foreach (['association_legal_name', 'association_licence_no', 'association_website'] as $key) {
             Setting::put($key, trim((string) ($state[$key] ?? '')));
             unset($state[$key]);
         }

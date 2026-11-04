@@ -65,6 +65,13 @@
             <div class="grid grid-cols-3 items-center gap-3 border-t p-4 text-xs"
                  style="border-color: var(--line); background: var(--surface-muted, rgba(0,0,0,.03));">
                 <div class="space-y-1" style="color: var(--text-muted);">
+                    {{-- T-255 — the name on the decision, beside the number it
+                         was granted under. The brand name is in the middle,
+                         where the identity belongs; this is the legal one. --}}
+                    @if ($legalName !== '')
+                        <p class="font-bold" style="color: var(--text);">{{ $legalName }}</p>
+                    @endif
+
                     @if ($website !== '')
                         <p>{{ __('sanabel.gift.official_website') }}</p>
                         <p dir="ltr" class="tabular">{{ $website }}</p>
@@ -120,6 +127,7 @@
                     'association' => __('sanabel.app_name'),
                     'tagline' => config('brand.tagline_ar'),
                     'website' => $website,
+                    'legal' => $legalName,
                     'licence' => $licenceNo !== '' ? __('sanabel.gift.licence_no').' '.$licenceNo : '',
                     'scan' => __('sanabel.gift.scan_to_verify'),
                     'reference' => $gift->reference_no,
