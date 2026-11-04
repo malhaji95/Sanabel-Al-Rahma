@@ -372,26 +372,36 @@ it('prints the reference and the verification code on the card', function () {
         ->assertSee('<svg', escape: false);
 });
 
-it('leaves out a licence number and a website the association has not adopted', function () {
+it('prints the licence off the ministry’s own decision', function () {
     $donation = pendingGiftDonation();
     $gift = app(GiftService::class)->attach($donation, [giftRow()])->first();
 
     app(DonationService::class)->verify($donation, $this->verifier->id);
 
-    // Empty by default: a licence number nobody checked, printed on a card
-    // that goes to strangers, is worse than no licence number.
+    // T-254 — the number on the decision of 30 October 2026, which we have
+    // read. It stays a setting: if it changes, it changes on a screen.
     $this->get(route('gift.card', ['token' => $gift->token]))
         ->assertOk()
-        ->assertDontSee(__('sanabel.gift.licence_no'))
+        ->assertSee(__('sanabel.gift.licence_no'))
+        ->assertSee('ت ر/ق/3100');
+});
+
+it('leaves out an address the association has not adopted yet', function () {
+    $donation = pendingGiftDonation();
+    $gift = app(GiftService::class)->attach($donation, [giftRow()])->first();
+
+    app(DonationService::class)->verify($donation, $this->verifier->id);
+
+    // A field that is empty is simply not drawn.
+    $this->get(route('gift.card', ['token' => $gift->token]))
+        ->assertOk()
         ->assertDontSee(__('sanabel.gift.official_website'));
 
-    Setting::put('association_licence_no', '١٢٣/٤٥٦');
     Setting::put('association_website', 'https://sanabel.example');
 
     $this->get(route('gift.card', ['token' => $gift->token]))
         ->assertOk()
-        ->assertSee(__('sanabel.gift.licence_no'))
-        ->assertSee('١٢٣/٤٥٦')
+        ->assertSee(__('sanabel.gift.official_website'))
         ->assertSee('https://sanabel.example');
 });
 

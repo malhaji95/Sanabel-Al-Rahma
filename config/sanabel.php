@@ -362,11 +362,16 @@ return [
          | T-251 — «نضع اسم المؤسسة وشعارها المعتمد، ورقم الترخيص الصحيح بعد
          | التحقق منه، ورابط الموقع الرسمي عند اعتماده», 4 November.
          |
-         | Empty until they verify and adopt them, and a field that is empty
-         | is simply not drawn: a licence number nobody checked, printed on
-         | a card that goes to strangers, is worse than no licence number.
+         | T-254 — and the licence arrived the same day: the Ministry of
+         | Social Affairs and Labour's own decision of 30 October 2026,
+         | «قرار رقم ت ر/ق/3100», declaring مؤسسة سنابل الوفاء الخيرية in
+         | Daraa. So the number is no longer a blank waiting to be checked;
+         | it is on a signed decision we have read.
+         |
+         | The address is still blank, and a field that is empty is simply
+         | not drawn — on the gift card and anywhere else that prints it.
          */
-        'association_licence_no' => '',
+        'association_licence_no' => 'ت ر/ق/3100',
         'association_website' => '',
 
         'reopen_reasons' => [
