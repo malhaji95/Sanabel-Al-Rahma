@@ -14,9 +14,17 @@ class GraduationRequestPolicy
 {
     use DeniesReadOnlyRoles;
 
+    /**
+     * The two hands that act on this screen, and those who oversee them.
+     *
+     * Not the delegate who raised the study: they raise it from the
+     * family's own file and hear the decision in a notification, so a
+     * seventh screen in their panel would be a screen they never act on.
+     * `WhatAScreenIsForTest` caught exactly that and was right to.
+     */
     public function viewAny(User $user): bool
     {
-        return $this->opensScreen($user, 'record_visit', 'recommend', 'suspend_graduate');
+        return $this->opensScreen($user, 'recommend_graduation', 'suspend_graduate');
     }
 
     public function view(User $user, GraduationRequest $model): bool

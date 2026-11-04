@@ -20,6 +20,8 @@ class PermissionService
     public const WRITE_PERMISSIONS = [
         'create_case', 'edit_draft', 'upload_media', 'record_visit', 'recommend',
         'approve_case', 'suspend_graduate', 'edit_config',
+        // T-250 — the area supervisor's step in the graduation policy.
+        'recommend_graduation',
         'request_change', 'approve_change', 'merge_duplicates', 'donate',
         'verify_payment', 'manage_campaigns', 'manage_distribution', 'confirm_delivery',
         'manage_own_offers', 'verify_referral', 'publish_job_profile', 'manage_members',

@@ -7,6 +7,7 @@ use App\Models\Donation;
 use App\Models\Donor;
 use App\Models\HouseholdMember;
 use App\Models\Housing;
+use App\Models\Permission;
 use App\Models\Region;
 use App\Models\RegionRate;
 use App\Models\RegionRentReference;
@@ -168,6 +169,28 @@ function publishedCase(Region $region, int $adults = 2, int $children = 3, array
     app(AssessmentService::class)->create($beneficiary, status: 'approved');
 
     return $beneficiary->refresh();
+}
+
+/**
+ * T-250 — grants a role one more permission, the way the permission matrix
+ * screen does.
+ *
+ * Used where a rule's second line has to be reached: with the association's
+ * own matrix some guards are unreachable because an earlier one answers
+ * first, and the only honest way to test the second is to edit the matrix,
+ * which is a screen the association actually has.
+ */
+function grantPermission(User $user, string $permissionKey, string $scope = 'all'): void
+{
+    $permission = Permission::firstOrCreate(['key' => $permissionKey]);
+
+    $user->role->permissions()->syncWithoutDetaching([
+        $permission->id => ['scope' => $scope],
+    ]);
+
+    // The permissions are read off the loaded relation, so drop it.
+    $user->role->unsetRelation('permissions');
+    $user->unsetRelation('role');
 }
 
 /**

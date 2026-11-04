@@ -84,11 +84,32 @@ it('follows the settings when the association changes the months', function () {
 });
 
 it('will not let the hand that studied be the hand that recommends', function () {
+    /*
+     | With the association's own matrix the delegate is stopped by the
+     | first rule — recommending is the supervisor's key, not theirs. The
+     | second test below reaches the self-review rule itself, by giving one
+     | account both keys the way the permission screen allows.
+     */
     $request = soundStudy();
 
     expect(fn () => app(GraduationService::class)
         ->recommend($request, $this->delegate, 'support', 'أوافق'))
+        ->toThrow(RuntimeException::class);
+
+    expect($request->refresh()->status)->toBe('pending_supervisor');
+});
+
+it('refuses a supervisor recommending on a study they raised themselves', function () {
+    $both = userWithRole('area_supervisor', ['region_id' => $this->region->id]);
+
+    $request = app(GraduationService::class)->study(
+        $this->family, $both, $this->need + 50_000, now()->subMonths(4), 'درستُها بنفسي.',
+    );
+
+    expect(fn () => app(GraduationService::class)->recommend($request, $both, 'support', 'أوافق'))
         ->toThrow(RuntimeException::class, __('sanabel.graduation.self_review_blocked'));
+
+    expect($request->refresh()->status)->toBe('pending_supervisor');
 });
 
 it('takes the supervisor’s recommendation and passes it to the director', function () {
@@ -136,12 +157,46 @@ it('will not let either earlier hand be the deciding one', function () {
     $request = soundStudy();
     app(GraduationService::class)->recommend($request, $this->supervisor, 'support', 'موافق');
 
+    /*
+     | Two rules stand between them and the decision, and with the
+     | association's own matrix the first one answers: neither the delegate
+     | nor the supervisor holds the director's key, so «ليست خطوتك» is what
+     | they are told. `self_decision_blocked` is the second line, for a
+     | matrix that was edited to give somebody two of the three steps — the
+     | permission screen allows exactly that, which is why the rule stays.
+     */
     foreach ([$this->delegate, $this->supervisor] as $earlier) {
         expect(fn () => app(GraduationService::class)->approve($request->refresh(), $earlier))
-            ->toThrow(RuntimeException::class, __('sanabel.graduation.self_decision_blocked'));
+            ->toThrow(RuntimeException::class);
     }
 
+    expect($this->family->refresh()->status)->toBe('published')
+        ->and($request->refresh()->status)->toBe('pending_director');
+});
+
+it('refuses a director who had already acted on the same study', function () {
+    // The matrix edited so that one account holds two of the three steps.
+    $both = userWithRole('executive_director');
+    grantPermission($both, 'record_visit');
+
+    $request = app(GraduationService::class)->study(
+        $this->family, $both, $this->need + 50_000, now()->subMonths(4), 'درستُها بنفسي.',
+    );
+
+    app(GraduationService::class)->recommend($request, $this->supervisor, 'support', 'موافق');
+
+    expect(fn () => app(GraduationService::class)->approve($request->refresh(), $both))
+        ->toThrow(RuntimeException::class, __('sanabel.graduation.self_decision_blocked'));
+
     expect($this->family->refresh()->status)->toBe('published');
+});
+
+it('will not take a study from an account that does not work in the field', function () {
+    $director = userWithRole('executive_director');
+
+    expect(fn () => app(GraduationService::class)->study(
+        $this->family, $director, $this->need + 50_000, now()->subMonths(4), 'دراسة',
+    ))->toThrow(RuntimeException::class, __('sanabel.graduation.not_the_fields_step'));
 });
 
 it('graduates the family when the director approves, and only then', function () {
@@ -246,4 +301,31 @@ it('lets a graduated family be looked at again through the reopen path', functio
 
     expect($reopen->from_status)->toBe('graduated')
         ->and($reopen->status)->toBe('pending');
+});
+
+/*
+ | T-250 — the step belongs to the role the association named, and the
+ | service says so as well as the screen.
+ */
+it('will not take a recommendation from somebody who is not the supervisor', function () {
+    $request = soundStudy();
+    $anotherDelegate = userWithRole('delegate', ['region_id' => $this->region->id]);
+
+    expect(fn () => app(GraduationService::class)
+        ->recommend($request, $anotherDelegate, 'support', 'أرى أنها تخرجت'))
+        ->toThrow(RuntimeException::class, __('sanabel.graduation.not_the_supervisors_step'));
+
+    expect($request->refresh()->status)->toBe('pending_supervisor');
+});
+
+it('will not take the decision from anybody but the executive director', function () {
+    $request = soundStudy();
+    app(GraduationService::class)->recommend($request, $this->supervisor, 'support', 'موافق');
+
+    $otherSupervisor = userWithRole('area_supervisor', ['region_id' => $this->region->id]);
+
+    expect(fn () => app(GraduationService::class)->approve($request->refresh(), $otherSupervisor))
+        ->toThrow(RuntimeException::class, __('sanabel.graduation.not_the_directors_step'));
+
+    expect($this->family->refresh()->status)->toBe('published');
 });

@@ -36,6 +36,14 @@ class RoleAndPermissionSeeder extends Seeder
             'record_visit' => 'area', 'recommend' => 'area', 'view_full_case' => 'area',
             'search_by_national_id' => 'area', 'request_change' => 'area',
             'confirm_delivery' => 'area', 'file_complaint' => 'own', 'view_reports' => 'area',
+            /*
+             | T-250 — «مشرف المنطقة بيراجع الدراسة وبيقدم توصيته», 4
+             | November. Its own key rather than `recommend`, which the
+             | delegate holds too: the association named the supervisor for
+             | this step, and a key everybody in the field holds would have
+             | put the screen in the delegate's panel as well.
+             */
+            'recommend_graduation' => 'area',
         ],
         'case_officer' => [
             'confirm_disbursement' => 'all',
@@ -194,6 +202,8 @@ class RoleAndPermissionSeeder extends Seeder
             'record_visit' => 'area', 'recommend' => 'area', 'view_full_case' => 'area',
             'search_by_national_id' => 'area', 'request_change' => 'area',
             'confirm_delivery' => 'area', 'file_complaint' => 'own', 'view_reports' => 'area',
+            // T-250 — the deputy holds the role, so the deputy holds the step.
+            'recommend_graduation' => 'area',
         ],
 
         // Money out: raises the disbursement and executes it once approved.

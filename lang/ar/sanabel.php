@@ -194,6 +194,9 @@ return [
         'not_awaiting_recommendation' => 'هذا الطلب ليس بانتظار توصية المشرف.',
         'recommendation_required' => 'التوصية إمّا بالتخرّج أو بالاعتراض عليه.',
         'recommendation_note_required' => 'لا تُسجَّل توصية بلا تعليل.',
+        'not_the_fields_step' => 'دراسة التخرّج للمندوب الميداني أو من يسجّل الزيارات.',
+        'not_the_supervisors_step' => 'التوصية في تخرّج الأسرة لمشرف المنطقة.',
+        'not_the_directors_step' => 'اعتماد التخرّج للمدير التنفيذي.',
         'self_review_blocked' => 'من رفع الدراسة لا يوصي عليها.',
         'not_awaiting_decision' => 'هذا الطلب ليس بانتظار قرار المدير التنفيذي.',
         'self_decision_blocked' => 'من رفع الدراسة أو أوصى عليها لا يعتمدها.',
@@ -2725,6 +2728,8 @@ return [
             'upload_media' => 'رفع مرفقات',
             'record_visit' => 'تسجيل زيارة',
             'recommend' => 'التوصية',
+            // T-250
+            'recommend_graduation' => 'التوصية في تخرّج أسرة',
             'approve_case' => 'اعتماد/رفض/نشر',
             'suspend_graduate' => 'إيقاف/تخريج',
             'edit_config' => 'تعديل الإعدادات والمراجع',

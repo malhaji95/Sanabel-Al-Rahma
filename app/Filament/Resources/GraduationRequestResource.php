@@ -126,7 +126,7 @@ class GraduationRequestResource extends Resource
                     ->label(__('sanabel.graduation.recommendation'))
                     ->icon('heroicon-o-hand-thumb-up')
                     ->visible(fn (GraduationRequest $record) => $record->status === 'pending_supervisor'
-                        && auth()->user()?->can_('recommend'))
+                        && auth()->user()?->can_('recommend_graduation'))
                     ->form([
                         Forms\Components\Radio::make('recommendation')
                             ->label(__('sanabel.graduation.recommendation'))

@@ -69,6 +69,12 @@ class GraduationService
             throw new \RuntimeException(__('sanabel.graduation.not_a_live_file'));
         }
 
+        // «المندوب الميداني بيعمل دراسة حديثة» — the study is the field's,
+        // and `record_visit` is the key the field holds.
+        if (! $delegate->can_('record_visit')) {
+            throw new \RuntimeException(__('sanabel.graduation.not_the_fields_step'));
+        }
+
         if (blank(trim($studyNoteAr))) {
             throw new \RuntimeException(__('sanabel.graduation.study_required'));
         }
@@ -110,6 +116,16 @@ class GraduationService
 
         if (blank(trim($noteAr))) {
             throw new \RuntimeException(__('sanabel.graduation.recommendation_note_required'));
+        }
+
+        /*
+         | T-250 — the association named «مشرف المنطقة» for this step, and
+         | the key is the supervisor's own rather than `recommend`, which
+         | the delegate holds too. Checked here and not only on the screen,
+         | because a screen is not a rule.
+         */
+        if (! $supervisor->can_('recommend_graduation')) {
+            throw new \RuntimeException(__('sanabel.graduation.not_the_supervisors_step'));
         }
 
         // The hand that studied is not the hand that reviews it.
@@ -214,6 +230,12 @@ class GraduationService
     {
         if ($request->status !== 'pending_director') {
             throw new \RuntimeException(__('sanabel.graduation.not_awaiting_decision'));
+        }
+
+        // «المدير التنفيذي هو صاحب صلاحية اعتماد التخرج النهائي» — the key
+        // the association already gave that role, held by nobody in the field.
+        if (! $director->can_('suspend_graduate')) {
+            throw new \RuntimeException(__('sanabel.graduation.not_the_directors_step'));
         }
 
         // Three hands, and never the same one twice.
