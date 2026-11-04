@@ -227,3 +227,92 @@ it('counts three sponsorships of one family once each, and never twice', functio
     // so a sponsorship cannot be counted again as the household's own.
     expect($coverage->confirmedSupport($this->family))->toBe(3 * 75_000);
 });
+
+/*
+ | T-248 — «إذا توقفت الكفالة، الأقساط المدفوعة بتضل محفوظة وما بيرجع اليتيم
+ | متاح لكفالة ثانية عن نفس الفترة المغطاة», 4 November.
+ */
+it('keeps the paid installments when a sponsorship stops', function () {
+    $orphan = orphansOf($this->family, 1)->first();
+
+    $sponsorship = app(SponsorshipService::class)
+        ->sponsorOrphans($this->family, $this->donor, 1)->first();
+
+    $donation = Donation::factory()->create(['status' => 'verified', 'amount' => 75_000]);
+
+    foreach ($sponsorship->installments()->orderBy('period')->take(3)->get() as $installment) {
+        app(SponsorshipService::class)->markPaid($installment, $donation->id);
+    }
+
+    $sponsorship->forceFill(['status' => 'lapsed'])->save();
+
+    // Nothing was erased: three months are still recorded as paid, against
+    // the sponsorship they were paid on and the transfer that paid them.
+    expect(SponsorshipInstallment::where('sponsorship_id', $sponsorship->id)
+        ->where('status', 'paid')->count())->toBe(3)
+        ->and(SponsorshipInstallment::where('sponsorship_id', $sponsorship->id)->count())->toBe(12)
+        ->and($orphan->sponsorships()->count())->toBe(1);
+});
+
+it('starts the next sponsorship after the months somebody already paid for', function () {
+    $orphan = orphansOf($this->family, 1)->first();
+
+    $first = app(SponsorshipService::class)
+        ->sponsorOrphans($this->family, $this->donor, 1)->first();
+
+    $donation = Donation::factory()->create(['status' => 'verified', 'amount' => 75_000]);
+
+    // Three months paid, counting from this one.
+    foreach ($first->installments()->orderBy('period')->take(3)->get() as $installment) {
+        app(SponsorshipService::class)->markPaid($installment, $donation->id);
+    }
+
+    $first->forceFill(['status' => 'lapsed'])->save();
+
+    $second = app(SponsorshipService::class)
+        ->sponsorOrphans($this->family->refresh(), Donor::factory()->create(), 1)->first();
+
+    // The child is free again; the months that were paid for are not. The
+    // new sponsorship opens at the fourth month, so nobody is asked twice
+    // for a month already covered.
+    expect($second->start_date->format('Y-m'))
+        ->toBe(now()->startOfMonth()->addMonths(3)->format('Y-m'))
+        // And its own twelve months run from there.
+        ->and($second->installments()->count())->toBe(12)
+        ->and($second->installments()->orderBy('period')->first()->period)
+        ->toBe(now()->startOfMonth()->addMonths(3)->format('Y-m'));
+
+    // No month is written twice for this child.
+    $periods = SponsorshipInstallment::whereIn(
+        'sponsorship_id', $orphan->sponsorships()->pluck('id')
+    )->where('status', 'paid')->pluck('period');
+
+    expect($periods)->toHaveCount(3)
+        ->and($periods->unique())->toHaveCount(3);
+});
+
+it('starts now for a child nobody has ever paid for', function () {
+    orphansOf($this->family, 1);
+
+    $taken = app(SponsorshipService::class)
+        ->sponsorOrphans($this->family, $this->donor, 1)->first();
+
+    expect($taken->start_date->format('Y-m'))->toBe(now()->format('Y-m'));
+});
+
+it('does not let an unpaid month block the next sponsorship', function () {
+    orphansOf($this->family, 1);
+
+    $first = app(SponsorshipService::class)
+        ->sponsorOrphans($this->family, $this->donor, 1)->first();
+
+    // Twelve months written and not one of them paid: the donor committed
+    // and then stopped. Nothing is covered, so the next sponsorship starts
+    // now rather than a year from now.
+    $first->forceFill(['status' => 'lapsed'])->save();
+
+    $second = app(SponsorshipService::class)
+        ->sponsorOrphans($this->family->refresh(), Donor::factory()->create(), 1)->first();
+
+    expect($second->start_date->format('Y-m'))->toBe(now()->format('Y-m'));
+});

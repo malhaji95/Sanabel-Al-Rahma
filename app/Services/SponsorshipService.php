@@ -10,6 +10,7 @@ use App\Models\Sponsorship;
 use App\Models\SponsorshipInstallment;
 use App\Models\SponsorshipRate;
 use App\Models\User;
+use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -91,21 +92,64 @@ class SponsorshipService
                 ]));
             }
 
-            $start = ($startingFrom ? $startingFrom->copy() : now())->startOfMonth();
-            $end = $start->copy()->addMonths(max(1, $rate->months) - 1)->endOfMonth();
+            $from = ($startingFrom ? $startingFrom->copy() : now())->startOfMonth();
 
-            return $available->take($count)->map(fn (HouseholdMember $orphan) => $this->create([
-                'donor_id' => $donor->getKey(),
-                'beneficiary_id' => $family->getKey(),
-                'household_member_id' => $orphan->getKey(),
-                'amount' => $rate->amount,
-                'currency' => $rate->currency,
-                'start_date' => $start->toDateString(),
-                'end_date' => $end->toDateString(),
-                'status' => 'active',
-                'created_by' => $actor?->getKey(),
-            ]))->values();
+            return $available->take($count)->map(function (HouseholdMember $orphan) use (
+                $family, $donor, $actor, $rate, $from
+            ) {
+                /*
+                 | T-248 — «إذا توقفت الكفالة، الأقساط المدفوعة بتضل محفوظة
+                 | وما بيرجع اليتيم متاح لكفالة ثانية عن نفس الفترة
+                 | المغطاة», 4 November.
+                 |
+                 | A sponsorship that lapsed after three paid months leaves
+                 | three months covered, and the next one starts at the
+                 | fourth — not at this month, which would collect twice for
+                 | a month somebody already paid for. The child is free
+                 | again; the months that were paid for are not.
+                 */
+                $start = $this->firstUncoveredMonth($orphan, $from);
+                $end = $start->copy()->addMonths(max(1, $rate->months) - 1)->endOfMonth();
+
+                return $this->create([
+                    'donor_id' => $donor->getKey(),
+                    'beneficiary_id' => $family->getKey(),
+                    'household_member_id' => $orphan->getKey(),
+                    'amount' => $rate->amount,
+                    'currency' => $rate->currency,
+                    'start_date' => $start->toDateString(),
+                    'end_date' => $end->toDateString(),
+                    'status' => 'active',
+                    'created_by' => $actor?->getKey(),
+                ]);
+            })->values();
         });
+    }
+
+    /**
+     * T-248 — the first month nobody has paid for this child yet.
+     *
+     * Read off the paid installments of every sponsorship that ever named
+     * them, so it survives the sponsorship itself lapsing, completing or
+     * being cancelled: what was paid for stays paid for. Never earlier than
+     * the month asked for, so a child nobody has paid for starts now.
+     */
+    public function firstUncoveredMonth(HouseholdMember $member, CarbonInterface $notBefore): Carbon
+    {
+        $lastPaid = SponsorshipInstallment::query()
+            ->where('status', 'paid')
+            ->whereIn('sponsorship_id', Sponsorship::withTrashed()
+                ->where('household_member_id', $member->getKey())
+                ->select('id'))
+            ->max('period');
+
+        $after = $lastPaid
+            ? Carbon::createFromFormat('Y-m', $lastPaid)->startOfMonth()->addMonth()
+            : null;
+
+        $floor = Carbon::parse($notBefore)->startOfMonth();
+
+        return $after && $after->greaterThan($floor) ? $after : $floor;
     }
 
     /** One row per month between start_date and end_date, inclusive. */
