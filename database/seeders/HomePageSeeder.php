@@ -64,6 +64,13 @@ class HomePageSeeder extends Seeder
             ['زكاة مستحقة', 'ملفّات راجعتها الجمعية وأقرّت أن الزكاة تُصرف عليها', null, '/cases?zakat=1'],
             ['علاج مريض', 'تكلفة علاجٍ محسوبة، وإثبات صرفٍ مرفوع', 'images/home/medical.webp', '/cases?supportType=one_time'],
             ['حملاتنا المفتوحة', 'هدفٌ معلن، وما جُمع منه، وسياسة الفائض مكتوبة', null, '/campaigns'],
+            /*
+             | T-253 — their own banner for their own page, sent together on
+             | 4 November. The five other wide messages in the same pack are
+             | deliberately not here: which of them belongs in the carousel,
+             | and in what order, is a row on the association's own screen.
+             */
+            ['مسار الكفاية', 'من الحاجة إلى القدرة، ثم الاستقرار', 'images/banners/sufficiency-path.webp', '/sufficiency-path'],
         ] as $index => [$title, $body, $image, $link]) {
             Banner::firstOrCreate(
                 ['title_ar' => $title],
@@ -147,6 +154,13 @@ class HomePageSeeder extends Seeder
              | feature does, and this is that day.
              */
             ['هدية', '/gift'],
+            /*
+             | T-253 — «مسار الكفاية» joins the bar the day its page does.
+             | The association sent its text and its banner on 4 November,
+             | and the same rule holds as for «هدية»: a heading goes in when
+             | the thing behind it exists, not before.
+             */
+            ['مسار الكفاية', '/sufficiency-path'],
             // The visitor's word is «فزعة» (T-232); the address does not
             // move, because their decision was the name and nothing else.
             ['فزعة', '/campaigns'],
