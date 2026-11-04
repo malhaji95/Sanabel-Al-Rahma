@@ -7,6 +7,7 @@ use App\Models\Concerns\TracksCreator;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class HouseholdMember extends Model
@@ -34,6 +35,12 @@ class HouseholdMember extends Model
         'school_stage', 'sought_trade_ar', 'has_certificate', 'experience_years',
         'can_teach_quran', 'pension_income', 'condition_description_ar', 'doctor_phone_encrypted',
     ];
+
+    /** T-245 — the sponsorships that name this member (T-238). */
+    public function sponsorships(): HasMany
+    {
+        return $this->hasMany(Sponsorship::class, 'household_member_id');
+    }
 
     protected $hidden = [
         'national_id_encrypted', 'spouse_national_id_encrypted',

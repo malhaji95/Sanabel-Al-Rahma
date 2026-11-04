@@ -263,6 +263,22 @@ class Beneficiary extends Model
         return $this->hasMany(HouseholdMember::class);
     }
 
+    /**
+     * T-245 — the orphans on this file a donor may still sponsor.
+     *
+     * «إذا كانت الأسرة تضم 4 أيتام، و3 منهم متاحين للكفالة», 3 November.
+     * Available is read off the file rather than marked by hand: an orphan
+     * is available while no live sponsorship names them. So the count falls
+     * of its own accord as donors take them, and rises again if one lapses.
+     */
+    public function orphansAvailableForSponsorship(): HasMany
+    {
+        return $this->members()
+            ->where('is_orphan', true)
+            ->whereDoesntHave('sponsorships', fn ($query) => $query->where('status', 'active'))
+            ->orderBy('id');
+    }
+
     /** T-239 — the requests to reopen this file, decided and undecided. */
     public function reopenRequests(): HasMany
     {

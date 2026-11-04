@@ -2,9 +2,16 @@
 
 namespace App\Services;
 
+use App\Models\Beneficiary;
+use App\Models\Donor;
+use App\Models\HouseholdMember;
 use App\Models\Setting;
 use App\Models\Sponsorship;
 use App\Models\SponsorshipInstallment;
+use App\Models\SponsorshipRate;
+use App\Models\User;
+use Carbon\CarbonInterface;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -24,6 +31,80 @@ class SponsorshipService
             $this->generateInstallments($sponsorship->refresh());
 
             return $sponsorship->refresh();
+        });
+    }
+
+    /*
+     |---------------------------------------------------------------------
+     | T-245 — sponsoring a number of a family's orphans at once.
+     |---------------------------------------------------------------------
+     |
+     | «إذا كانت الأسرة تضم 4 أيتام، و3 منهم متاحين للكفالة … وعند دخول
+     | المتبرع يظهر انه يوجد اكثر من يتيم ويستطيع تحديد كم يتيم يحتاج أن
+     | يكفل», 3 November, and «كيفية منع ازدواج الكفالة، وكيف تنعكس ماليًا
+     | على الأسرة دون تكرار», 4 November.
+     |
+     | The donor says how many, not which: the association assigns. What
+     | they get is one sponsorship per child, each naming its own child
+     | internally (T-238), each priced and dated from the association's own
+     | rate for «كفالة يتيم» (T-210) rather than from the family's monthly
+     | need, which is a different figure about a different thing.
+     |
+     | Rule 6 — the whole thing is one transaction and the candidate rows
+     | are locked before they are read, because two donors pressing the
+     | button in the same second would otherwise both see the same free
+     | child. The partial unique index is the second lock, in the database,
+     | for the case this code is bypassed.
+     |
+     | And the money: each sponsorship's installments are paid like any
+     | other donation, and reach the family's coverage through the one
+     | allocation table every other donation reaches it through. Three
+     | sponsorships in one house are three contributions to one family's
+     | coverage, counted once each — never a second time as the family's
+     | own, because there is only one place coverage is read from.
+     */
+    public function sponsorOrphans(
+        Beneficiary $family,
+        Donor $donor,
+        int $count,
+        ?User $actor = null,
+        ?CarbonInterface $startingFrom = null,
+    ): Collection {
+        if ($count < 1) {
+            throw new \RuntimeException(__('sanabel.sponsorships.pick_at_least_one'));
+        }
+
+        $rate = SponsorshipRate::where('kind', 'orphan')->where('is_active', true)->first();
+
+        if (! $rate) {
+            throw new \RuntimeException(__('sanabel.sponsorships.no_rate_for_kind'));
+        }
+
+        return DB::transaction(function () use ($family, $donor, $count, $actor, $startingFrom, $rate) {
+            // Locked before counted: between the count and the write is
+            // exactly where a second donor would slip in.
+            $available = $family->orphansAvailableForSponsorship()->lockForUpdate()->get();
+
+            if ($available->count() < $count) {
+                throw new \RuntimeException(__('sanabel.sponsorships.not_that_many_orphans', [
+                    'available' => $available->count(),
+                ]));
+            }
+
+            $start = ($startingFrom ? $startingFrom->copy() : now())->startOfMonth();
+            $end = $start->copy()->addMonths(max(1, $rate->months) - 1)->endOfMonth();
+
+            return $available->take($count)->map(fn (HouseholdMember $orphan) => $this->create([
+                'donor_id' => $donor->getKey(),
+                'beneficiary_id' => $family->getKey(),
+                'household_member_id' => $orphan->getKey(),
+                'amount' => $rate->amount,
+                'currency' => $rate->currency,
+                'start_date' => $start->toDateString(),
+                'end_date' => $end->toDateString(),
+                'status' => 'active',
+                'created_by' => $actor?->getKey(),
+            ]))->values();
         });
     }
 
