@@ -175,6 +175,15 @@
                             {{ __('sanabel.gift.schedule') }}
                         </label>
 
+                        {{-- T-244 — the reminder at the hour goes to an account,
+                             and a guest has none. Said here, before the box is
+                             ticked, rather than after the form is filled. --}}
+                        @unless (auth()->user()?->donor)
+                            <p class="mt-1 text-xs" style="color: var(--text-muted);">
+                                {{ __('sanabel.gift.schedule_needs_account') }}
+                            </p>
+                        @endunless
+
                         @if ($card['schedule'] ?? false)
                             <input type="datetime-local" dir="ltr" class="field mt-2"
                                    wire:model="cards.{{ $i }}.send_at">

@@ -257,3 +257,50 @@ it('offers the ready amounts the association set, and a box for any other', func
         ->assertSee(number_format(9000))
         ->assertSee(__('sanabel.gift.custom_amount'));
 });
+
+/*
+ | T-244 — «إذا المتبرع هو اللي بيرسل البطاقة من هاتفه، شو بيصير لما يوصل
+ | موعد الإهداء؟ هل بيوصل له تذكير؟ وهل البطاقة بتبقى غير متاحة قبل
+ | الموعد؟» — 4 November. Yes, yes, and yes; and one hole they found by
+ | asking: a guest has no account for the reminder to arrive at.
+ */
+it('asks a guest to sign in before scheduling, and lets them give now without one', function () {
+    $hour = now()->addDays(2)->toDateTimeString();
+
+    Livewire::test(GiveAgift::class)
+        ->set('cards', [filledCard(['schedule' => true, 'send_at' => $hour])])
+        ->set('name', 'متبرع بلا حساب')
+        ->set('transactionRef', 'GIFT-0009')
+        ->call('record')
+        ->assertSet('error', __('sanabel.gift.schedule_needs_account'));
+
+    expect(Donation::count())->toBe(0)
+        ->and(Gift::count())->toBe(0);
+
+    // The same guest, giving now, is not asked for anything.
+    Livewire::test(GiveAgift::class)
+        ->set('cards', [filledCard()])
+        ->set('name', 'متبرع بلا حساب')
+        ->set('transactionRef', 'GIFT-0010')
+        ->call('record')
+        ->assertHasNoErrors()
+        ->assertSet('error', null);
+
+    expect(Gift::count())->toBe(1);
+});
+
+it('lets a donor with an account schedule, and says so on the page', function () {
+    Livewire::test(GiveAgift::class)
+        ->assertSee(__('sanabel.gift.schedule_needs_account'));
+
+    Livewire::actingAs(giftDonor())
+        ->test(GiveAgift::class)
+        // Signed in, so the line about needing an account is gone.
+        ->assertDontSee(__('sanabel.gift.schedule_needs_account'))
+        ->set('cards', [filledCard(['schedule' => true, 'send_at' => now()->addDays(2)->toDateTimeString()])])
+        ->set('transactionRef', 'GIFT-0011')
+        ->call('record')
+        ->assertHasNoErrors();
+
+    expect(Gift::first()->send_at)->not->toBeNull();
+});

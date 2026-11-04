@@ -94,6 +94,12 @@ class GiveAgift extends Component
         $this->cards = array_values($this->cards);
     }
 
+    /** Whether any card on the page is waiting for an hour. */
+    public function hasAschedule(): bool
+    {
+        return collect($this->cards)->contains(fn ($card) => (bool) ($card['schedule'] ?? false));
+    }
+
     /** What the donor is being asked to transfer: the cards added up. */
     public function getTotalProperty(): int
     {
@@ -134,6 +140,25 @@ class GiveAgift extends Component
             'phone' => __('sanabel.donor.phone'),
             'receipt' => __('sanabel.donation.receipt_upload'),
         ]);
+
+        /*
+         | T-244 — «إذا المتبرع هو اللي بيرسل البطاقة من هاتفه، شو بيصير لما
+         | يوصل موعد الإهداء؟ هل بيوصل له تذكير؟», 4 November.
+         |
+         | Yes: the card is issued at its hour and the donor is told the
+         | moment it is. But the telling goes to an account — in-app and
+         | email are the only channels this system has — and a guest has
+         | none, so a guest who scheduled a card would be promised a
+         | reminder that had nowhere to arrive.
+         |
+         | So scheduling asks for an account and giving does not. A gift
+         | sent now needs no reminder: the donor is standing on the page.
+         */
+        if (! $signedIn && $this->hasAschedule()) {
+            $this->error = __('sanabel.gift.schedule_needs_account');
+
+            return;
+        }
 
         // The same limit the general page carries, for the same reason: a
         // verifier reading invented references is not reading the real ones.

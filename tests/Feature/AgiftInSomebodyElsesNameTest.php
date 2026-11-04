@@ -289,3 +289,48 @@ it('refuses a gift of nothing at the database itself', function () {
         'currency' => 'SYP',
     ]))->toThrow(QueryException::class);
 });
+
+/*
+ | T-244 — the three halves of their question about scheduling, answered
+ | where the answers actually live.
+ */
+it('keeps the card unreachable until its hour, and reachable after it', function () {
+    $donation = pendingGiftDonation();
+    $gift = app(GiftService::class)->attach($donation, [
+        giftRow(['send_at' => now()->addDays(2)->toDateTimeString()]),
+    ])->first();
+
+    app(DonationService::class)->verify($donation, $this->verifier->id);
+
+    // Verified, but not yet its hour: the address gives nothing away.
+    $this->get(route('gift.card', ['token' => $gift->token]))->assertNotFound();
+
+    $this->travelTo(now()->addDays(3));
+    $this->artisan('sanabel:issue-gifts')->assertSuccessful();
+
+    $this->get(route('gift.card', ['token' => $gift->token]))->assertOk();
+});
+
+it('tells the donor at the hour, not when the transfer was verified', function () {
+    $user = User::factory()->create();
+    $this->donor->forceFill(['user_id' => $user->id])->save();
+
+    $donation = pendingGiftDonation();
+    app(GiftService::class)->attach($donation, [
+        giftRow(['send_at' => now()->addDays(2)->toDateTimeString()]),
+    ]);
+
+    app(DonationService::class)->verify($donation, $this->verifier->id);
+
+    $told = fn () => AppNotification::where('recipient_id', $user->id)
+        ->where('template_key', 'gift_card_ready')->exists();
+
+    // Nothing yet: the donor is reminded when the card goes out, which is
+    // the whole point of asking for an hour.
+    expect($told())->toBeFalse();
+
+    $this->travelTo(now()->addDays(3));
+    $this->artisan('sanabel:issue-gifts')->assertSuccessful();
+
+    expect($told())->toBeTrue();
+});
