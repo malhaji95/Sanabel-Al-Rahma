@@ -14,6 +14,7 @@ use App\Models\Setting;
 use App\Services\CoverageService;
 use App\Services\DonorCaseList;
 use App\Services\PlatformStats;
+use App\Services\QrCode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
@@ -213,7 +214,35 @@ class PublicController extends Controller
 
         abort_unless($gift, 404);
 
-        return view('public.gift-card', ['gift' => $gift]);
+        /*
+         | T-251 — the QR the card prints points back at this very page, so
+         | anybody holding the card can satisfy themselves it is real. Drawn
+         | from our own QR service (T-119), which was written rather than
+         | installed and never sends anything anywhere.
+         |
+         | The matrix goes to the page as well as the drawing, because the
+         | download below redraws the code onto a canvas and cannot read it
+         | back out of an image.
+         */
+        $qr = app(QrCode::class);
+        $url = route('gift.card', ['token' => $gift->token]);
+
+        return view('public.gift-card', [
+            'gift' => $gift,
+            'qrSvg' => $qr->svg($url, moduleSize: 4, quietZone: 2),
+            'qrMatrix' => array_map(
+                fn (array $row) => array_map(fn (bool $dark) => $dark ? 1 : 0, $row),
+                $qr->matrix($url),
+            ),
+            'licenceNo' => trim((string) Setting::value(
+                'association_licence_no',
+                config('sanabel.setting_defaults.association_licence_no')
+            )),
+            'website' => trim((string) Setting::value(
+                'association_website',
+                config('sanabel.setting_defaults.association_website')
+            )),
+        ]);
     }
 
     /**

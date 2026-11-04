@@ -114,6 +114,20 @@ class ManageSettings extends Page implements HasForms
                     ->label(__('sanabel.settings.keys.platform_wallet_holder')),
 
                 /*
+                 | T-251 — what the gift card prints under the association's
+                 | own name. Empty until they verify the one and adopt the
+                 | other, and an empty field is simply not drawn.
+                 */
+                Forms\Components\TextInput::make('association_licence_no')
+                    ->label(__('sanabel.settings.keys.association_licence_no'))
+                    ->helperText(__('sanabel.settings.help.association_licence_no')),
+
+                Forms\Components\TextInput::make('association_website')
+                    ->label(__('sanabel.settings.keys.association_website'))
+                    ->helperText(__('sanabel.settings.help.association_website'))
+                    ->url(),
+
+                /*
                  | T-95 — OPS-03. Who hears a security alert. Roles rather than
                  | addresses: an address in a settings row is a copy that goes
                  | stale the day someone leaves, and a role follows whoever
@@ -202,6 +216,12 @@ class ManageSettings extends Page implements HasForms
             fn ($reason) => trim((string) $reason),
             (array) ($state['reopen_reasons'] ?? [])
         ))));
+
+        // T-251 — two free-text strings, trimmed and stored as typed.
+        foreach (['association_licence_no', 'association_website'] as $key) {
+            Setting::put($key, trim((string) ($state[$key] ?? '')));
+            unset($state[$key]);
+        }
 
         // T-240 — the two audiences and the association's own week. Stored
         // as they came, and held to the keys the screen offered.

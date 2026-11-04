@@ -358,6 +358,17 @@ return [
          */
         'graduation_stable_months' => 3,
 
+        /*
+         | T-251 — «نضع اسم المؤسسة وشعارها المعتمد، ورقم الترخيص الصحيح بعد
+         | التحقق منه، ورابط الموقع الرسمي عند اعتماده», 4 November.
+         |
+         | Empty until they verify and adopt them, and a field that is empty
+         | is simply not drawn: a licence number nobody checked, printed on
+         | a card that goes to strangers, is worse than no licence number.
+         */
+        'association_licence_no' => '',
+        'association_website' => '',
+
         'reopen_reasons' => [
             'عودة الحاجة بعد الإغلاق أو التخرّج',
             'زوال سبب الإيقاف',

@@ -77,12 +77,27 @@ class Gift extends Model
         return $key.ltrim($number, '0');
     }
 
+    /**
+     * T-251 — the readable reference, in the shape the rest of the system
+     * already uses. The year and a running count inside it, counting
+     * soft-deleted rows so a number is never handed out twice.
+     */
+    public static function nextReference(): string
+    {
+        $year = now()->format('y');
+        $count = self::withTrashed()->whereYear('created_at', now()->year)->count() + 1;
+
+        return sprintf('GFT-%s-%05d', $year, $count);
+    }
+
     protected static function booted(): void
     {
         static::creating(function (self $gift) {
             // The card is read by its token, so the address of one card
-            // cannot be guessed from the address of another.
+            // cannot be guessed from the address of another. The reference
+            // is the other half: readable, printed, and said out loud.
             $gift->token ??= Str::lower(Str::random(32));
+            $gift->reference_no ??= self::nextReference();
         });
     }
 }

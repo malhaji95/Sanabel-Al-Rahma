@@ -334,3 +334,98 @@ it('tells the donor at the hour, not when the transfer was verified', function (
 
     expect($told())->toBeTrue();
 });
+
+/*
+ | T-251 — the card as the association's reference draws it: a readable
+ | reference, a verification code that points back at the card, their own
+ | marks under it, and one image to send.
+ */
+it('gives every card a readable reference of its own', function () {
+    $donation = pendingGiftDonation(200_000);
+
+    $gifts = app(GiftService::class)->attach($donation, [
+        giftRow(['amount' => 100_000]),
+        giftRow(['amount' => 100_000]),
+    ]);
+
+    expect($gifts[0]->reference_no)->toMatch('/^GFT-\d{2}-\d{5}$/')
+        // Readable and said out loud, where the token is the private
+        // address the code points at. Two different things.
+        ->and($gifts[0]->reference_no)->not->toBe($gifts[1]->reference_no)
+        ->and($gifts[0]->reference_no)->not->toBe($gifts[0]->token);
+});
+
+it('prints the reference and the verification code on the card', function () {
+    $donation = pendingGiftDonation();
+    $gift = app(GiftService::class)->attach($donation, [giftRow()])->first();
+
+    app(DonationService::class)->verify($donation, $this->verifier->id);
+
+    $this->get(route('gift.card', ['token' => $gift->token]))
+        ->assertOk()
+        ->assertSee($gift->reference_no)
+        ->assertSee(__('sanabel.gift.scan_to_verify'))
+        // The association's own marks under the card.
+        ->assertSee(__('sanabel.app_name'))
+        ->assertSee(config('brand.tagline_ar'))
+        // And the code itself, drawn rather than fetched from anywhere.
+        ->assertSee('<svg', escape: false);
+});
+
+it('leaves out a licence number and a website the association has not adopted', function () {
+    $donation = pendingGiftDonation();
+    $gift = app(GiftService::class)->attach($donation, [giftRow()])->first();
+
+    app(DonationService::class)->verify($donation, $this->verifier->id);
+
+    // Empty by default: a licence number nobody checked, printed on a card
+    // that goes to strangers, is worse than no licence number.
+    $this->get(route('gift.card', ['token' => $gift->token]))
+        ->assertOk()
+        ->assertDontSee(__('sanabel.gift.licence_no'))
+        ->assertDontSee(__('sanabel.gift.official_website'));
+
+    Setting::put('association_licence_no', '١٢٣/٤٥٦');
+    Setting::put('association_website', 'https://sanabel.example');
+
+    $this->get(route('gift.card', ['token' => $gift->token]))
+        ->assertOk()
+        ->assertSee(__('sanabel.gift.licence_no'))
+        ->assertSee('١٢٣/٤٥٦')
+        ->assertSee('https://sanabel.example');
+});
+
+it('hands the page everything the one image needs, and nothing private', function () {
+    $donation = pendingGiftDonation();
+    $gift = app(GiftService::class)->attach($donation, [giftRow()])->first();
+
+    app(DonationService::class)->verify($donation, $this->verifier->id);
+
+    $response = $this->get(route('gift.card', ['token' => $gift->token]))->assertOk();
+
+    // The composer is handed the artwork, the line, the reference and the
+    // code's own matrix — it cannot read a code back out of a picture.
+    $response->assertSee('gift-data', escape: false)
+        ->assertSee($gift->reference_no)
+        // Rule 10 — never the recipient's number, on a page open to anybody
+        // holding the link, and never a telephone number at all: «ولا أنصح
+        // بوضع رقم واتساب شخصي على كل بطاقة», 4 November.
+        ->assertDontSee('0912345678')
+        ->assertDontSee('wa.me');
+});
+
+it('reaches a recipient who has no account at all', function () {
+    $donation = pendingGiftDonation();
+    $gift = app(GiftService::class)->attach($donation, [giftRow()])->first();
+
+    app(DonationService::class)->verify($donation, $this->verifier->id);
+
+    // «يجب أن تعمل صفحة التحقق حتى لو لم يكن الشخص المستلم مسجلًا في
+    // المنصة، مع حماية المعلومات الخاصة».
+    expect(auth()->check())->toBeFalse();
+
+    $this->get(route('gift.card', ['token' => $gift->token]))
+        ->assertOk()
+        ->assertSee($gift->giver_name_ar)
+        ->assertSee($gift->recipient_name_ar);
+});
