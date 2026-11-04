@@ -268,9 +268,27 @@ class CaseService
         return $case->refresh();
     }
 
-    public function graduate(Beneficiary $case): Beneficiary
+    /**
+     * The other ending: a family that no longer needs help.
+     *
+     * T-243 — «ما بدنا تظهر بتقاريرنا أسر متخرجة من الفقر وهي فعليًا مجرد
+     * ملفات انتهت إجراءاتها», 4 November. So graduation is not something a
+     * file drifts into: it says why, in writing, the way a suspension does.
+     * Nothing calls this yet — there is no button for it, because the
+     * association has not said who decides that a family has grown out of
+     * needing help, or on what evidence. The reason is here so that
+     * whenever that button is drawn it cannot be drawn without one.
+     */
+    public function graduate(Beneficiary $case, string $reasonAr): Beneficiary
     {
-        $case->forceFill(['status' => 'graduated'])->save();
+        if (blank(trim($reasonAr))) {
+            throw new \RuntimeException(__('sanabel.cases.graduation_reason_required'));
+        }
+
+        $case->forceFill([
+            'status' => 'graduated',
+            'reject_reason_ar' => trim($reasonAr),
+        ])->save();
 
         return $case->refresh();
     }
