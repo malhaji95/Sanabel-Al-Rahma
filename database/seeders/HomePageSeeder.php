@@ -197,18 +197,29 @@ class HomePageSeeder extends Seeder
         $oneTime = '/cases?supportType=one_time';
         $monthly = '/cases?supportType=monthly';
 
+        /*
+         | T-252 — the association's own door artwork, sent on 4 November at
+         | 800×400, replaces the stand-ins and fills the five tiles that had
+         | no picture at all. Seven of their eight land on a tile by name.
+         |
+         | The eighth, «كفالة حلقة قرآن», has no tile: the nearest one says
+         | «كفالة طالب علم», and a Qur'an circle and a student are not the
+         | same thing. The file is in `public/images/doors/quran-circle.webp`
+         | waiting for the association to say which it is — a tile is a row
+         | they edit, so either answer is a line on a screen.
+         */
         foreach ([
-            ['ترميم منزل', 'images/home/home-repair.webp', 'home', $oneTime],
-            ['علاج مريض', 'images/home/medical.webp', 'medical', $oneTime],
-            ['تفريج كربة', null, 'hand-heart', $oneTime],
-            ['كفالة يتيم', 'images/home/hero-child.webp', 'child', $monthly],
+            ['ترميم منزل', 'images/doors/home-repair.webp', 'home', $oneTime],
+            ['علاج مريض', 'images/doors/medical.webp', 'medical', $oneTime],
+            ['تفريج كربة', 'images/doors/relief.webp', 'hand-heart', $oneTime],
+            ['كفالة يتيم', 'images/doors/orphan.webp', 'child', $monthly],
             ['كفالة طالب علم', null, 'book', $monthly],
             // T-98 — it used to land on every one-time need, zakat-eligible or
             // not, which is the one tile on this page a donor could act on and
             // be wrong about.
-            ['زكاة واجبة', null, 'sprout', $oneTime.'&zakat=1'],
-            ['صدقة جارية', null, 'mosque', $oneTime],
-            ['رعاية أرملة', null, 'person', $monthly],
+            ['زكاة واجبة', 'images/doors/zakat.webp', 'sprout', $oneTime.'&zakat=1'],
+            ['صدقة جارية', 'images/doors/sadaqah.webp', 'mosque', $oneTime],
+            ['رعاية أرملة', 'images/doors/widow.webp', 'person', $monthly],
         ] as $index => [$title, $image, $icon, $link]) {
             $this->card('tile', $title, [
                 'image' => $image,
