@@ -924,7 +924,14 @@ class MaskedCaseResource extends JsonResource
             return 0;
         }
 
-        return $case->orphansAvailableForSponsorship()->count();
+        /*
+         | T-247 — counted with the page where the page counted it, and
+         | asked for directly on a screen that draws one family. The list
+         | loads it with `withCount`, so a page of twelve families costs
+         | one query here rather than twelve.
+         */
+        return (int) ($case->orphans_available_for_sponsorship_count
+            ?? $case->orphansAvailableForSponsorship()->count());
     }
 
     /** A label, never the raw score. */

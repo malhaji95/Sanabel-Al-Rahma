@@ -208,6 +208,13 @@ class RankingService
                 'assessments', 'region', 'members', 'housing', 'healthRecords',
                 'basketItems.basket', 'association', 'debts', 'assets', 'livestock',
             ])
+            /*
+             | T-247 — how many of each family's orphans are still free
+             | (T-246), counted for the whole page in one query. Asked per
+             | card it was an extra question per family, which is exactly
+             | what CoverageBatchTest exists to catch.
+             */
+            ->withCount('orphansAvailableForSponsorship')
             ->get()
             ->keyBy('id');
 
