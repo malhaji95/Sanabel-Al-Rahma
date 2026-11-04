@@ -8,10 +8,13 @@ use App\Models\Beneficiary;
 use App\Services\AnonymiseService;
 use App\Services\AssessmentService;
 use App\Services\CaseService;
+use App\Services\CoverageService;
+use App\Services\GraduationService;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Carbon;
 
 /**
  * T-133 — the decisions a family file carries, on both screens that hold it.
@@ -298,6 +301,50 @@ trait CaseDecisionActions
                     ])->save();
 
                     Notification::make()->title(__('sanabel.actions.story_approved'))->success()->send();
+                }),
+
+            /*
+             | T-249 — the delegate's graduation study, raised from the
+             | family's own screen because that is where the figures are.
+             | It decides nothing: the supervisor recommends and the
+             | executive director decides, and the service refuses any
+             | other order.
+             */
+            Actions\Action::make('studyForGraduation')
+                ->label(__('sanabel.graduation.study'))
+                ->icon('heroicon-o-academic-cap')
+                ->visible(fn () => in_array($this->record->status, Beneficiary::MAY_RECEIVE_MONEY, true)
+                    && auth()->user()->can_('record_visit'))
+                ->modalDescription(__('sanabel.graduation.study_help'))
+                ->form([
+                    Forms\Components\TextInput::make('monthly_income')
+                        ->label(__('sanabel.graduation.monthly_income'))
+                        ->numeric()->minValue(1)->required()
+                        ->helperText(__('sanabel.graduation.need_snapshot').': '
+                            .number_format(app(CoverageService::class)->needAmount($this->record))),
+                    Forms\Components\DatePicker::make('stable_since')
+                        ->label(__('sanabel.graduation.stable_since'))
+                        ->maxDate(now())
+                        ->required(),
+                    Textarea::make('study_note_ar')
+                        ->label(__('sanabel.graduation.study_note'))
+                        ->rows(4)
+                        ->required(),
+                ])
+                ->action(function (array $data) {
+                    try {
+                        app(GraduationService::class)->study(
+                            $this->record,
+                            auth()->user(),
+                            (int) ($data['monthly_income'] ?? 0),
+                            Carbon::parse($data['stable_since']),
+                            $data['study_note_ar'] ?? '',
+                        );
+
+                        Notification::make()->title(__('sanabel.graduation.raised'))->success()->send();
+                    } catch (\RuntimeException $e) {
+                        Notification::make()->title($e->getMessage())->danger()->send();
+                    }
                 }),
 
             /*

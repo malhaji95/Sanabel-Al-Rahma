@@ -279,6 +279,12 @@ class Beneficiary extends Model
             ->orderBy('id');
     }
 
+    /** T-249 — the graduation studies raised on this file. */
+    public function graduationRequests(): HasMany
+    {
+        return $this->hasMany(GraduationRequest::class);
+    }
+
     /** T-239 — the requests to reopen this file, decided and undecided. */
     public function reopenRequests(): HasMany
     {
