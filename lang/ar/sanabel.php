@@ -324,6 +324,11 @@ return [
 
     'complaints' => [
         'owner_conflict' => 'لا يمكن إسناد الشكوى إلى الشخص المشكو منه.',
+        // T-257
+        'subject_and_body_required' => 'العنوان وشرح الموضوع مطلوبان.',
+        'unknown_category' => 'نوع التذكرة غير معروف.',
+        'contact_required' => 'اترك رقم هاتف أو بريداً إلكترونياً حتى نتمكن من الردّ.',
+        'confidential_hidden' => 'بلاغ سرّي — لا يظهر على مكتب الدعم العام.',
     ],
 
     'cases' => [
@@ -1878,11 +1883,31 @@ return [
         'category' => 'التصنيف', 'against' => 'المشكو منه', 'owner' => 'المسؤول',
         'resolution' => 'المعالجة', 'created_at' => 'تاريخ التقديم',
     ],
+    // T-257 — أنواع التذاكر كما سمّتها الجمعية في نموذجها.
     'complaint_category' => [
-        'service' => 'الخدمة', 'delegate' => 'المندوب', 'payment' => 'الدفع', 'other' => 'أخرى',
+        'inquiry' => 'استفسار عام',
+        'payment' => 'تبرّع أو دفعة مالية',
+        'technical' => 'مشكلة تقنية',
+        'service' => 'شكوى على الخدمة',
+        'delegate' => 'شكوى على المندوب',
+        'suggestion' => 'اقتراح',
+        'partnership' => 'شراكة أو تعاون',
+        'volunteering' => 'تطوّع',
+        'confidential' => 'بلاغ سرّي / ملاحظة رقابية',
+        'other' => 'أخرى',
     ],
     'complaint_status' => [
-        'new' => 'جديدة', 'assigned' => 'مسندة', 'resolved' => 'معالجة', 'closed' => 'مغلقة',
+        'new' => 'جديدة',
+        'assigned' => 'قيد المراجعة',
+        'in_progress' => 'قيد المعالجة',
+        'awaiting_reporter' => 'بانتظار ردّ مقدّم الطلب',
+        'resolved' => 'تمّت المعالجة',
+        'closed' => 'مغلقة',
+    ],
+    'complaint_role' => [
+        'donor' => 'متبرّع', 'beneficiary' => 'مستفيد', 'volunteer' => 'متطوّع',
+        'association' => 'جهة أو جمعية', 'provider' => 'مزوّد خدمة',
+        'visitor' => 'زائر', 'other' => 'أخرى',
     ],
     'change_request' => [
         'singular' => 'طلب تعديل', 'plural' => 'طلبات التعديل',
@@ -2745,6 +2770,9 @@ return [
             'recommend' => 'التوصية',
             // T-250
             'recommend_graduation' => 'التوصية في تخرّج أسرة',
+            // T-257
+            'read_confidential_complaint' => 'الاطلاع على البلاغات السرّية',
+            'handle_confidential_complaint' => 'معالجة البلاغات السرّية',
             'approve_case' => 'اعتماد/رفض/نشر',
             'suspend_graduate' => 'إيقاف/تخريج',
             'edit_config' => 'تعديل الإعدادات والمراجع',

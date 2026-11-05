@@ -143,6 +143,14 @@ class RoleAndPermissionSeeder extends Seeder
             'view_full_case' => 'all', 'view_masked_case' => 'all', 'search_by_national_id' => 'all',
             'handle_complaint' => 'all', 'manage_campaigns' => 'all', 'approve_content' => 'all',
             'approve_disbursement' => 'all',
+            /*
+             | T-257 — «يجب أن يفرض الخادم فصلًا في الصلاحيات يمنع الدعم
+             | العام من قراءة محتوى البلاغ أو مرفقاته», 5 November. Its own
+             | key, held by few: the general desk holds `handle_complaint`
+             | and must not reach these at all.
+             */
+            'read_confidential_complaint' => 'all',
+            'handle_confidential_complaint' => 'all',
             // T-145 — the health path: the cards and the askings before them.
             'issue_referral' => 'all',
             /*
@@ -188,6 +196,9 @@ class RoleAndPermissionSeeder extends Seeder
             'view_full_case' => 'all', 'view_masked_case' => 'all', 'search_by_national_id' => 'all',
             'handle_complaint' => 'all', 'manage_campaigns' => 'all', 'approve_content' => 'all',
             'approve_disbursement' => 'all', 'manage_distribution' => 'all',
+            // T-257 — the deputy holds the role, so the deputy holds the desk.
+            'read_confidential_complaint' => 'all',
+            'handle_confidential_complaint' => 'all',
             'file_complaint' => 'own', 'view_reports' => 'all',
             // 13 Oct 2026 — the authorised became four: both directors and
             // both deputies.
@@ -220,6 +231,15 @@ class RoleAndPermissionSeeder extends Seeder
         'oversight_director' => [
             'view_full_case' => 'all', 'view_masked_case' => 'all',
             'search_by_national_id' => 'all', 'view_reports' => 'all',
+            /*
+             | T-257 — the oversight committee reads the confidential
+             | reports, because they are the reason that path exists. The
+             | reading key only: `is_read_only` refuses every write
+             | whatever the matrix says, so acting on a report is the
+             | executive's and reading it is theirs. Two keys, because
+             | they are two different acts.
+             */
+            'read_confidential_complaint' => 'all',
         ],
 
         // Enters and completes, never approves.

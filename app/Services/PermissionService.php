@@ -22,6 +22,10 @@ class PermissionService
         'approve_case', 'suspend_graduate', 'edit_config',
         // T-250 — the area supervisor's step in the graduation policy.
         'recommend_graduation',
+        // T-257 — acting on a confidential report. Reading one is
+        // `read_confidential_complaint`, which is not a write and so is
+        // not here: the oversight committee reads and never writes.
+        'handle_confidential_complaint',
         'request_change', 'approve_change', 'merge_duplicates', 'donate',
         'verify_payment', 'manage_campaigns', 'manage_distribution', 'confirm_delivery',
         'manage_own_offers', 'verify_referral', 'publish_job_profile', 'manage_members',
@@ -71,6 +75,13 @@ class PermissionService
 
     public const READ_PERMISSIONS = [
         'view_full_case', 'view_masked_case', 'search_by_national_id', 'browse_job_market', 'view_reports',
+        /*
+         | T-257 — reading a confidential report. A read and not a write, so
+         | the oversight committee can hold it: their role is read-only, and
+         | a write key would be refused for them whatever the matrix says.
+         | Acting on one is `handle_confidential_complaint`, which is.
+         */
+        'read_confidential_complaint',
     ];
 
     public function has(?User $user, string $permissionKey): bool

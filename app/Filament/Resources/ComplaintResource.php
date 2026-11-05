@@ -50,20 +50,30 @@ class ComplaintResource extends Resource
      * portal account, and nothing else. The board of trustees and the
      * chairman oversee, so they read them all as before.
      */
+    /**
+     * Who sees which tickets.
+     *
+     * T-257 — «يجب أن يفرض الخادم فصلًا في الصلاحيات يمنع الدعم العام من
+     * قراءة محتوى البلاغ أو مرفقاته», 5 November. The confidential filter
+     * is applied last and to every branch, the administrator's included:
+     * a desk that may not open a report does not get the row at all, so
+     * there is nothing to count, nothing to search and nothing to read in
+     * a screenshot.
+     */
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
         $user = auth()->user();
 
-        if ($user?->can_('handle_complaint')
+        if (! ($user?->can_('handle_complaint')
             || $user?->isAdmin()
-            || $user?->hasRole('council', 'board_director', 'deputy_board_director')) {
-            return $query;
+            || $user?->hasRole('council', 'board_director', 'deputy_board_director'))) {
+            $query->where(fn (Builder $mine) => $mine
+                ->where('created_by', $user?->getKey())
+                ->orWhere('submitted_by', $user?->getKey()));
         }
 
-        return $query->where(fn (Builder $mine) => $mine
-            ->where('created_by', $user?->getKey())
-            ->orWhere('submitted_by', $user?->getKey()));
+        return $query->readableBy($user);
     }
 
     public static function form(Form $form): Form

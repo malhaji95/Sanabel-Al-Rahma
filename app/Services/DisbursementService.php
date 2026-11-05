@@ -851,14 +851,18 @@ class DisbursementService
         }
 
         return DB::transaction(function () use ($disbursement, $family, $reasonAr) {
-            $complaint = Complaint::create([
-                'reference_no' => 'CMP-'.now()->format('y').'-'.str_pad((string) (Complaint::count() + 1), 5, '0', STR_PAD_LEFT),
-                'submitted_by' => $family->getKey(),
+            /*
+             | T-257 — through the one desk, which is also the correction of
+             | a quiet old bug: this used to write `category = financial`
+             | and `status = open`, and neither word is in either list, so
+             | a disputed transfer drew `sanabel.complaint_status.open` on
+             | the panel where a status should be.
+             */
+            $complaint = app(ComplaintService::class)->file([
                 'subject_ar' => __('sanabel.disbursement.dispute_subject'),
                 'body_ar' => $reasonAr,
-                'category' => 'financial',
-                'status' => 'open',
-            ]);
+                'category' => 'payment',
+            ], actor: $family);
 
             $disbursement->forceFill([
                 'status' => 'disputed',
