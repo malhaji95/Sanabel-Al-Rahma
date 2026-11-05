@@ -82,11 +82,23 @@ it('changes when a card changes, and loses a band when its rows go', function ()
 });
 
 it('draws a card with no artwork as its icon rather than an empty frame', function () {
-    // Seven of the design pack's thirteen pictures never arrived, so this is
-    // the state half the tiles are actually in.
+    /*
+     | This used to read the «كتاب» tile as it came out of the seeder,
+     | because seven of the design pack's thirteen pictures never arrived
+     | and half the tiles were bare. The association sent their own door
+     | artwork on 4 November and answered the last of it on the 5th, so
+     | every tile now has a picture and there is no bare one left to read.
+     |
+     | What the test is about has not changed: a card with no artwork draws
+     | its icon rather than an empty frame. So it makes one, which is also
+     | the state any tile is in the moment a content manager clears its
+     | picture.
+     */
     $tile = ContentCard::block('tile')->where('icon', 'book')->first();
 
-    expect($tile->image)->toBeNull()
+    $tile->update(['image' => null]);
+
+    expect($tile->refresh()->image)->toBeNull()
         ->and($tile->imageUrl())->toBeNull();
 
     // The icon's own artwork, inlined — an <img> could not take the brand

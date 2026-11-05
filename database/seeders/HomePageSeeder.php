@@ -216,18 +216,23 @@ class HomePageSeeder extends Seeder
          | 800×400, replaces the stand-ins and fills the five tiles that had
          | no picture at all. Seven of their eight land on a tile by name.
          |
-         | The eighth, «كفالة حلقة قرآن», has no tile: the nearest one says
-         | «كفالة طالب علم», and a Qur'an circle and a student are not the
-         | same thing. The file is in `public/images/doors/quran-circle.webp`
-         | waiting for the association to say which it is — a tile is a row
-         | they edit, so either answer is a line on a screen.
+         | T-256 — the eighth was left unwired because their artwork said
+         | «كفالة حلقة قرآن» and the nearest tile said «كفالة طالب علم»,
+         | and the two did not obviously mean the same thing. The
+         | association answered on 5 November: «باب كفالة العلم هو نفسه باب
+         | كفالة حلقة قرآن». One door, so one picture.
+         |
+         | The tile keeps the name their own classification uses — «طالب
+         | علم» is one of the three sponsorship doors they named in T-205 —
+         | and the name is a row they edit if they would rather it read
+         | «كفالة حلقة قرآن».
          */
         foreach ([
             ['ترميم منزل', 'images/doors/home-repair.webp', 'home', $oneTime],
             ['علاج مريض', 'images/doors/medical.webp', 'medical', $oneTime],
             ['تفريج كربة', 'images/doors/relief.webp', 'hand-heart', $oneTime],
             ['كفالة يتيم', 'images/doors/orphan.webp', 'child', $monthly],
-            ['كفالة طالب علم', null, 'book', $monthly],
+            ['كفالة طالب علم', 'images/doors/quran-circle.webp', 'book', $monthly],
             // T-98 — it used to land on every one-time need, zakat-eligible or
             // not, which is the one tile on this page a donor could act on and
             // be wrong about.
