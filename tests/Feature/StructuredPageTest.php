@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\LaunchCheck;
 use App\Filament\Resources\PageResource\Pages\EditPage;
 use App\Filament\Resources\PageResource\RelationManagers\SectionsRelationManager;
 use App\Models\Page;
@@ -79,10 +80,18 @@ it('fills every page the association sent, and none that they did not', function
         expect($this->get($url)->assertOk()->getContent())->toContain($heading);
     }
 
-    // The one they have not written yet still says so rather than inventing
-    // words for it.
+    /*
+     | T-258 — «تواصل معنا» was the last of the seven footer pages still
+     | carrying the placeholder, and it carries the association's own words
+     | now. So the assertion is no longer that one page is waiting: it is
+     | that none of them is, which is the thing that was ever worth holding.
+     */
     expect($this->get('/contact')->assertOk()->getContent())
-        ->toContain('بانتظار نصّها من الجمعية');
+        ->toContain('نسعد بتواصلكم');
+
+    expect(Page::where('is_published', true)
+        ->where('body_ar', 'like', '%'.LaunchCheck::PLACEHOLDER.'%')
+        ->pluck('slug')->all())->toBe([]);
 });
 
 it('carries all fifty questions, each with its own address', function () {
