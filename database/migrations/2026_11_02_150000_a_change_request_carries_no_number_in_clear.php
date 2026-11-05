@@ -35,7 +35,10 @@ return new class extends Migration
     public function up(): void
     {
         foreach (self::COLUMNS as $column) {
-            DB::statement("alter table change_requests alter column {$column} type text");
+            // T-259 — the same widening, said the way each engine says it.
+            DB::statement(DB::getDriverName() === 'pgsql'
+                ? "alter table change_requests alter column {$column} type text"
+                : "alter table change_requests modify {$column} longtext");
         }
 
         /*
@@ -88,7 +91,9 @@ return new class extends Migration
         });
 
         foreach (self::COLUMNS as $column) {
-            DB::statement("alter table change_requests alter column {$column} type json using {$column}::json");
+            DB::statement(DB::getDriverName() === 'pgsql'
+                ? "alter table change_requests alter column {$column} type json using {$column}::json"
+                : "alter table change_requests modify {$column} json");
         }
     }
 
