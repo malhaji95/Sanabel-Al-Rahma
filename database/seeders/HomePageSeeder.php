@@ -245,7 +245,42 @@ class HomePageSeeder extends Seeder
                 'icon' => $icon,
                 'link' => $link,
             ], $index + 1);
+
+            $this->fillTileArtwork($title, $image);
         }
+    }
+
+    /*
+     | T-260 — the artwork reaches a tile that already exists.
+     |
+     | `card()` is firstOrCreate, which is the thing that keeps a title or a
+     | destination the association edited from being written over on the next
+     | deploy. It also meant the eight door pictures of T-252 and T-256
+     | landed on a fresh database only: on the site they already have, five
+     | door tiles stayed with no picture at all and three kept the stand-ins
+     | we had put there in August. So the artwork they sent on 4 November was
+     | in the repository and nowhere a donor could see it, and the tests did
+     | not say so because a test seeds an empty database, where every row is
+     | new and firstOrCreate writes everything.
+     |
+     | A picture a release put there is a release's to replace; a file they
+     | uploaded is not. The two are told apart by where they live: the
+     | panel's upload writes `home/<file>` on the public disk, and anything
+     | under `images/` was put there by a deploy.
+     */
+    private function fillTileArtwork(string $title, string $image): void
+    {
+        $card = ContentCard::where('block', 'tile')->where('title_ar', $title)->first();
+
+        if ($card === null || $card->image === $image) {
+            return;
+        }
+
+        if ($card->image !== null && ! str_starts_with($card->image, 'images/')) {
+            return;
+        }
+
+        $card->update(['image' => $image]);
     }
 
     /** «ما يميز سنابل الوفاء» — the association's own words. */
