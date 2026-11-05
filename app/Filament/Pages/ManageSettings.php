@@ -131,6 +131,20 @@ class ManageSettings extends Page implements HasForms
                     ->helperText(__('sanabel.settings.help.association_website'))
                     ->url(),
 
+                // T-258 — the contact page's own channels.
+                Forms\Components\TextInput::make('association_email')
+                    ->label(__('sanabel.settings.keys.association_email'))
+                    ->helperText(__('sanabel.settings.help.association_channels'))
+                    ->email(),
+
+                Forms\Components\TextInput::make('association_phone')
+                    ->label(__('sanabel.settings.keys.association_phone'))
+                    ->helperText(__('sanabel.settings.help.association_channels')),
+
+                Forms\Components\TextInput::make('association_social')
+                    ->label(__('sanabel.settings.keys.association_social'))
+                    ->helperText(__('sanabel.settings.help.association_channels')),
+
                 /*
                  | T-95 — OPS-03. Who hears a security alert. Roles rather than
                  | addresses: an address in a settings row is a copy that goes
@@ -222,7 +236,10 @@ class ManageSettings extends Page implements HasForms
         ))));
 
         // T-251 — two free-text strings, trimmed and stored as typed.
-        foreach (['association_legal_name', 'association_licence_no', 'association_website'] as $key) {
+        foreach ([
+            'association_legal_name', 'association_licence_no', 'association_website',
+            'association_email', 'association_phone', 'association_social',
+        ] as $key) {
             Setting::put($key, trim((string) ($state[$key] ?? '')));
             unset($state[$key]);
         }

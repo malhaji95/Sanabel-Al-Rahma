@@ -381,6 +381,17 @@ return [
         'association_licence_no' => 'ت ر/ق/3100',
         'association_website' => '',
 
+        /*
+         | T-258 — «يُضاف بعد الاعتماد الرسمي — لن نعرض رقمًا افتراضيًا»,
+         | 5 November, about the contact page's own channels. Empty until
+         | they adopt each one, and an empty channel is not drawn: a number
+         | nobody approved, on a page that invites strangers to call it, is
+         | worse than no number.
+         */
+        'association_email' => '',
+        'association_phone' => '',
+        'association_social' => '',
+
         'reopen_reasons' => [
             'عودة الحاجة بعد الإغلاق أو التخرّج',
             'زوال سبب الإيقاف',

@@ -6,6 +6,7 @@ use App\Http\Controllers\PublicController;
 use App\Http\Middleware\KeepFamiliesOutOfTheDonorPortal;
 use App\Livewire\BrowseCases;
 use App\Livewire\BrowseSponsorships;
+use App\Livewire\ContactDesk;
 use App\Livewire\DonorBasket;
 use App\Livewire\DonorFavourites;
 use App\Livewire\DonorPortal;
@@ -62,6 +63,13 @@ Route::get('/cases/{fileNumber}', [PublicController::class, 'case'])->name('oppo
  | invented record is noise in a queue rather than money in a figure.
  */
 Route::get('/donate', GeneralDonation::class)->name('donate.general');
+
+/*
+ | T-258 — «تواصل معنا» is a desk, not a page: a ticket, a reference and a
+ | way to follow it. Declared before the catch-all slug so it wins over the
+ | content page of the same name, whose words it still draws underneath.
+ */
+Route::get('/contact', ContactDesk::class)->name('contact');
 
 // T-242 — the page a donor fills in to give a gift.
 Route::get('/gift', GiveAgift::class)->name('gift.give');
