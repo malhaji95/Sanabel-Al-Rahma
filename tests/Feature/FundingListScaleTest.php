@@ -69,13 +69,20 @@ it('ranks without fetching a single whole family', function () {
     // The one query that reads the families names its columns. `select *`
     // here is the whole regression: sixty-eight columns times every published
     // family, for a page that shows twelve.
-    $families = $queries->filter(fn (string $q) => str_contains($q, 'from "beneficiaries"'));
+    //
+    // T-259 — the table is asked for by the name the engine writes it with,
+    // because PostgreSQL quotes an identifier with " and MySQL with `, and a
+    // test that only knew the first one read no families at all on the second
+    // and passed by finding nothing.
+    $table = DB::getQueryGrammar()->wrapTable('beneficiaries');
+
+    $families = $queries->filter(fn (string $q) => str_contains($q, 'from '.$table));
 
     expect($families)->not->toBeEmpty('the list reads no families at all');
 
     foreach ($families as $query) {
         expect(str_contains($query, 'select *'))->toBeFalse('the list still fetches whole family rows: '.$query);
-        expect(str_contains($query, '"beneficiaries".*'))->toBeFalse('the list still fetches whole family rows: '.$query);
+        expect(str_contains($query, $table.'.*'))->toBeFalse('the list still fetches whole family rows: '.$query);
     }
 
     // And the rows it answers with carry no model at all, so nothing
