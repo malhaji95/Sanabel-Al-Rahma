@@ -47,6 +47,7 @@ class CampaignResource extends Resource
                 ->label(__('sanabel.campaign.image'))
                 ->helperText(__('sanabel.campaign.image_help'))
                 ->image()
+                ->acceptedFileTypes(config('sanabel.media.artwork_types'))
                 ->disk('public')
                 ->directory('campaigns')
                 ->maxSize(4096)

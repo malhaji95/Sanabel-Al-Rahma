@@ -94,6 +94,24 @@ return [
     'media' => [
         'max_bytes' => (int) env('SANABEL_MEDIA_MAX_BYTES', 8 * 1024 * 1024),
 
+        /*
+         | T-275 — what an artwork upload on the PUBLIC disk may be.
+         |
+         | The six artwork fields (a banner, a home card, a gift design, a
+         | news picture, a campaign picture, a page section) carried
+         | Filament's `->image()` and nothing else, and `->image()` is
+         | `image/*` — which includes `image/svg+xml`. An SVG is a document
+         | that may carry script, these land on the public disk, and the
+         | public disk is served from the site's own origin, where the
+         | content policy allows inline script from 'self'. So a content
+         | account could put a running script at an address on our domain.
+         |
+         | Three raster types, named one by one. The private disk's list
+         | below is the other one, and it is longer because a family's
+         | papers include a PDF and a telephone photograph.
+         */
+        'artwork_types' => ['image/jpeg', 'image/png', 'image/webp'],
+
         'allowed' => [
             'image/jpeg' => 'jpg',
             'image/png' => 'png',

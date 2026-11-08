@@ -52,6 +52,7 @@ class PostResource extends Resource
                 ->label(__('sanabel.post.image'))
                 ->helperText(__('sanabel.post.image_help'))
                 ->image()
+                ->acceptedFileTypes(config('sanabel.media.artwork_types'))
                 ->disk('public')
                 ->directory('news')
                 ->maxSize(4096)

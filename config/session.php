@@ -178,7 +178,28 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    /*
+     | T-274 — on by default everywhere but a developer's own machine.
+     |
+     | This was `env('SESSION_SECURE_COOKIE')` with no default, and the
+     | variable appears nowhere: not in `.env.example`, not in the
+     | deployment guide. So every deployment so far would have shipped the
+     | session cookie — and the CSRF cookie, which reads the same setting —
+     | without the Secure flag, and a single plain-http request to the
+     | domain would have carried it in the clear.
+     |
+     | HSTS covers most of that, but only after the browser has seen it
+     | once, and it is sent only over TLS; the first request of a first
+     | visit is exactly the one that is not covered.
+     |
+     | Local and testing stay off, because a developer serving over http
+     | would otherwise never keep a session.
+     */
+    'secure' => env('SESSION_SECURE_COOKIE', ! in_array(
+        env('APP_ENV', 'production'),
+        ['local', 'testing'],
+        true,
+    )),
 
     /*
     |--------------------------------------------------------------------------

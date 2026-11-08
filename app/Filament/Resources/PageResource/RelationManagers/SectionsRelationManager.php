@@ -76,6 +76,7 @@ class SectionsRelationManager extends RelationManager
                 ->label(__('sanabel.page_section.image'))
                 ->helperText(__('sanabel.page_section.image_help'))
                 ->image()
+                ->acceptedFileTypes(config('sanabel.media.artwork_types'))
                 ->disk('public')
                 ->directory('people')
                 ->maxSize(4096)

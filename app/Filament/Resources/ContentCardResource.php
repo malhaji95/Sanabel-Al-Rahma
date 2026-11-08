@@ -94,6 +94,7 @@ class ContentCardResource extends Resource
                 ->label(__('sanabel.content_card.image'))
                 ->helperText(__('sanabel.content_card.image_help'))
                 ->image()
+                ->acceptedFileTypes(config('sanabel.media.artwork_types'))
                 ->disk('public')
                 ->directory('home')
                 ->maxSize(4096)

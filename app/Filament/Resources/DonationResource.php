@@ -213,7 +213,12 @@ class DonationResource extends Resource
                         Forms\Components\FileUpload::make('file')
                             ->label(__('sanabel.donation.transfer_record'))
                             ->helperText(__('sanabel.donation.transfer_record_help'))
+                            // T-275 — the same raster list. This one reaches
+                            // MediaService, whose own list would refuse an
+                            // SVG anyway; the point is not to offer the
+                            // treasurer a file the next step will reject.
                             ->image()
+                            ->acceptedFileTypes(config('sanabel.media.artwork_types'))
                             ->storeFiles(false)
                             ->required(),
                     ])

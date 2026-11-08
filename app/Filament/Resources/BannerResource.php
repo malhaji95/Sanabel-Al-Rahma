@@ -45,6 +45,7 @@ class BannerResource extends Resource
                 ->label(__('sanabel.banner.image'))
                 ->helperText(__('sanabel.banner.image_help'))
                 ->image()
+                ->acceptedFileTypes(config('sanabel.media.artwork_types'))
                 ->disk('public')
                 ->directory('banners')
                 ->maxSize(4096)
