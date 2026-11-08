@@ -51,12 +51,36 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(append: [\App\Http\Middleware\StopDeactivatedAccounts::class]);
 
         /*
-         | Render terminates TLS at its edge and forwards over http, so without
-         | this Laravel reads the request as insecure: it builds http:// URLs,
-         | never sets a Secure cookie and never sends HSTS. The proxy is the
-         | platform's own, in front of the container.
+         | The platform terminates TLS at its edge and forwards over http, so
+         | without this Laravel reads the request as insecure: it builds
+         | http:// URLs, never sets a Secure cookie and never sends HSTS.
+         |
+         | T-272 — but only the platform's own proxy may say so. This read
+         | `at: '*'`, which trusted every client to declare its own address
+         | through `X-Forwarded-For` — and every rate limit in this
+         | application is keyed on that address. Measured before the change:
+         | twelve failed logins against one account, none refused, by
+         | sending a different address each time. The limit is five.
+         |
+         | The default trusts the loopback and the private ranges, which is
+         | where a managed load balancer sits relative to the application —
+         | on Cloudways the same host, on AWS the same VPC — so a header
+         | forged from the open internet is ignored. A deployment that puts
+         | a CDN in front lists that CDN's ranges in SANABEL_TRUSTED_PROXIES
+         | instead, and `*` restores the old behaviour for whoever decides
+         | they want it.
+         |
+         | Read from the environment rather than from `config()`, because
+         | this closure runs before the configuration files are loaded.
          */
-        $middleware->trustProxies(at: '*');
+        $proxies = (string) env(
+            'SANABEL_TRUSTED_PROXIES',
+            '127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7'
+        );
+
+        $middleware->trustProxies(at: $proxies === '*'
+            ? '*'
+            : array_values(array_filter(array_map('trim', explode(',', $proxies)))));
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

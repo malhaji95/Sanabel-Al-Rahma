@@ -137,3 +137,60 @@ it('counts a signed-in account separately from an address', function () {
 
     expect($this->getJson('/api/cases')->status())->not->toBe(429);
 })->group('IAM-03');
+
+/*
+ | T-272 — found in the pre-launch security review of 8 November.
+ |
+ | `bootstrap/app.php` trusted every proxy (`at: '*'`). `X-Forwarded-For` is
+ | a header any client may set, and every limiter above is keyed on
+ | `$request->ip()`, which Laravel reads out of that header for a trusted
+ | caller. So each of these limits was worth nothing to anybody who thought
+ | to send one.
+ |
+ | Measured against a running server before the change: twelve failed
+ | logins against a single account, not one of them refused, by sending a
+ | different address each time. The limit is five.
+ |
+ | The caller here is a public address, which is not on the trusted list, so
+ | its header must be ignored and the limit must bite.
+ */
+it('ignores an address a caller invented for itself', function () {
+    $attempts = config('sanabel.security.rate_limits.login');
+
+    $try = function (int $i) {
+        return $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.7'])
+            ->withHeaders(['X-Forwarded-For' => '198.51.100.'.$i])
+            ->post('/login', ['email' => 'victim@example.test', 'password' => 'wrong'.$i]);
+    };
+
+    for ($i = 0; $i < $attempts; $i++) {
+        expect($try($i)->status())->not->toBe(429);
+    }
+
+    // A new forged address on every attempt, and the count follows the
+    // caller rather than the header.
+    $try($attempts)->assertStatus(429);
+})->group('IAM-03');
+
+it('still believes the platform own proxy, which is the whole point of trusting one', function () {
+    $attempts = config('sanabel.security.rate_limits.login');
+
+    // From the loopback, where a managed load balancer sits: the header is
+    // the real client's address and is read as such, so two clients behind
+    // the proxy are counted apart.
+    for ($i = 0; $i < $attempts; $i++) {
+        $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])
+            ->withHeaders(['X-Forwarded-For' => '198.51.100.9'])
+            ->post('/login', ['email' => 'behind@example.test', 'password' => 'wrong']);
+    }
+
+    $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])
+        ->withHeaders(['X-Forwarded-For' => '198.51.100.9'])
+        ->post('/login', ['email' => 'behind@example.test', 'password' => 'wrong'])
+        ->assertStatus(429);
+
+    expect($this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])
+        ->withHeaders(['X-Forwarded-For' => '198.51.100.10'])
+        ->post('/login', ['email' => 'behind@example.test', 'password' => 'wrong'])
+        ->status())->not->toBe(429);
+})->group('IAM-03');
