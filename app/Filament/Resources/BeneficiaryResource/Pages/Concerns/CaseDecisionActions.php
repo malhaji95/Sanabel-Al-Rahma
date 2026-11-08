@@ -204,6 +204,34 @@ trait CaseDecisionActions
                     Notification::make()->title(__('sanabel.actions.rejected'))->danger()->send();
                 }),
 
+            /*
+             | T-267 — pausing a file, which nothing in the panel could do.
+             |
+             | Not a rejection and not a graduation: the family still needs
+             | help and the association has stopped it for a reason — a
+             | doubt, an unanswered question, a household that travelled.
+             | The reason is required, and the job profile goes dark with
+             | the file, which is what `suspend()` has always done.
+             */
+            Actions\Action::make('suspend')
+                ->label(__('sanabel.actions.suspend'))
+                ->icon('heroicon-o-pause-circle')
+                ->color('warning')
+                ->requiresConfirmation()
+                ->visible(fn () => in_array($this->record->status, Beneficiary::MAY_RECEIVE_MONEY, true)
+                    && auth()->user()->can('suspend', $this->record))
+                ->form([
+                    Textarea::make('reason_ar')
+                        ->label(__('sanabel.actions.reason'))
+                        ->helperText(__('sanabel.actions.suspend_help'))
+                        ->required(),
+                ])
+                ->action(function (array $data) {
+                    app(CaseService::class)->suspend($this->record, $data['reason_ar']);
+
+                    Notification::make()->title(__('sanabel.actions.suspended'))->warning()->send();
+                }),
+
             Actions\Action::make('publish')
                 ->label(__('sanabel.actions.publish'))
                 ->icon('heroicon-o-globe-alt')

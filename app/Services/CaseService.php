@@ -260,9 +260,22 @@ class CaseService
         return $case->refresh();
     }
 
+    /*
+     | T-267 — nothing called this until now: the status existed, the policy
+     | existed, and there was no button. A file could be rejected, closed or
+     | graduated, and never paused.
+     |
+     | The reason is required for the same cause graduation's is: a family
+     | whose help stopped is owed a written why, and whoever reopens the
+     | file months later has nothing else to read.
+     */
     public function suspend(Beneficiary $case, string $reasonAr): Beneficiary
     {
-        $case->forceFill(['status' => 'suspended', 'reject_reason_ar' => $reasonAr])->save();
+        if (blank(trim($reasonAr))) {
+            throw new \RuntimeException(__('sanabel.cases.suspension_reason_required'));
+        }
+
+        $case->forceFill(['status' => 'suspended', 'reject_reason_ar' => trim($reasonAr)])->save();
         $case->jobProfile?->update(['status' => 'hidden']);
 
         return $case->refresh();
