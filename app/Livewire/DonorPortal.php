@@ -5,7 +5,9 @@ namespace App\Livewire;
 use App\Exceptions\DuplicateTransactionRef;
 use App\Http\Resources\MaskedCaseResource;
 use App\Models\Donation;
+use App\Models\Gift;
 use App\Payments\PaymentGateway;
+use App\Services\GiftService;
 use App\Services\MediaService;
 use App\Services\TransferRouting;
 use Illuminate\Support\Collection;
@@ -110,8 +112,40 @@ class DonorPortal extends Component
                 ->latest('id')->take(50)->get()
             : collect();
 
+        /*
+         | T-268 — the giver's own cards, and the one thing that was written
+         | for them and never drawn.
+         |
+         | `GiftService::shareLink()` has built the giver's prefilled
+         | WhatsApp message since T-241 and nothing ever called it: the
+         | giver was told in a notification that the card was ready, and
+         | handed no list, no card and no way to send it on.
+         |
+         | It belongs here and nowhere else. The card's own public page
+         | deliberately carries nothing of the recipient — «the recipient's
+         | number» is named in it as a thing never shown — and the share
+         | link is that number. This page is the giver's own, behind their
+         | own account, so it is the one place both may appear.
+         */
+        $gifts = $donor
+            ? Gift::query()
+                ->whereHas('donation', fn ($q) => $q->where('donor_id', $donor->getKey()))
+                ->where('status', 'issued')
+                ->latest('issued_at')
+                ->take(25)
+                ->get()
+            : collect();
+
         return view('livewire.donor-portal', [
             'donor' => $donor,
+            'gifts' => $gifts->map(fn (Gift $gift) => [
+                'reference_no' => $gift->reference_no,
+                'recipient' => $gift->recipient_name_ar,
+                'amount' => $gift->amount,
+                'issued_at' => $gift->issued_at?->translatedFormat('Y-m-d'),
+                'card' => app(GiftService::class)->cardUrl($gift),
+                'share' => app(GiftService::class)->shareLink($gift),
+            ]),
             // The same wallet the basket sends earmarked money to.
             'generalRoute' => app(TransferRouting::class)->wallet(),
             'donations' => $donations->map(fn (Donation $donation) => [

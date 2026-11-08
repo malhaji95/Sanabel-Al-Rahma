@@ -180,4 +180,48 @@
             </table>
         </div>
     @endif
+
+    {{--
+        T-268 — the cards this donor gave, and the button that sends one on.
+
+        Only issued cards: one still waiting on the finance desk has no page
+        to open yet, and offering to send it would promise what the link
+        cannot keep.
+
+        The recipient's name and the WhatsApp link both appear here and
+        nowhere else — this is the giver's own page, behind their own
+        account. The card's public page carries neither, on purpose.
+    --}}
+    @if ($gifts->isNotEmpty())
+        <h2 class="mt-10 text-lg font-bold">{{ __('sanabel.gift.my_cards') }}</h2>
+
+        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+            @foreach ($gifts as $gift)
+                <div class="card">
+                    <p class="tabular text-xs" dir="ltr" style="color: var(--text-muted);">
+                        {{ $gift['reference_no'] }}
+                    </p>
+
+                    <p class="mt-1 font-medium">
+                        {{ __('sanabel.gift.to_recipient', ['recipient' => $gift['recipient']]) }}
+                    </p>
+
+                    <p class="tabular mt-1 text-sm" style="color: var(--text-muted);">
+                        {{ number_format($gift['amount']) }} {{ \App\Services\Money::short() }}
+                        @if ($gift['issued_at'])
+                            · {{ $gift['issued_at'] }}
+                        @endif
+                    </p>
+
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <a href="{{ $gift['card'] }}" target="_blank" rel="noopener"
+                           class="btn-secondary no-underline">{{ __('sanabel.gift.open_card') }}</a>
+
+                        <a href="{{ $gift['share'] }}" target="_blank" rel="noopener"
+                           class="btn-primary no-underline">{{ __('sanabel.gift.send_whatsapp') }}</a>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    @endif
 </div>
