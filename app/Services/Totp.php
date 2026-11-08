@@ -36,21 +36,39 @@ class Totp
      */
     public function verify(string $secret, string $code, ?int $timestamp = null, int $window = 1): bool
     {
+        return $this->matchingCounter($secret, $code, $timestamp, $window) !== null;
+    }
+
+    /*
+     | T-276 — which step the code belongs to, so a used one can be refused.
+     |
+     | `verify()` answered yes or no, and a code stays valid for the window
+     | either side of its own step — ninety seconds here. Within those
+     | ninety seconds the same six digits worked again and again, so a code
+     | read over somebody's shoulder, or caught by a page standing between
+     | the user and this one, could be used a second time by whoever caught
+     | it. RFC 6238 §5.2 says the verifier must not accept a step twice;
+     | this is what lets the caller keep that promise.
+     */
+    public function matchingCounter(string $secret, string $code, ?int $timestamp = null, int $window = 1): ?int
+    {
         $code = preg_replace('/\D/', '', $code) ?? '';
 
         if (strlen($code) !== $this->digits) {
-            return false;
+            return null;
         }
 
         $counter = intdiv($timestamp ?? time(), $this->period);
 
         for ($offset = -$window; $offset <= $window; $offset++) {
+            // hash_equals, not ===: the comparison must not take longer for
+            // a code that shares a prefix with the right one.
             if (hash_equals($this->hotp($secret, $counter + $offset), $code)) {
-                return true;
+                return $counter + $offset;
             }
         }
 
-        return false;
+        return null;
     }
 
     /** The otpauth:// URI an authenticator app scans. */
