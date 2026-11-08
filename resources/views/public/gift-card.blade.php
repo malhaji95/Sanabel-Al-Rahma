@@ -23,8 +23,11 @@
     <article class="mx-auto max-w-xl">
         <div id="gift-card" class="overflow-hidden rounded-2xl border"
              style="border-color: var(--line); background: var(--surface);">
-            @if ($gift->card?->imageUrl())
-                <img id="gift-art" src="{{ $gift->card->imageUrl() }}" alt="{{ $gift->card->name_ar }}"
+            {{-- T-264 — the colour the giver chose, kept on the gift, not
+                 whichever of the two the association now lists first. --}}
+            @if ($gift->card?->imageUrlFor($gift->card_variant))
+                <img id="gift-art" src="{{ $gift->card->imageUrlFor($gift->card_variant) }}"
+                     alt="{{ $gift->card->name_ar }}"
                      crossorigin="anonymous" class="h-auto w-full object-cover">
             @endif
 
@@ -103,7 +106,7 @@
             </p>
         </div>
 
-        @if ($gift->card?->imageUrl())
+        @if ($gift->card?->imageUrlFor($gift->card_variant))
             <div class="mt-4 text-center">
                 <button type="button" id="gift-download" class="btn-primary">
                     {{ __('sanabel.gift.download') }}
@@ -115,7 +118,7 @@
 
             @php
                 $composed = [
-                    'art' => $gift->card->imageUrl(),
+                    'art' => $gift->card->imageUrlFor($gift->card_variant),
                     'line' => __('sanabel.gift.card_line', [
                         'giver' => $gift->giver_name_ar,
                         'recipient' => $gift->recipient_name_ar,

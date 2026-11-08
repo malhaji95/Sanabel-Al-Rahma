@@ -90,9 +90,20 @@ class GiftService
                     $sendAt = null;
                 }
 
+                /*
+                 | T-264 — the colour the giver chose, kept on the gift.
+                 |
+                 | Asking the design for its picture at reading time would
+                 | give the recipient whichever colour the association has
+                 | since made first, months after somebody chose the other.
+                 | A design with no second picture only ever has 'a'.
+                 */
+                $variant = ($row['card_variant'] ?? 'a') === 'b' && $card->hasAlternate() ? 'b' : 'a';
+
                 return Gift::create([
                     'donation_id' => $donation->getKey(),
                     'gift_card_id' => $card->getKey(),
+                    'card_variant' => $variant,
                     'campaign_id' => $campaignId,
                     'giver_name_ar' => trim((string) $row['giver_name_ar']),
                     'recipient_name_ar' => trim((string) $row['recipient_name_ar']),

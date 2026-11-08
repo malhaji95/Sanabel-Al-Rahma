@@ -70,6 +70,8 @@ class GiveAgift extends Component
             'kind' => 'general',
             'campaign_id' => null,
             'gift_card_id' => GiftCard::published()->value('id'),
+            // T-264 — the design's own colour until the giver switches.
+            'card_variant' => 'a',
             'giver_name_ar' => '',
             'recipient_name_ar' => '',
             'recipient_country_code' => config('sanabel.gift_default_country_code'),
@@ -79,6 +81,21 @@ class GiveAgift extends Component
             'schedule' => false,
             'send_at' => null,
         ];
+    }
+
+    /*
+     | T-264 — changing the design forgets the colour chosen for the old one.
+     |
+     | Without this, a giver who picks the second colour of one phrase and
+     | then changes their mind about the phrase is left on «b» of a design
+     | that may have no second colour at all. The service refuses it anyway,
+     | but the picture on their screen would be the wrong one meanwhile.
+     */
+    public function updated(string $property): void
+    {
+        if (preg_match('/^cards\.(\d+)\.gift_card_id$/', $property, $m)) {
+            $this->cards[(int) $m[1]]['card_variant'] = 'a';
+        }
     }
 
     public function addCard(): void
@@ -120,6 +137,7 @@ class GiveAgift extends Component
         $this->validate(array_filter([
             'cards' => ['required', 'array', 'min:1'],
             'cards.*.gift_card_id' => ['required', 'integer'],
+            'cards.*.card_variant' => ['nullable', 'in:a,b'],
             'cards.*.giver_name_ar' => ['required', 'string', 'min:2', 'max:191'],
             'cards.*.recipient_name_ar' => ['required', 'string', 'min:2', 'max:191'],
             'cards.*.recipient_country_code' => ['required', 'string', 'max:8'],
@@ -228,6 +246,7 @@ class GiveAgift extends Component
     {
         return collect($this->cards)->map(fn (array $card) => [
             'gift_card_id' => $card['gift_card_id'],
+            'card_variant' => $card['card_variant'] ?? 'a',
             // «إهداء عام أو إهداء مخصص لمشروع» — the project is read only
             // where they chose a project, so a campaign left behind by a
             // change of mind is not earmarked by accident.

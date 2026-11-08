@@ -109,6 +109,40 @@
                         @error("cards.$i.gift_card_id")
                             <p class="mt-1.5 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
                         @enderror
+
+                        {{--
+                            T-264 — «يقدر ينتقل بين بنرين, لأنه كل عبارة
+                            بتكون عندنا بلونين», 8 November.
+
+                            Shown only for a design that has a second colour,
+                            so a phrase with one picture looks exactly as it
+                            did. The two are drawn side by side, as on the
+                            page the association sent us.
+                        --}}
+                        @php
+                            $chosen = $designs->firstWhere('id', (int) ($card['gift_card_id'] ?? 0));
+                        @endphp
+
+                        @if ($chosen?->hasAlternate())
+                            <div class="mt-3">
+                                <span class="field-label">{{ __('sanabel.gift.card_colour') }}</span>
+                                <div class="mt-2 grid grid-cols-2 gap-3 sm:max-w-xs">
+                                    @foreach (['a', 'b'] as $variant)
+                                        <label class="cursor-pointer overflow-hidden rounded-xl border p-1 text-center text-xs"
+                                               style="border-color: {{ ($card['card_variant'] ?? 'a') === $variant ? 'var(--accent)' : 'var(--line)' }};">
+                                            <input type="radio" class="sr-only" value="{{ $variant }}"
+                                                   wire:model.live="cards.{{ $i }}.card_variant">
+                                            <img src="{{ $chosen->imageUrlFor($variant) }}"
+                                                 alt="{{ $chosen->variantLabel($variant) ?? $chosen->name_ar }}"
+                                                 class="h-24 w-full rounded-lg object-cover">
+                                            <span class="mt-1 block">
+                                                {{ $chosen->variantLabel($variant) ?? __('sanabel.gift.card_colour_'.$variant) }}
+                                            </span>
+                                        </label>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
                     </div>
 
                     {{-- ٤ — اسم المُهدي واسم المُهدى إليه ورقم الهاتف مع مفتاح الدولة --}}

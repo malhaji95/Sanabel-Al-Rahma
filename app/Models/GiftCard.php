@@ -33,14 +33,44 @@ class GiftCard extends Model
     /** The artwork, or null while the association has not uploaded it yet. */
     public function imageUrl(): ?string
     {
-        if (blank($this->image_path)) {
+        return $this->urlOf($this->image_path);
+    }
+
+    /*
+     | T-264 — «كل عبارة بتكون عندنا بلونين وليس لون واحد», 8 November.
+     |
+     | The same phrase in a second colour. A design that has none goes on
+     | behaving as it always did, and the giver is shown no switch at all.
+     */
+    public function hasAlternate(): bool
+    {
+        return filled($this->image_path_alt);
+    }
+
+    /** The picture for the variant the giver chose: 'b' where there is one. */
+    public function imageUrlFor(?string $variant): ?string
+    {
+        return $variant === 'b' && $this->hasAlternate()
+            ? $this->urlOf($this->image_path_alt)
+            : $this->imageUrl();
+    }
+
+    /** What the giver reads under a variant, where the association wrote it. */
+    public function variantLabel(string $variant): ?string
+    {
+        return $variant === 'b' ? $this->variant_alt_ar : $this->variant_ar;
+    }
+
+    private function urlOf(?string $path): ?string
+    {
+        if (blank($path)) {
             return null;
         }
 
         // The public disk, like the banners: marketing artwork, deliberately
         // not the media disk that holds family documents behind signed URLs.
-        return str_starts_with($this->image_path, 'http')
-            ? $this->image_path
-            : Storage::disk('public')->url($this->image_path);
+        return str_starts_with($path, 'http')
+            ? $path
+            : Storage::disk('public')->url($path);
     }
 }

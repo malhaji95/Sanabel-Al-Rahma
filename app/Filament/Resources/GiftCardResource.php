@@ -55,6 +55,30 @@ class GiftCardResource extends Resource
                 ->directory('gift-cards')
                 ->maxSize(4096)
                 ->columnSpanFull(),
+
+            /*
+             | T-264 — «كل عبارة بتكون عندنا بلونين وليس لون واحد».
+             |
+             | Optional: a phrase with one colour is left exactly as it was,
+             | and the giver is then shown no switch at all.
+             */
+            Forms\Components\FileUpload::make('image_path_alt')
+                ->label(__('sanabel.gift.image_alt'))
+                ->helperText(__('sanabel.gift.image_alt_help'))
+                ->image()
+                ->disk('public')
+                ->directory('gift-cards')
+                ->maxSize(4096)
+                ->columnSpanFull(),
+
+            Forms\Components\TextInput::make('variant_ar')
+                ->label(__('sanabel.gift.variant_label'))
+                ->helperText(__('sanabel.gift.variant_label_help'))
+                ->maxLength(40),
+
+            Forms\Components\TextInput::make('variant_alt_ar')
+                ->label(__('sanabel.gift.variant_alt_label'))
+                ->maxLength(40),
         ])->columns(2);
     }
 
@@ -64,6 +88,8 @@ class GiftCardResource extends Resource
             ->columns([
                 Tables\Columns\ImageColumn::make('image_path')
                     ->label(__('sanabel.gift.design_image'))->disk('public'),
+                Tables\Columns\ImageColumn::make('image_path_alt')
+                    ->label(__('sanabel.gift.image_alt'))->disk('public'),
                 Tables\Columns\TextColumn::make('name_ar')
                     ->label(__('sanabel.gift.design_name'))->searchable(),
                 Tables\Columns\IconColumn::make('is_published')
