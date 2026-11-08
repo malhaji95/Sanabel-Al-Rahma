@@ -249,6 +249,10 @@ it('names every piece of demonstration content still in the system', function ()
 it('passes once there is nothing demonstration left', function () {
     config()->set('sanabel.demo_seed', false);
 
+    // T-270 — and once the money has somewhere to land. An empty wallet is
+    // a finding now, so a launch-ready database is one that has it.
+    Setting::put('platform_wallet', ['number' => '0999111222', 'holder' => 'سنابل الوفاء']);
+
     $this->artisan('launch:check')
         ->expectsOutputToContain(__('sanabel.launch.clean'))
         ->assertSuccessful();
@@ -264,4 +268,31 @@ it('only ever looks, so it can be run against the live site', function () {
     // Rule 3 admits no deletion, and this command is the one most likely to
     // be reached for on a day when somebody wants the demo gone.
     expect(Beneficiary::withTrashed()->count())->toBe($before);
+});
+
+/*
+ | T-270 — the one absence that stops a donor dead.
+ |
+ | Found in the general audit of 8 November: both halves of the wallet were
+ | empty on a database seeded, migrated and tested for two months, and
+ | nothing anywhere said so. Every donor screen handles it quietly — it
+ | shows nothing rather than a wrong number, which is right — and quietly
+ | is exactly how it reaches the morning of a launch unnoticed.
+ */
+it('says so when the wallet the money is transferred to is empty', function () {
+    config()->set('sanabel.demo_seed', false);
+    Setting::put('platform_wallet', ['number' => null, 'holder' => null]);
+
+    $this->artisan('launch:check')
+        ->expectsOutputToContain(__('sanabel.launch.no_wallet'))
+        ->assertFailed();
+});
+
+it('catches a wallet with a number and nobody behind it', function () {
+    config()->set('sanabel.demo_seed', false);
+    Setting::put('platform_wallet', ['number' => '0999111222', 'holder' => '  ']);
+
+    $this->artisan('launch:check')
+        ->expectsOutputToContain(__('sanabel.launch.no_wallet'))
+        ->assertFailed();
 });

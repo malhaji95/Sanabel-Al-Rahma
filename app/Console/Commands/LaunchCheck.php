@@ -6,6 +6,7 @@ use App\Models\Beneficiary;
 use App\Models\ContentCard;
 use App\Models\Page;
 use App\Models\Post;
+use App\Models\Setting;
 use Illuminate\Console\Command;
 
 /**
@@ -40,6 +41,7 @@ class LaunchCheck extends Command
             $this->placeholderPages(),
             $this->cardsWithoutArtwork(),
             $this->unwrittenNews(),
+            $this->moneyHasNowhereToLand(),
         ]);
 
         if ($findings === []) {
@@ -91,6 +93,35 @@ class LaunchCheck extends Command
     }
 
     /** Pages still carrying the sentence the seeder leaves for the association. */
+    /*
+     | T-270 — the one thing whose absence stops a donor dead.
+     |
+     | `TransferRouting::wallet()` answers null until the association enters
+     | the wallet the money is transferred to, and every donor screen
+     | handles that quietly: it shows nothing rather than a wrong number,
+     | which is right. But quietly is also how it goes unnoticed, and a site
+     | launched without it takes not one pound.
+     |
+     | Found in the general audit of 8 November, with both halves still
+     | empty on a database that had been seeded, migrated and tested for two
+     | months. It is on the list the association reads on the morning now.
+     */
+    private function moneyHasNowhereToLand(): ?array
+    {
+        $wallet = (array) Setting::value('platform_wallet', []);
+
+        $missing = collect([
+            'platform_wallet_number' => trim((string) ($wallet['number'] ?? '')),
+            'platform_wallet_holder' => trim((string) ($wallet['holder'] ?? '')),
+        ])->filter(fn (string $value) => $value === '')->keys();
+
+        return $missing->isEmpty()
+            ? null
+            : [__('sanabel.launch.no_wallet'), $missing->map(
+                fn (string $key) => __('sanabel.settings.keys.'.$key)
+            )->all()];
+    }
+
     private function placeholderPages(): ?array
     {
         $pages = Page::query()

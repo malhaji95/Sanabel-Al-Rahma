@@ -63,6 +63,12 @@ class MemberResource extends Resource
             ->paginated([25, 50, 100]);
     }
 
+    /** T-269 — the subscriptions, which nothing could create and nothing could settle. */
+    public static function getRelations(): array
+    {
+        return [MemberResource\RelationManagers\SubscriptionsRelationManager::class];
+    }
+
     public static function getPages(): array
     {
         return [
