@@ -164,12 +164,75 @@ class Post extends Model
 
         $html = strip_tags((string) $html, self::ALLOWED_TAGS);
 
-        // Event handlers (onclick, onerror, …) and script-bearing URLs survive
-        // strip_tags, because they are attributes of tags we keep.
+        // Event handlers (onclick, onerror, …) survive strip_tags, because
+        // they are attributes of tags we keep.
         $html = preg_replace('/\son[a-z]+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $html);
-        $html = preg_replace('/\s(href|src)\s*=\s*("|\')?\s*(javascript|data|vbscript):[^"\'>]*("|\')?/i', '', $html);
+
+        /*
+         | T-271 — every href and src is read the way the browser will read
+         | it, and kept only if it points somewhere safe.
+         |
+         | What stood here was a deny-list matching the literal text
+         | «javascript:». It was got past four different ways, each of them
+         | the same trick: the browser decodes the attribute before it reads
+         | the scheme, and the regex did not. `href="javascript&#58;alert(1)"`
+         | and `href="&#106;avascript:…"` and a tab or a newline inside the
+         | word all came out of this function untouched and arrived in the
+         | reader's browser as a live `javascript:` link. Verified in
+         | Chromium: `a.protocol` read `javascript:` for all four.
+         |
+         | So the test is made on the decoded value, and it is an allow-list:
+         | http, https, mailto, or a path of our own. Anything else loses the
+         | attribute and keeps the tag.
+         */
+        $html = preg_replace_callback(
+            '/\s(href|src)\s*=\s*("([^"]*)"|\'([^\']*)\'|([^\s>]+))/i',
+            function (array $m): string {
+                $raw = $m[3] !== '' ? $m[3] : ($m[4] ?? '');
+                $raw = $raw !== '' ? $raw : ($m[5] ?? '');
+
+                return self::urlIsSafe($raw) ? $m[0] : '';
+            },
+            (string) $html
+        );
 
         return (string) $html;
+    }
+
+    /**
+     * Whether a link may be kept, judged on what the browser will see.
+     *
+     * Entities are decoded and every control character and space removed
+     * first, because a browser does both before it decides what the scheme
+     * is — `java&#9;script:` is `javascript:` by the time it matters.
+     */
+    private static function urlIsSafe(string $value): bool
+    {
+        $probe = html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $probe = (string) preg_replace('/[\x00-\x20\x7F\xA0]+/u', '', $probe);
+        $probe = mb_strtolower($probe);
+
+        if ($probe === '') {
+            return false;
+        }
+
+        // Protocol-relative: the scheme is whatever the page's is, so it is
+        // not ours to vouch for.
+        if (str_starts_with($probe, '//')) {
+            return false;
+        }
+
+        // Our own pages and anchors within one.
+        if (str_starts_with($probe, '/') || str_starts_with($probe, '#')) {
+            return true;
+        }
+
+        if (preg_match('#^(https?|mailto):#', $probe) === 1) {
+            return true;
+        }
+
+        // No scheme at all is a relative path, which is ours too.
+        return preg_match('#^[a-z][a-z0-9+.\-]*:#', $probe) !== 1;
     }
 
     /** Marketing artwork on the public disk, like a banner's. */
