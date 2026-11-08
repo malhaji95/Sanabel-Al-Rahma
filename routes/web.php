@@ -81,6 +81,13 @@ Route::get('/gift', GiveAgift::class)->name('gift.give');
  */
 Route::get('/gift/card/{token}', [PublicController::class, 'giftCard'])->name('gift.card');
 
+/*
+ | T-262 — the receipt the platform hands the donor, at a private address and
+ | for the same reasons: a guest donation has no account to read it from, and
+ | one receipt's address says nothing about another's.
+ */
+Route::get('/receipt/{token}', [PublicController::class, 'donationReceipt'])->name('donation.receipt');
+
 Route::get('/login', [LoginController::class, 'show'])->name('login')->middleware('guest');
 
 // T-57 — the public login form had no limit at all, while the panels carried

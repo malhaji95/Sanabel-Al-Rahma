@@ -22,6 +22,17 @@
                 <p class="mt-1 text-sm" style="color: var(--text-muted);">{{ __('sanabel.public.thanks_trust') }}</p>
             @endif
 
+            {{-- T-262 — the receipt for what was just given, at its own
+                 address. Opened in a new tab so a donor who is still on the
+                 page does not lose it. --}}
+            @if ($receiptUrl)
+                <a href="{{ $receiptUrl }}" target="_blank" rel="noopener"
+                   class="btn-secondary mt-4 inline-block no-underline">
+                    {{ __('sanabel.donation_receipt.open') }}
+                </a>
+            @endif
+
+
             <a href="{{ route('cases.browse') }}" class="btn-secondary mt-5 inline-block no-underline">
                 {{ __('sanabel.public.browse_cases') }}
             </a>

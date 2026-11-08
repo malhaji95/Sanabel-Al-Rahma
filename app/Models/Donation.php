@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class Donation extends Model
 {
@@ -26,7 +27,7 @@ class Donation extends Model
     private const EVIDENCE_FIELDS = ['transfer_record_media_id', 'updated_at'];
 
     protected $fillable = [
-        'reference_no',
+        'reference_no', 'receipt_token',
         'donor_id', 'route', 'designation', 'amount', 'currency', 'transaction_ref', 'receipt_media_id',
         'status', 'verified_by', 'verified_at', 'reject_reason', 'fund_id', 'basket_id',
         'transfer_record_media_id',
@@ -131,6 +132,17 @@ class Donation extends Model
         // T-203 — no path into this table may leave a donation unnumbered.
         static::creating(function (self $m) {
             $m->reference_no ??= self::nextReference();
+
+            /*
+             | T-262 — and none may leave one without a receipt to show.
+             |
+             | The number above is what the receipt prints and what the
+             | association is asked about on the telephone. This is the
+             | address it is read at: unguessable, so that holding one
+             | receipt tells you nothing about anybody else's, and needing no
+             | account, because a guest donation has none to open it from.
+             */
+            $m->receipt_token ??= Str::lower(Str::random(32));
         });
 
         static::updating(function (self $m) {

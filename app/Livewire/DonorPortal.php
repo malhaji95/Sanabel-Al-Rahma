@@ -148,6 +148,15 @@ class DonorPortal extends Component
                 'receipt' => $donation->receipt?->isServable()
                     ? app(MediaService::class)->temporaryUrl($donation->receipt, 15)
                     : null,
+                /*
+                 | T-262 — the receipt the platform issues, as against the
+                 | slip above, which is the one the donor sent us. A reversal
+                 | row has none: it is the association's correcting entry and
+                 | not money anybody handed over.
+                 */
+                'issued_receipt' => $donation->reversal_of_id === null
+                    ? route('donation.receipt', ['token' => $donation->receipt_token])
+                    : null,
                 'created_at' => $donation->created_at->translatedFormat('Y-m-d'),
                 /*
                  | T-204 — «المفروض رقم ملف الفقير يكون ظاهر عنده, لو بدون

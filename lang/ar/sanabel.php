@@ -115,6 +115,50 @@ return [
         'reversed' => 'معكوس',
     ],
 
+    // T-262 — الإيصال الذي تسلّمه المنصة للمتبرّع، بتصميم الجمعية نفسه.
+    'donation_receipt' => [
+        'heading' => 'إيصال استلام تبرع',
+        'thanks' => 'شكرًا لعطائكم',
+        'intro' => 'تقرّ منصة سنابل الوفاء باستلام مبلغ التبرع الموضَّح أدناه، وتخصيصه وفق الغرض المحدَّد والسياسات المعتمدة لدى المؤسسة.',
+
+        'number' => 'رقم الإيصال',
+        'issued_at' => 'تاريخ الإصدار',
+        'donor' => 'اسم المتبرع',
+        'kind' => 'نوع التبرع',
+        'amount' => 'المبلغ المستلم',
+        'channel' => 'طريقة الدفع',
+        'transaction' => 'رقم العملية',
+        'status' => 'حالة التبرع',
+
+        'verify' => 'للتحقق من صحة الإيصال امسح رمز QR',
+        'footer' => 'هذا إيصال إلكتروني صادر عن منصة سنابل الوفاء، ويمكن التحقق من صحته عبر رمز QR أو من خلال حساب المتبرع في المنصة.',
+
+        'open' => 'إيصال التبرع',
+        'print' => 'طباعة',
+        'unknown' => 'غير محدَّد',
+
+        /*
+         | The purpose, never the family. A donor's receipt is a link that
+         | gets forwarded, and rule 2 has no exception for one.
+         */
+        'kinds' => [
+            'general' => 'تبرع عام لدعم برامج المؤسسة',
+            'earmarked' => 'تبرع مخصَّص للملفات التي اخترتها',
+        ],
+
+        /*
+         | The receipt's own words for the four states. The panel keeps its
+         | own: «قيد المراجعة» is what finance reads on a worklist, and it is
+         | not what a donor who has just given should be handed.
+         */
+        'statuses' => [
+            'pending' => 'مسجَّل وبانتظار التحقق',
+            'verified' => 'تم الاستلام والتحقق',
+            'rejected' => 'لم تُطابَق الحوالة',
+            'reversed' => 'أُعيد بقيد عكسي',
+        ],
+    ],
+
     'basket' => [
         'hold_expired' => 'انتهت مدة الحجز. يرجى إعادة اختيار الأسر.',
         'exceeds_remaining' => 'المبلغ يتجاوز حاجة الأسرة المتبقية.',

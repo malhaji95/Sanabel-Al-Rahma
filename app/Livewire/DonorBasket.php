@@ -31,6 +31,9 @@ class DonorBasket extends Component
 
     public ?string $notice = null;
 
+    /** T-262 — where this donor reads the receipt for what they just gave. */
+    public ?string $receiptUrl = null;
+
     /** Set the moment a transfer is recorded, cleared on the next action. */
     public bool $thanks = false;
 
@@ -187,6 +190,8 @@ class DonorBasket extends Component
         $this->transactionRef = '';
         $this->receipt = null;
         $this->notice = __('sanabel.public.transfer_recorded');
+        // T-262 — the receipt, at the moment of giving and not a day later.
+        $this->receiptUrl = route('donation.receipt', ['token' => $donation->receipt_token]);
         // Shown once, under the confirmation, in the association's own words.
         $this->thanks = true;
     }

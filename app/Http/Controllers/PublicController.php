@@ -7,6 +7,7 @@ use App\Models\Banner;
 use App\Models\Beneficiary;
 use App\Models\Campaign;
 use App\Models\ContentCard;
+use App\Models\Donation;
 use App\Models\Gift;
 use App\Models\Page;
 use App\Models\Post;
@@ -245,6 +246,50 @@ class PublicController extends Controller
             'website' => trim((string) Setting::value(
                 'association_website',
                 config('sanabel.setting_defaults.association_website')
+            )),
+        ]);
+    }
+
+    /*
+     | T-262 — «عرض للمتبرع ايصال عند التبرع», 8 November.
+     |
+     | Read by a token, like the gift card and for the same reason: a guest
+     | donation has no account to open it from, and the address of one
+     | receipt must say nothing about anybody else's.
+     |
+     | A reversal row has no page. It is the association's own correcting
+     | entry (rule 5), not a donation anybody made, and a second receipt for
+     | money that was handed over once would be a receipt that lies about
+     | how much was given. The original says «معكوس» on its own page, which
+     | is where a donor would look.
+     |
+     | What is never on it: a family, a file number, a wallet, or anything
+     | else rule 2 keeps off a donor's screen. Whom the money reached is the
+     | donor's own page behind their account, not a link that gets forwarded.
+     */
+    public function donationReceipt(string $token): View
+    {
+        $donation = Donation::query()
+            ->where('receipt_token', $token)
+            ->whereNull('reversal_of_id')
+            ->with('donor')
+            ->first();
+
+        abort_unless($donation, 404);
+
+        $qr = app(QrCode::class);
+        $url = route('donation.receipt', ['token' => $donation->receipt_token]);
+
+        return view('public.donation-receipt', [
+            'donation' => $donation,
+            'qrSvg' => $qr->svg($url, moduleSize: 4, quietZone: 2),
+            'legalName' => trim((string) Setting::value(
+                'association_legal_name',
+                config('sanabel.setting_defaults.association_legal_name')
+            )),
+            'licenceNo' => trim((string) Setting::value(
+                'association_licence_no',
+                config('sanabel.setting_defaults.association_licence_no')
             )),
         ]);
     }

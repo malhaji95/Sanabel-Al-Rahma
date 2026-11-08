@@ -66,6 +66,9 @@ class GeneralDonation extends Component
 
     public ?string $notice = null;
 
+    /** T-262 — where this donor reads the receipt for what they just gave. */
+    public ?string $receiptUrl = null;
+
     /** T-123 — an image or a PDF of the transfer, optional. */
     public $receipt = null;
 
@@ -152,6 +155,8 @@ class GeneralDonation extends Component
         $this->transactionRef = '';
         $this->receipt = null;
         $this->notice = __('sanabel.public.transfer_recorded');
+        // T-262 — the receipt, at the moment of giving and not a day later.
+        $this->receiptUrl = route('donation.receipt', ['token' => $donation->receipt_token]);
         $this->thanks = true;
     }
 

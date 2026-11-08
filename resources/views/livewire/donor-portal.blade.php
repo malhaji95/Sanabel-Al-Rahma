@@ -110,7 +110,19 @@
                 <tbody class="divide-y" style="border-color: var(--border);">
                     @foreach ($donations as $donation)
                         <tr>
-                            <td class="tabular px-4 py-3 text-xs font-medium" dir="ltr">{{ $donation['reference_no'] }}</td>
+                            {{-- T-262 — the platform's own number opens the
+                                 receipt that prints it. No tenth column for a
+                                 link whose label would be the number already
+                                 in this cell. --}}
+                            <td class="tabular px-4 py-3 text-xs font-medium" dir="ltr">
+                                @if ($donation['issued_receipt'])
+                                    <a href="{{ $donation['issued_receipt'] }}" target="_blank" rel="noopener"
+                                       title="{{ __('sanabel.donation_receipt.open') }}"
+                                       style="color: var(--brand-primary);">{{ $donation['reference_no'] }}</a>
+                                @else
+                                    {{ $donation['reference_no'] }}
+                                @endif
+                            </td>
                             <td class="tabular px-4 py-3 text-xs" dir="ltr">{{ $donation['transaction_ref'] }}</td>
                             <td class="tabular px-4 py-3 font-medium">{{ number_format($donation['amount']) }}</td>
                             <td class="px-4 py-3 text-xs" style="color: var(--text-muted);">{{ $donation['designation_label'] }}</td>

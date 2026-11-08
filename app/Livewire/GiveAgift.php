@@ -52,6 +52,9 @@ class GiveAgift extends Component
 
     public ?string $notice = null;
 
+    /** T-262 — where this donor reads the receipt for what they just gave. */
+    public ?string $receiptUrl = null;
+
     public ?string $error = null;
 
     public bool $thanks = false;
@@ -109,6 +112,7 @@ class GiveAgift extends Component
     public function record(): void
     {
         $this->error = $this->notice = null;
+        $this->receiptUrl = null;
         $this->thanks = false;
 
         $signedIn = auth()->user()?->donor;
@@ -214,6 +218,8 @@ class GiveAgift extends Component
         $this->transactionRef = '';
         $this->receipt = null;
         $this->notice = __('sanabel.gift.recorded');
+        // T-262 — a gift is a donation too, and its giver gets the same receipt.
+        $this->receiptUrl = route('donation.receipt', ['token' => $donation->receipt_token]);
         $this->thanks = true;
     }
 
