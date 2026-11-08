@@ -73,4 +73,70 @@ class Assessment extends Model
     {
         return (float) $this->base_score;
     }
+
+    /*
+     | T-261 — the number says how it was arrived at.
+     |
+     | «في مشكلة بموضوع الأوزان وكيف طريقة عملها وكيف مبنية, ما عارفين نهائيا,
+     | وبدنا نعمل تجارب بس مو عارفين آلية عملها كيف تم الاحتساب», 8 November.
+     |
+     | The screen showed one number and nothing else, so the association was
+     | asked to trust a figure they could not take apart. And the promise is
+     | written ten lines above this: «the number can always be explained by
+     | what it was computed from». Both halves of that explanation were
+     | already on the row and neither was ever drawn — `factors_json` holds
+     | each factor out of a hundred, and `snapshot_json['weights']` holds the
+     | weights it was scored with.
+     |
+     | So nothing is recomputed here and nothing is read from the current
+     | settings: an assessment from August explains itself with August's
+     | weights, however they have been edited since, which is rule 8 doing
+     | exactly what it was written for.
+     */
+
+    /** The seven factors in the order the formula states them, and what each is made of. */
+    public const FACTOR_PARTS = [
+        'F' => [],
+        'M' => ['M_severity', 'M_economic_impact', 'M_care_burden', 'M_cost_burden'],
+        'V' => ['V_dependents', 'V_single_caregiver', 'V_orphans', 'V_unsupported_elderly'],
+        'H' => ['H_safety', 'H_overcrowding', 'H_services', 'H_eviction', 'H_rent_burden'],
+        'U' => [],
+        'D' => [],
+        'B' => [],
+    ];
+
+    /**
+     * @return array<int,array{key:string,value:float,weight:float,share:float,parts:array}>
+     */
+    public function scoreBreakdown(): array
+    {
+        $values = $this->factors_json ?? [];
+        $weights = $this->snapshot_json['weights'] ?? [];
+
+        // An assessment stored before either column was written explains
+        // nothing rather than explaining it wrongly.
+        if ($values === [] || $weights === []) {
+            return [];
+        }
+
+        $rows = [];
+
+        foreach (self::FACTOR_PARTS as $key => $parts) {
+            $value = (float) ($values[$key] ?? 0);
+            $weight = (float) ($weights[$key] ?? 0);
+
+            $rows[] = [
+                'key' => $key,
+                'value' => round($value, 2),
+                'weight' => $weight,
+                'share' => round($weight * $value, 2),
+                'parts' => array_values(array_map(
+                    fn (string $part) => ['key' => $part, 'weight' => (float) ($weights[$part] ?? 0)],
+                    $parts,
+                )),
+            ];
+        }
+
+        return $rows;
+    }
 }

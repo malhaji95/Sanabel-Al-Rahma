@@ -2062,6 +2062,20 @@ class BeneficiaryResource extends Resource
                         ->label(__('sanabel.beneficiary.computed_score'))
                         ->content(fn (?Beneficiary $record) => $record?->currentAssessment()?->base_score ?? '—'),
 
+                    /*
+                     | T-261 — and what it is the sum of, under it.
+                     |
+                     | The association could edit the weights and read the
+                     | number, with nothing in between: «بدنا نعمل تجارب بس مو
+                     | عارفين آلية عملها». This is the in between. It reads the
+                     | assessment's own two columns, so a weight changed today
+                     | explains the next study and not the one before it.
+                     */
+                    Forms\Components\ViewField::make('score_breakdown')
+                        ->view('filament.forms.score-breakdown')
+                        ->dehydrated(false)
+                        ->columnSpanFull(),
+
                     Forms\Components\Placeholder::make('coverage')
                         ->label(__('sanabel.beneficiary.coverage'))
                         ->content(fn (?Beneficiary $record) => $record
