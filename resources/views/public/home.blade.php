@@ -198,7 +198,7 @@
             promises households.
         --}}
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            @foreach ($cases->take(3) as $case)
+            @forelse ($cases->take(3) as $case)
                 <x-masked-case-card :case="$case">
                     {{-- T-207 — «هون ما في يحط المبلغ ويحط إضافة بالسلة…
                          هون احنا نحتاج متل هيك, إنه يقدر يحط المبلغ»,
@@ -226,7 +226,21 @@
                         <x-brand.icon name="chevron-left" class="h-4 w-4" />
                     </a>
                 </x-masked-case-card>
-            @endforeach
+            @empty
+                {{--
+                    T-265 — the heading promises households, so when there are
+                    none it says so rather than opening on an empty strip of
+                    page. The same answer «الأخبار» gives three sections down,
+                    and the one every list on this site gives.
+
+                    It is the state the front page is in on the morning of a
+                    launch, before the first file is published, and on any day
+                    the association has nothing open for a donor to take.
+                --}}
+                <p class="text-sm sm:col-span-2 lg:col-span-3" style="color: var(--text-muted);">
+                    {{ __('sanabel.public.no_open_cases') }}
+                </p>
+            @endforelse
         </div>
 
         <div class="mt-5 flex flex-wrap items-center justify-center gap-3">
