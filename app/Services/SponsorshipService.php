@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Beneficiary;
+use App\Models\Donation;
 use App\Models\Donor;
 use App\Models\HouseholdMember;
 use App\Models\Setting;
@@ -272,10 +273,55 @@ class SponsorshipService
         return $run;
     }
 
+    /*
+     | T-266 — an installment is marked paid against the transfer that paid it.
+     |
+     | This was written in T-25 and never called: the only place an
+     | installment's status becomes «paid» is here, and nothing in the
+     | application reached it. So an installment could be generated, fall
+     | due, fall overdue, be counted overdue in the reports, and bring the
+     | two-month lapse rule down on the sponsorship — and nobody could ever
+     | say it had been paid. Left alone, every sponsorship lapsed.
+     |
+     | The guards are here rather than on the screen, because the screen is
+     | not the only thing that will ever call this, and because each of them
+     | is about money rather than about a form:
+     |
+     |   · verified only — rule 5's own line: unverified money is not money.
+     |   · the sponsor's own transfer — a gift from somebody else does not
+     |     discharge this sponsor's month.
+     |   · and an installment already paid is left exactly as it is.
+     |
+     | What is deliberately NOT guarded here: how many months one transfer
+     | may settle. A sponsor who pays a year at once is ordinary, and the
+     | association has not said whether the figures must tally — so this
+     | refuses nothing it was not told to refuse, and the question is theirs
+     | to answer rather than ours to decide in a guard.
+     */
     public function markPaid(SponsorshipInstallment $installment, int $donationId): SponsorshipInstallment
     {
-        $installment->forceFill(['status' => 'paid', 'donation_id' => $donationId])->save();
+        return DB::transaction(function () use ($installment, $donationId) {
+            $locked = SponsorshipInstallment::whereKey($installment->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        return $installment->refresh();
+            if ($locked->status === 'paid') {
+                throw new \RuntimeException(__('sanabel.sponsorships.already_paid'));
+            }
+
+            $donation = Donation::whereKey($donationId)->lockForUpdate()->first();
+
+            if (! $donation || $donation->status !== 'verified') {
+                throw new \RuntimeException(__('sanabel.sponsorships.donation_not_verified'));
+            }
+
+            if ((int) $donation->donor_id !== (int) $locked->sponsorship->donor_id) {
+                throw new \RuntimeException(__('sanabel.sponsorships.donation_not_the_sponsors'));
+            }
+
+            $locked->forceFill(['status' => 'paid', 'donation_id' => $donation->getKey()])->save();
+
+            return $locked->refresh();
+        });
     }
 }

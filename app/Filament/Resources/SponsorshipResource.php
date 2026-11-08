@@ -94,6 +94,12 @@ class SponsorshipResource extends Resource
             ->defaultSort('id', 'desc');
     }
 
+    /** T-266 — the months, and the one thing that could never be said about them. */
+    public static function getRelations(): array
+    {
+        return [SponsorshipResource\RelationManagers\InstallmentsRelationManager::class];
+    }
+
     public static function getPages(): array
     {
         return [

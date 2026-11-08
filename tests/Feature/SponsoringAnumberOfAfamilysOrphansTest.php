@@ -238,7 +238,11 @@ it('keeps the paid installments when a sponsorship stops', function () {
     $sponsorship = app(SponsorshipService::class)
         ->sponsorOrphans($this->family, $this->donor, 1)->first();
 
-    $donation = Donation::factory()->create(['status' => 'verified', 'amount' => 75_000]);
+    // T-266 — the sponsor's own transfer: an installment is never settled
+    // with somebody else's money, and the service now says so.
+    $donation = Donation::factory()->create([
+        'donor_id' => $this->donor->id, 'status' => 'verified', 'amount' => 75_000,
+    ]);
 
     foreach ($sponsorship->installments()->orderBy('period')->take(3)->get() as $installment) {
         app(SponsorshipService::class)->markPaid($installment, $donation->id);
@@ -260,7 +264,11 @@ it('starts the next sponsorship after the months somebody already paid for', fun
     $first = app(SponsorshipService::class)
         ->sponsorOrphans($this->family, $this->donor, 1)->first();
 
-    $donation = Donation::factory()->create(['status' => 'verified', 'amount' => 75_000]);
+    // T-266 — the sponsor's own transfer: an installment is never settled
+    // with somebody else's money, and the service now says so.
+    $donation = Donation::factory()->create([
+        'donor_id' => $this->donor->id, 'status' => 'verified', 'amount' => 75_000,
+    ]);
 
     // Three months paid, counting from this one.
     foreach ($first->installments()->orderBy('period')->take(3)->get() as $installment) {
