@@ -65,7 +65,14 @@
                     <tbody>
                         @foreach ([
                             'donor' => $donation->donor?->name_ar ?: __('sanabel.donation_receipt.unknown'),
-                            'kind' => __('sanabel.donation_receipt.kinds.'.$donation->designation),
+                            // T-263 — the door by name and number where there
+                            // is one, since that is what the donor chose.
+                            'kind' => $door
+                                ? __('sanabel.donation_receipt.kinds.door', [
+                                    'door' => $door->title_ar,
+                                    'reference' => $door->reference_no,
+                                ])
+                                : __('sanabel.donation_receipt.kinds.'.$donation->designation),
                             'amount' => number_format($donation->amount).' '.__('sanabel.currency.'.$donation->currency.'.short'),
                             'channel' => __('sanabel.donation_route.'.$donation->route),
                             'transaction' => $donation->transaction_ref ?: __('sanabel.donation_receipt.unknown'),

@@ -76,6 +76,17 @@ class CampaignResource extends Resource
     {
         return $table
             ->columns([
+                /*
+                 | T-263 — the number a transfer is quoted against. The
+                 | association asks for money by a file number, and a door is
+                 | asked for exactly as often as a family.
+                 */
+                Tables\Columns\TextColumn::make('reference_no')
+                    ->label(__('sanabel.campaign.reference_no'))
+                    ->copyable()
+                    ->searchable()
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('title_ar')->label(__('sanabel.campaign.title'))->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('goal_amount')->label(__('sanabel.campaign.goal'))->numeric()->sortable(),
                 // Derived, not stored, so neither is sortable in SQL.

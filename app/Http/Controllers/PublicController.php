@@ -280,8 +280,26 @@ class PublicController extends Controller
         $qr = app(QrCode::class);
         $url = route('donation.receipt', ['token' => $donation->receipt_token]);
 
+        /*
+         | T-263 — a gift to a door is named by the door, not by «الملفات التي
+         | اخترتها»: the donor chose «كفالة حلقة قرآن» and chose no file at
+         | all. The door's own number goes with it, which is the number the
+         | association reads the transfer against.
+         |
+         | A door names no family, so this adds nothing rule 2 keeps off the
+         | page.
+         */
+        $door = $donation->allocations()
+            ->whereNotNull('campaign_id')
+            ->with('campaign')
+            ->get()
+            ->pluck('campaign')
+            ->filter(fn (?Campaign $c) => $c?->isDoor())
+            ->first();
+
         return view('public.donation-receipt', [
             'donation' => $donation,
+            'door' => $door,
             'qrSvg' => $qr->svg($url, moduleSize: 4, quietZone: 2),
             'legalName' => trim((string) Setting::value(
                 'association_legal_name',

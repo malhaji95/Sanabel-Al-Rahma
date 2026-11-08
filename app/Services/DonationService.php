@@ -260,11 +260,21 @@ class DonationService
                 'currency' => $donation->currency,
             ]);
 
-            $this->notifications->send(
-                $item->beneficiary->created_by,
-                'coverage_updated',
-                ['file_number' => $item->beneficiary->file_number],
-            );
+            /*
+             | T-263 — a pledge to a door names no family, and this line read
+             | `$item->beneficiary->created_by` on a null. The treasurer's
+             | verification died on it, so money pledged to a door could not
+             | be confirmed at all. There is no researcher to tell: nobody's
+             | file moved, and the money waits on the door until the
+             | association places it.
+             */
+            if ($item->beneficiary) {
+                $this->notifications->send(
+                    $item->beneficiary->created_by,
+                    'coverage_updated',
+                    ['file_number' => $item->beneficiary->file_number],
+                );
+            }
         }
 
         $basket->forceFill(['status' => 'paid', 'reserved_until' => null])->save();

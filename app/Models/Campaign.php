@@ -18,6 +18,7 @@ class Campaign extends Model
     use Auditable, HasFactory, SoftDeletes, TracksCreator;
 
     protected $fillable = [
+        'reference_no',
         'beneficiary_id', 'title_ar', 'body_ar', 'image', 'goal_amount',
         'starts_on', 'ends_on',
         'currency', 'wallet_encrypted', 'surplus_policy_text_ar', 'is_published', 'status',
@@ -102,10 +103,45 @@ class Campaign extends Model
         return ProgressBand::of($percent);
     }
 
+    /*
+     | T-263 — «الأبواب»: «نقدر نغير بالأبواب من عندنا أو إصدار أبواب جديدة,
+     | والمبالغ تروح على رقم ملف الباب, تكون مقيدة له», 5 November.
+     |
+     | A door is a standing collection: «كفالة حلقة قرآن» has no target to
+     | reach and no family of its own, and it goes on taking money for as
+     | long as the association keeps it open. Two properties say that, and
+     | they are kept apart because each is true on its own:
+     |
+     |   · no goal  — nothing bounds what may be pledged to it, and reaching
+     |                a figure never closes it.
+     |   · no family — the money it holds names nobody until the association
+     |                places it, which is `GeneralMoneyService`'s half.
+     |
+     | Both were refused before this. `acceptsPledges()` read `raised < goal`,
+     | so a campaign with no goal answered «0 < 0» and turned away every
+     | pledge; and `closeFundingIfMet()` read `raised >= goal`, so the first
+     | pound to arrive marked it funded and shut it. A door could neither be
+     | given to nor stay open.
+     */
+    public function isOpenEnded(): bool
+    {
+        return (int) $this->goal_amount <= 0;
+    }
+
+    /** A door: a campaign that stands for a kind of need rather than a family. */
+    public function isDoor(): bool
+    {
+        return $this->beneficiary_id === null;
+    }
+
     public function acceptsPledges(?int $collected = null): bool
     {
-        return $this->status === 'active'
-            && (($collected ?? $this->collectedAmount()) + $this->reservedAmount()) < $this->goal_amount;
+        if ($this->status !== 'active') {
+            return false;
+        }
+
+        return $this->isOpenEnded()
+            || (($collected ?? $this->collectedAmount()) + $this->reservedAmount()) < $this->goal_amount;
     }
 
     /**
@@ -147,6 +183,12 @@ class Campaign extends Model
 
     public function closeFundingIfMet(?int $collected = null): void
     {
+        // T-263 — a door has no figure to reach, so nothing closes it but
+        // the association saying so on its own screen.
+        if ($this->isOpenEnded()) {
+            return;
+        }
+
         $raised = $collected ?? $this->collectedAmount();
 
         if ($this->status === 'active' && $raised >= $this->goal_amount) {
@@ -161,9 +203,28 @@ class Campaign extends Model
         }
     }
 
+    /**
+     * T-263 — the number the association quotes for a door, in the scheme
+     * they chose for a family on 29 October. `SWA-0001` is a family and
+     * `SWB-0001` is a door, one letter apart.
+     *
+     * Four digits because that is what T-191 wrote; `str_pad` only pads, so
+     * the ten thousandth is `SWB-10000` rather than a collision.
+     */
+    public static function nextReferenceNo(): string
+    {
+        $next = (int) static::withTrashed()->max('id') + 1;
+
+        return 'SWB-'.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+    }
+
     /** surplus_policy_text_ar is mandatory before publishing (rule 7). */
     protected static function booted(): void
     {
+        static::creating(function (self $campaign) {
+            $campaign->reference_no ??= self::nextReferenceNo();
+        });
+
         static::saving(function (self $m) {
             if ($m->is_published && blank($m->surplus_policy_text_ar)) {
                 throw new \RuntimeException(__('sanabel.campaigns.surplus_policy_required'));

@@ -177,7 +177,11 @@ class BasketService
                         throw ReservationUnavailable::campaignClosed($campaign->title_ar);
                     }
 
-                    if ($item->amount > $this->coverage->campaignRemaining($campaign)) {
+                    // T-263 — a door has no goal, so there is no ceiling to
+                    // exceed. `campaignRemaining()` answers zero for one,
+                    // which would have refused every pledge to it.
+                    if (! $campaign->isOpenEnded()
+                        && $item->amount > $this->coverage->campaignRemaining($campaign)) {
                         throw ReservationUnavailable::exceedsCampaignGoal($campaign->title_ar);
                     }
 
