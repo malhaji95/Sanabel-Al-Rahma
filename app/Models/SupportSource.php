@@ -69,4 +69,22 @@ class SupportSource extends Model
     {
         return $this->purpose === 'earmarked';
     }
+
+    /*
+     | T-280, corrected after the full suite: the column is NOT NULL with a
+     | default of `living`, but a default only answers for a column that is
+     | left out. A caller that sends the key with nothing in it — a cleared
+     | select, a row written by an importer — sends an explicit null, and the
+     | insert is refused with a 500 in the researcher's face.
+     |
+     | So a purpose that is not stated is living support here too, which is
+     | the same sentence the column's default makes. The constraint still
+     | holds the rule; this only stops a null from ever reaching it.
+     */
+    public function setPurposeAttribute(?string $value): void
+    {
+        $this->attributes['purpose'] = in_array($value, self::PURPOSES, true)
+            ? $value
+            : 'living';
+    }
 }

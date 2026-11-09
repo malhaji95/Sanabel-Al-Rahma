@@ -112,3 +112,40 @@ it('shows the earmarked payment on the breakdown rather than hiding it', functio
     expect($breakdown['external'])->toBe(0)
         ->and($breakdown['totals']['gap'])->toBe($breakdown['totals']['deficit']);
 });
+
+it('writes living support when the purpose is left out or sent empty', function () {
+    $case = publishedCase($this->region);
+
+    // The case the full suite caught: a caller that sends the key with
+    // nothing in it. The column is NOT NULL, so this used to be a 500.
+    $blank = SupportSource::create([
+        'beneficiary_id' => $case->id,
+        'name_ar' => 'جمعية البر',
+        'kind' => 'one_off',
+        'purpose' => null,
+        'amount' => 30000,
+        'currency' => config('sanabel.currency'),
+        'coverage_month' => now()->startOfMonth()->toDateString(),
+    ]);
+
+    expect($blank->fresh()->purpose)->toBe('living')
+        ->and($blank->fresh()->isPayment())->toBeTrue()
+        ->and(app(CoverageService::class)->externalForMonth($case->refresh()))->toBe(30000);
+});
+
+it('refuses a purpose it does not know rather than storing it', function () {
+    $case = publishedCase($this->region);
+
+    $row = SupportSource::create([
+        'beneficiary_id' => $case->id,
+        'name_ar' => 'جهة',
+        'purpose' => 'whatever',
+        'amount' => 1000,
+        'currency' => config('sanabel.currency'),
+        'coverage_month' => now()->startOfMonth()->toDateString(),
+    ]);
+
+    // Anything but the two the association named is living support, so no
+    // row can quietly stop being deducted because of a typo.
+    expect($row->fresh()->purpose)->toBe('living');
+});

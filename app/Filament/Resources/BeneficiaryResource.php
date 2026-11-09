@@ -1810,6 +1810,13 @@ class BeneficiaryResource extends Resource
                                 ->label(__('sanabel.support_source.purpose'))
                                 ->options(__('sanabel.support_source.purposes'))
                                 ->default('living')
+                                // Never empty: the two answers are the whole
+                                // question, so there is no blank option to
+                                // pick. Not `required()` on top of that — the
+                                // rule is that a purpose nobody stated is
+                                // living support, and the model says so; a
+                                // validation error would contradict it.
+                                ->selectablePlaceholder(false)
                                 ->helperText(__('sanabel.support_source.purpose_help'))
                                 ->live(),
 
