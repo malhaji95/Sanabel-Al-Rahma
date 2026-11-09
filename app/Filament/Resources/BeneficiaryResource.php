@@ -2058,6 +2058,20 @@ class BeneficiaryResource extends Resource
                         ->label(__('sanabel.beneficiary.computed_need'))
                         ->content(fn (?Beneficiary $record) => $record?->currentAssessment()?->monthly_need ?? '—'),
 
+                    /*
+                     | T-277 — and the money above it, from the same snapshot.
+                     |
+                     | «نطلب شاشة تفصيلية داخل دراسة كل أسرة ... حتى يستطيع
+                     | المسؤول مراجعة النتيجة دون الرجوع للمبرمج». T-261 drew
+                     | the score; this draws how the figure beside it was
+                     | reached, line by line, with the version each reference
+                     | value came from.
+                     */
+                    Forms\Components\ViewField::make('need_breakdown')
+                        ->view('filament.forms.need-breakdown')
+                        ->dehydrated(false)
+                        ->columnSpanFull(),
+
                     Forms\Components\Placeholder::make('computed_score')
                         ->label(__('sanabel.beneficiary.computed_score'))
                         ->content(fn (?Beneficiary $record) => $record?->currentAssessment()?->base_score ?? '—'),

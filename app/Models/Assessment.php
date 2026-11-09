@@ -94,6 +94,115 @@ class Assessment extends Model
      | exactly what it was written for.
      */
 
+    /*
+     | T-277 — how the money was arrived at, from the row itself.
+     |
+     | «نطلب شاشة تفصيلية داخل دراسة كل أسرة توضح كيف وصل النظام إلى مبلغ
+     | الاحتياج والعجز والأولوية والتمويل, حتى يستطيع المسؤول مراجعة النتيجة
+     | دون الرجوع للمبرمج» — 9 November.
+     |
+     | T-261 did this for the score. This is the other half, and it reads
+     | the same way: everything comes out of `snapshot_json`, which the
+     | engine froze on the day (rule 8), so a study from August explains
+     | itself with August's reference values however they have been edited
+     | since. Nothing here is recomputed and nothing is read from today's
+     | settings.
+     |
+     | @return array{need:array,income:array,received:array,totals:array}
+     */
+    public function needBreakdown(): array
+    {
+        $snapshot = $this->snapshot_json ?? [];
+
+        if ($snapshot === [] || ! isset($snapshot['rates'])) {
+            return [];
+        }
+
+        // What the household's own people cost, class by class.
+        $need = [];
+
+        foreach ($snapshot['rates'] as $class => $rate) {
+            $need[] = [
+                'kind' => 'class',
+                'key' => $class,
+                'count' => (int) ($rate['count'] ?? 0),
+                'unit' => (int) ($rate['amount'] ?? 0),
+                'version' => $rate['version'] ?? null,
+                'total' => (int) ($rate['amount'] ?? 0) * (int) ($rate['count'] ?? 0),
+            ];
+        }
+
+        foreach ($snapshot['adjustments'] ?? [] as $key => $adjustment) {
+            $need[] = [
+                'kind' => 'adjustment',
+                'key' => $key,
+                'count' => 1,
+                'unit' => (int) ($adjustment['amount'] ?? 0),
+                'version' => $adjustment['version'] ?? null,
+                'total' => (int) ($adjustment['amount'] ?? 0),
+            ];
+        }
+
+        /*
+         | The rent reference appears whether or not it was applied: a reader
+         | asking why a renting family's need looks low is owed the line that
+         | says the household owns its home, rather than a line that is not
+         | there at all.
+         */
+        $need[] = [
+            'kind' => 'rent',
+            'key' => 'rent_reference',
+            'count' => 1,
+            'unit' => (int) ($snapshot['rent_reference']['amount'] ?? 0),
+            'version' => $snapshot['rent_reference']['version'] ?? null,
+            'total' => (bool) ($snapshot['is_renting'] ?? false)
+                ? (int) ($snapshot['rent_reference']['amount'] ?? 0)
+                : 0,
+            'applied' => (bool) ($snapshot['is_renting'] ?? false),
+        ];
+
+        if ((int) ($snapshot['manual_adjustment'] ?? 0) !== 0) {
+            $need[] = [
+                'kind' => 'manual',
+                'key' => 'manual_adjustment',
+                'count' => 1,
+                'unit' => (int) $snapshot['manual_adjustment'],
+                'version' => null,
+                'total' => (int) $snapshot['manual_adjustment'],
+            ];
+        }
+
+        /*
+         | The three places a stable income is read from. They are listed
+         | apart because this is exactly where the association asked how a
+         | figure is kept from being counted twice: a salary is read off the
+         | person, livestock off its own record, and neither is copied into
+         | an income row.
+         */
+        $income = [
+            ['key' => 'income_rows', 'total' => (int) $this->stable_income
+                - (int) ($snapshot['livestock_income'] ?? 0)
+                - (int) ($snapshot['person_work_income'] ?? 0)],
+            ['key' => 'person_work_income', 'total' => (int) ($snapshot['person_work_income'] ?? 0)],
+            ['key' => 'livestock_income', 'total' => (int) ($snapshot['livestock_income'] ?? 0)],
+        ];
+
+        return [
+            'need' => $need,
+            'income' => $income,
+            'external' => (int) ($snapshot['external_support'] ?? 0),
+            'totals' => [
+                'members' => (int) ($snapshot['members_total'] ?? 0),
+                'adjustments' => (int) ($snapshot['adjustments_total'] ?? 0),
+                'monthly_need' => (int) $this->monthly_need,
+                'stable_income' => (int) $this->stable_income,
+                'deficit' => max(0, (int) $this->monthly_need - (int) $this->stable_income),
+                'gap' => (int) $this->gap,
+            ],
+            'computed_at' => $snapshot['computed_at'] ?? null,
+        ];
+    }
+
     /** The seven factors in the order the formula states them, and what each is made of. */
     public const FACTOR_PARTS = [
         'F' => [],
