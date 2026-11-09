@@ -174,6 +174,10 @@ class Assessment extends Model
                 ? (int) ($snapshot['rent_reference']['amount'] ?? 0)
                 : 0,
             'applied' => (bool) ($snapshot['is_renting'] ?? false),
+            // T-281 — which size band the household fell in. A rent that
+            // moved because the family grew is a different sentence from one
+            // that moved because the association edited the reference.
+            'band' => $snapshot['rent_reference']['band'] ?? null,
         ];
 
         if ((int) ($snapshot['manual_adjustment'] ?? 0) !== 0) {
@@ -216,6 +220,215 @@ class Assessment extends Model
             ],
             'computed_at' => $snapshot['computed_at'] ?? null,
         ];
+    }
+
+    /*
+     | T-281 — «مقارنة بين دراستين مع إظهار أسباب اختلاف النتائج», 9 November.
+     |
+     | Two studies on one file differ for a small number of reasons, and the
+     | association asked to be told which. Both sides are read from their own
+     | snapshots, so the comparison explains what actually happened on the two
+     | days rather than what today's settings would make of them (rule 8).
+     |
+     | The reason is not guessed. A line's amount moved because the reference
+     | value behind it moved, or because the number of people under it moved,
+     | or because the line appeared or went away — and those are told apart by
+     | comparing the unit, the count and the presence, each of which the
+     | snapshot already holds.
+     |
+     | @return array{older:array,newer:array,totals:array,need:array,income:array,factors:array}
+     */
+    public function comparedWith(self $other): array
+    {
+        /*
+         | Whichever was written first is the left-hand side, whatever order
+         | the two came in. The row's own id decides it and not `created_at`:
+         | two studies recomputed in the same second carry the same timestamp,
+         | and the one written second is still the newer.
+         */
+        [$older, $newer] = (int) $this->getKey() <= (int) $other->getKey()
+            ? [$this, $other]
+            : [$other, $this];
+
+        $a = $older->needBreakdown();
+        $b = $newer->needBreakdown();
+
+        if ($a === [] || $b === []) {
+            return [];
+        }
+
+        $totals = [];
+
+        foreach (['monthly_need', 'stable_income', 'deficit', 'gap'] as $key) {
+            $totals[] = [
+                'key' => $key,
+                'older' => (int) $a['totals'][$key],
+                'newer' => (int) $b['totals'][$key],
+                'delta' => (int) $b['totals'][$key] - (int) $a['totals'][$key],
+            ];
+        }
+
+        $totals[] = [
+            'key' => 'base_score',
+            'older' => round((float) $older->base_score, 2),
+            'newer' => round((float) $newer->base_score, 2),
+            'delta' => round((float) $newer->base_score - (float) $older->base_score, 2),
+        ];
+
+        return [
+            'older' => ['id' => $older->getKey(), 'at' => $older->created_at, 'status' => $older->status],
+            'newer' => ['id' => $newer->getKey(), 'at' => $newer->created_at, 'status' => $newer->status],
+            'totals' => $totals,
+            'need' => self::diffLines($a['need'], $b['need']),
+            'income' => self::diffIncome($a['income'], $b['income'], (int) $a['external'], (int) $b['external']),
+            'factors' => self::diffFactors($older, $newer),
+        ];
+    }
+
+    /**
+     * One row per line that exists on either side, with why its amount moved.
+     *
+     * @param  array<int,array>  $older
+     * @param  array<int,array>  $newer
+     * @return array<int,array>
+     */
+    private static function diffLines(array $older, array $newer): array
+    {
+        $key = fn (array $row) => $row['kind'].':'.$row['key'];
+        $left = collect($older)->keyBy($key);
+        $right = collect($newer)->keyBy($key);
+
+        $rows = [];
+
+        foreach ($left->keys()->merge($right->keys())->unique() as $k) {
+            $l = $left->get($k);
+            $r = $right->get($k);
+
+            $delta = (int) ($r['total'] ?? 0) - (int) ($l['total'] ?? 0);
+            $reasons = [];
+
+            if ($l === null) {
+                $reasons[] = 'added';
+            } elseif ($r === null) {
+                $reasons[] = 'removed';
+            } else {
+                if ((int) $l['unit'] !== (int) $r['unit']) {
+                    $reasons[] = 'reference_changed';
+                }
+
+                if ((int) $l['count'] !== (int) $r['count']) {
+                    $reasons[] = 'count_changed';
+                }
+
+                // The rent line is there on both sides either way, so a
+                // household that moved into a rented home shows up here
+                // rather than as a line that appeared from nowhere.
+                if (($l['applied'] ?? null) !== ($r['applied'] ?? null)) {
+                    $reasons[] = 'renting_changed';
+                }
+
+                // The family grew or shrank across a rent band. Said apart
+                // from `reference_changed`, which is the association editing
+                // the figure rather than the household changing size.
+                if (($l['band'] ?? null) !== ($r['band'] ?? null)) {
+                    $reasons[] = 'band_changed';
+                }
+            }
+
+            if ($delta === 0 && $reasons === []) {
+                continue;
+            }
+
+            $rows[] = [
+                'kind' => $r['kind'] ?? $l['kind'],
+                'key' => $r['key'] ?? $l['key'],
+                'older_unit' => $l === null ? null : (int) $l['unit'],
+                'newer_unit' => $r === null ? null : (int) $r['unit'],
+                'older_count' => $l === null ? null : (int) $l['count'],
+                'newer_count' => $r === null ? null : (int) $r['count'],
+                'older_band' => $l['band'] ?? null,
+                'newer_band' => $r['band'] ?? null,
+                'older_version' => $l['version'] ?? null,
+                'newer_version' => $r['version'] ?? null,
+                'older_total' => (int) ($l['total'] ?? 0),
+                'newer_total' => (int) ($r['total'] ?? 0),
+                'delta' => $delta,
+                'reasons' => $reasons,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * The three incomes and the month's outside payment, each with its move.
+     *
+     * @return array<int,array>
+     */
+    private static function diffIncome(array $older, array $newer, int $olderExternal, int $newerExternal): array
+    {
+        $left = collect($older)->keyBy('key');
+        $right = collect($newer)->keyBy('key');
+
+        $rows = [];
+
+        foreach (['income_rows', 'person_work_income', 'livestock_income'] as $key) {
+            $l = (int) ($left[$key]['total'] ?? 0);
+            $r = (int) ($right[$key]['total'] ?? 0);
+
+            if ($l !== $r) {
+                $rows[] = ['key' => $key, 'older' => $l, 'newer' => $r, 'delta' => $r - $l];
+            }
+        }
+
+        if ($olderExternal !== $newerExternal) {
+            $rows[] = [
+                'key' => 'external',
+                'older' => $olderExternal,
+                'newer' => $newerExternal,
+                'delta' => $newerExternal - $olderExternal,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Each factor whose value or whose weight moved — the two reasons a score
+     * can change while the money does not.
+     *
+     * @return array<int,array>
+     */
+    private static function diffFactors(self $older, self $newer): array
+    {
+        $rows = [];
+
+        foreach (array_keys(self::FACTOR_PARTS) as $key) {
+            $lv = round((float) ($older->factors_json[$key] ?? 0), 2);
+            $rv = round((float) ($newer->factors_json[$key] ?? 0), 2);
+            $lw = (float) ($older->snapshot_json['weights'][$key] ?? 0);
+            $rw = (float) ($newer->snapshot_json['weights'][$key] ?? 0);
+
+            if ($lv === $rv && $lw === $rw) {
+                continue;
+            }
+
+            $rows[] = [
+                'key' => $key,
+                'older_value' => $lv,
+                'newer_value' => $rv,
+                'older_weight' => $lw,
+                'newer_weight' => $rw,
+                'older_share' => round($lv * $lw, 2),
+                'newer_share' => round($rv * $rw, 2),
+                'reasons' => array_values(array_filter([
+                    $lv !== $rv ? 'value_changed' : null,
+                    $lw !== $rw ? 'weight_changed' : null,
+                ])),
+            ];
+        }
+
+        return $rows;
     }
 
     /** The seven factors in the order the formula states them, and what each is made of. */

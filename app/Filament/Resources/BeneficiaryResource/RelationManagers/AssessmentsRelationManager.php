@@ -9,6 +9,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 /**
  * T-278 — «توضيح كيف تُحفظ الدراسات السابقة والإصدارات والتعديلات ومن
@@ -43,6 +44,16 @@ class AssessmentsRelationManager extends RelationManager
     public static function getPluralModelLabel(): ?string
     {
         return __('sanabel.assessment_history.title');
+    }
+
+    /** The study written just before this one on the same file, if any. */
+    private static function previousOf(Assessment $record): ?Assessment
+    {
+        return Assessment::query()
+            ->where('beneficiary_id', $record->beneficiary_id)
+            ->where('id', '<', $record->getKey())
+            ->orderByDesc('id')
+            ->first();
     }
 
     public function table(Table $table): Table
@@ -119,7 +130,46 @@ class AssessmentsRelationManager extends RelationManager
                             ->columnSpanFull()
                             ->dehydrated(false),
                     ]),
+
+                /*
+                 | T-281 — the common question is «ولماذا تغيّرت عن المرّة
+                 | الماضية», so the study directly before this one is one
+                 | click away. Two arbitrary studies go through the bulk
+                 | action below.
+                 */
+                Tables\Actions\Action::make('compare_previous')
+                    ->label(__('sanabel.study_comparison.action'))
+                    ->icon('heroicon-o-arrows-right-left')
+                    ->visible(fn (Assessment $record) => self::previousOf($record) !== null)
+                    ->modalHeading(__('sanabel.study_comparison.title'))
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel(__('sanabel.actions.close'))
+                    ->modalContent(fn (Assessment $record) => view('filament.forms.study-comparison', [
+                        'comparison' => $record->comparedWith(self::previousOf($record)),
+                    ])),
             ])
-            ->bulkActions([]);
+            ->bulkActions([
+                /*
+                 | T-281 — any two studies on the file, side by side, with the
+                 | reason beside each line that moved. Exactly two: three
+                 | columns is a different screen and nobody asked for it.
+                 */
+                Tables\Actions\BulkAction::make('compare')
+                    ->label(__('sanabel.study_comparison.action_bulk'))
+                    ->icon('heroicon-o-arrows-right-left')
+                    ->deselectRecordsAfterCompletion(false)
+                    ->modalHeading(__('sanabel.study_comparison.title'))
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel(__('sanabel.actions.close'))
+                    ->modalContent(function (Collection $records) {
+                        if ($records->count() !== 2) {
+                            return view('filament.forms.study-comparison-pick-two');
+                        }
+
+                        return view('filament.forms.study-comparison', [
+                            'comparison' => $records->first()->comparedWith($records->last()),
+                        ]);
+                    }),
+            ]);
     }
 }

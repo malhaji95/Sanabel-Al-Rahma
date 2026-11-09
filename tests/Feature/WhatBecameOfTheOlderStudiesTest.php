@@ -109,8 +109,13 @@ it('is a table nobody can write a study into', function () {
     $manager->assertTableActionDoesNotExist('edit')
         ->assertTableActionDoesNotExist('delete');
 
-    expect($manager->instance()->getTable()->getHeaderActions())->toBe([])
-        ->and($manager->instance()->getTable()->getBulkActions())->toBe([]);
+    $table = $manager->instance()->getTable();
+
+    // No create button, and the only bulk action is T-281's comparison, which
+    // reads two studies and writes nothing.
+    expect($table->getHeaderActions())->toBe([])
+        ->and(collect($table->getBulkActions())->map(fn ($a) => $a->getName())->all())
+        ->toBe(['compare']);
 });
 
 it('draws the older study its own explanation, on the study itself', function () {
