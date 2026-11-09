@@ -67,15 +67,25 @@ class AssessmentsRelationManager extends RelationManager
                     }),
 
                 Tables\Columns\TextColumn::make('monthly_need')
-                    ->label(__('sanabel.need_breakdown.monthly_need'))
+                    ->label(__('sanabel.assessment_history.need'))
                     ->numeric(),
 
                 Tables\Columns\TextColumn::make('stable_income')
-                    ->label(__('sanabel.need_breakdown.stable_income'))
+                    ->label(__('sanabel.assessment_history.income'))
                     ->numeric(),
 
+                // The deficit is the need less the stable income: the figure
+                // the funding percentage is taken of. It is not stored,
+                // because it is those two columns and nothing else.
+                Tables\Columns\TextColumn::make('deficit')
+                    ->label(__('sanabel.assessment_history.deficit'))
+                    ->state(fn (Assessment $record) => max(0, $record->monthly_need - $record->stable_income))
+                    ->numeric(),
+
+                // And the gap is what is left of the deficit after this
+                // month's money, which is a different thing again.
                 Tables\Columns\TextColumn::make('gap')
-                    ->label(__('sanabel.need_breakdown.deficit'))
+                    ->label(__('sanabel.assessment_history.gap'))
                     ->numeric(),
 
                 Tables\Columns\TextColumn::make('base_score')
