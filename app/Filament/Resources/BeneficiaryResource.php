@@ -1801,6 +1801,24 @@ class BeneficiaryResource extends Resource
                                 ->numeric()->minValue(0)
                                 ->suffix(Money::short()),
 
+                            // T-280 — what the payment answers. A payment for
+                            // the family's living comes off the month's need;
+                            // one for a named thing does not, because the
+                            // family's living need did not shrink when
+                            // somebody paid their heating bill.
+                            Forms\Components\Select::make('purpose')
+                                ->label(__('sanabel.support_source.purpose'))
+                                ->options(__('sanabel.support_source.purposes'))
+                                ->default('living')
+                                ->helperText(__('sanabel.support_source.purpose_help'))
+                                ->live(),
+
+                            Forms\Components\TextInput::make('purpose_note_ar')
+                                ->label(__('sanabel.support_source.purpose_note_ar'))
+                                ->helperText(__('sanabel.support_source.purpose_note_help'))
+                                ->visible(fn (Forms\Get $get) => $get('purpose') === 'earmarked')
+                                ->required(fn (Forms\Get $get) => $get('purpose') === 'earmarked'),
+
                             // The month this payment answers, and only this
                             // month: it comes off that month's remaining need
                             // the way a partial donation does.

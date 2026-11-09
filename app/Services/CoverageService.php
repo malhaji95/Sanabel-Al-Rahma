@@ -8,6 +8,7 @@ use App\Models\Campaign;
 use App\Models\DonationAllocation;
 use App\Models\Setting;
 use App\Models\SupportSource;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
 /**
@@ -255,10 +256,25 @@ class CoverageService
                 ->sum('amount');
         }
 
-        return (int) SupportSource::query()
+        return (int) self::deductibleSupport()
             ->where('beneficiary_id', $beneficiary->getKey())
             ->whereDate('coverage_month', $month->toDateString())
             ->sum('amount');
+    }
+
+    /**
+     * T-280 — the rows that come off a month's need: a payment towards the
+     * family's living. One earmarked for a named thing is recorded and
+     * deducted from nothing.
+     *
+     * The column is NOT NULL and defaults to `living`, so every row written
+     * before it existed reads as living support and goes on behaving exactly
+     * as it did — which is why this is one comparison and not two (§3: prefer
+     * a database constraint over application logic).
+     */
+    private static function deductibleSupport(): Builder
+    {
+        return SupportSource::query()->where('purpose', '<>', 'earmarked');
     }
 
     /** The same figure for many families in one query, keyed by beneficiary id. */
@@ -282,7 +298,7 @@ class CoverageService
             return [];
         }
 
-        return SupportSource::query()
+        return self::deductibleSupport()
             ->whereIn('beneficiary_id', $ids)
             ->whereDate('coverage_month', $month->toDateString())
             ->groupBy('beneficiary_id')

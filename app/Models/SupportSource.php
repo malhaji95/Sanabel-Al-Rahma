@@ -29,6 +29,17 @@ class SupportSource extends Model
     /** يدفع كل شهر | دفعة لمرة واحدة */
     public const KINDS = ['recurring', 'one_off'];
 
+    /*
+     | T-280 — what the payment answers.
+     |
+     | `living` goes against the family's monthly need, the way a partial
+     | donation does. `earmarked` is a payment for one named thing — a heating
+     | bill, a course fee, a course of medicine — and the family's monthly
+     | living need did not shrink because somebody paid it. It is recorded and
+     | shown and deducted from nothing.
+     */
+    public const PURPOSES = ['living', 'earmarked'];
+
     protected $guarded = ['id'];
 
     protected function casts(): array
@@ -48,6 +59,14 @@ class SupportSource extends Model
     /** A payment the system may deduct: an amount, against a named month. */
     public function isPayment(): bool
     {
-        return $this->amount > 0 && $this->coverage_month !== null;
+        return $this->amount > 0
+            && $this->coverage_month !== null
+            && $this->purpose !== 'earmarked';
+    }
+
+    /** Recorded, shown, and never deducted from the monthly need. */
+    public function isEarmarked(): bool
+    {
+        return $this->purpose === 'earmarked';
     }
 }
