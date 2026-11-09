@@ -12,7 +12,10 @@
     saw draws nothing at all.
 --}}
 @php
-    $assessment = $getRecord()?->currentAssessment();
+    $record = $getRecord();
+    $assessment = $record instanceof \App\Models\Assessment
+        ? $record
+        : $record?->currentAssessment();
     $rows = $assessment?->scoreBreakdown() ?? [];
 @endphp
 

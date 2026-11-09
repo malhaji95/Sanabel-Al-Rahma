@@ -1441,6 +1441,7 @@ return [
 
     'actions' => [
         'send' => 'إرسال',
+        'close' => 'إغلاق',
         'approve' => 'اعتماد',
         'approve_story' => 'اعتماد شرح الحالة',
         // T-163 — اعتماد القصص دفعةً واحدة من القائمة.
@@ -1633,6 +1634,28 @@ return [
     ],
 
     // T-261 — شرح النقطة على شاشة الملف نفسه.
+    /*
+     | T-278 — the history of the studies on one file: what was computed, when,
+     | by whom, and who approved it. The association asked how the old studies
+     | are kept; this is the screen that answers it.
+     */
+    'assessment_history' => [
+        'title' => 'الدراسات السابقة على هذا الملف',
+        'singular' => 'دراسة',
+        'none' => 'لا توجد دراسة محسوبة على هذا الملف بعد.',
+        'computed_at' => 'تاريخ الاحتساب',
+        'status' => 'الحالة',
+        'score' => 'النقطة',
+        'computed_by' => 'من احتسبها',
+        'approved_by' => 'من اعتمدها',
+        'explain' => 'كيف حُسبت هذه الدراسة',
+        'statuses' => [
+            'draft' => 'مسوّدة',
+            'approved' => 'معتمدة',
+            'superseded' => 'مستبدلة',
+        ],
+    ],
+
     'score_breakdown' => [
         'title' => 'كيف احتُسبت هذه النقطة',
         'none' => 'لا توجد دراسة محسوبة لهذا الملف بعد، فلا شيء يُشرح.',

@@ -2979,7 +2979,10 @@ class BeneficiaryResource extends Resource
 
     public static function getRelations(): array
     {
-        return [BeneficiaryResource\RelationManagers\DocumentsRelationManager::class];
+        return [
+            BeneficiaryResource\RelationManagers\DocumentsRelationManager::class,
+            BeneficiaryResource\RelationManagers\AssessmentsRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

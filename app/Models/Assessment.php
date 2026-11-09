@@ -46,6 +46,21 @@ class Assessment extends Model
         return $this->hasMany(Override::class);
     }
 
+    /*
+     | T-278 — «من اعتمدها», 9 November. The two names were stored from the
+     | first migration and no screen ever read them, so the file could not say
+     | who computed a study or who approved it.
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
     /** The score actually used for ranking: an approved, unexpired override wins. */
     /**
      * The score, which is the computed one and no other.

@@ -13,7 +13,13 @@
     saw draws nothing at all.
 --}}
 @php
-    $assessment = $getRecord()?->currentAssessment();
+    // T-278 — the same view serves the family's file, where the record is the
+    // household and the study meant is the one in force, and the history
+    // screen, where the record is one particular study.
+    $record = $getRecord();
+    $assessment = $record instanceof \App\Models\Assessment
+        ? $record
+        : $record?->currentAssessment();
     $breakdown = $assessment?->needBreakdown() ?? [];
     $money = \App\Services\Money::short();
 @endphp
