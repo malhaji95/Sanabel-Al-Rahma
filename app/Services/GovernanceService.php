@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\DB;
  */
 class GovernanceService
 {
+    public function __construct(private readonly GovernanceAccess $access) {}
+
     /** A new draft version, numbered after every version the document ever had. */
     public function draft(GovernanceDocument $document, array $attributes = []): GovernanceDocumentVersion
     {
@@ -65,6 +67,12 @@ class GovernanceService
             throw new \RuntimeException(__('sanabel.governance.only_pending_is_approved'));
         }
 
+        // T-290 — the association names an approver per kind of document, so
+        // approval is not the chairman's alone and not anyone's either.
+        if (! $this->access->allows($actor, $version->document, 'approve')) {
+            throw new \RuntimeException(__('sanabel.governance.not_the_approver'));
+        }
+
         return DB::transaction(function () use ($version, $actor, $note) {
             $document = GovernanceDocument::whereKey($version->document_id)->lockForUpdate()->firstOrFail();
 
@@ -90,6 +98,11 @@ class GovernanceService
     {
         if ($version->status !== 'pending_approval') {
             throw new \RuntimeException(__('sanabel.governance.only_pending_is_approved'));
+        }
+
+        // Refusing is the same authority as approving: whoever may say yes.
+        if (! $this->access->allows($actor, $version->document, 'approve')) {
+            throw new \RuntimeException(__('sanabel.governance.not_the_approver'));
         }
 
         $version->forceFill([

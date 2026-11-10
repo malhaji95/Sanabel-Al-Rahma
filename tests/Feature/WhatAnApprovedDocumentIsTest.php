@@ -1,8 +1,7 @@
 <?php
 
+use App\Models\GovernanceApprovalRoute;
 use App\Models\GovernanceDocument;
-use App\Models\GovernanceDocumentVersion;
-use App\Models\Media;
 use App\Services\GovernanceService;
 
 /*
@@ -18,30 +17,17 @@ beforeEach(function () {
     $this->service = app(GovernanceService::class);
     $this->document = GovernanceDocument::factory()->create();
     $this->actor = userWithRole('executive_director');
+
+    /*
+     | T-290 — approval follows the route the association names for the kind
+     | of document. These tests are about the seal and the versions, so they
+     | name one and get on with it.
+     */
+    GovernanceApprovalRoute::create([
+        'kind' => $this->document->kind,
+        'role_id' => $this->actor->role_id,
+    ]);
 });
-
-/** A version with a file attached, ready to be submitted. */
-function versionOf(GovernanceDocument $document, array $attributes = []): GovernanceDocumentVersion
-{
-    return app(GovernanceService::class)->draft($document, array_merge([
-        'summary_ar' => 'أول إصدار',
-        'media_id' => mediaFor($document),
-    ], $attributes));
-}
-
-/** A cleared file in the private store, owned by the document. */
-function mediaFor(GovernanceDocument $document): int
-{
-    return Media::create([
-        'owner_type' => $document->getMorphClass(),
-        'owner_id' => $document->getKey(),
-        'kind' => 'policy',
-        'storage_key' => 'governance/'.fake()->uuid().'.pdf',
-        'visibility' => 'internal',
-        'mime' => 'application/pdf',
-        'scan_status' => Media::CLEAN,
-    ])->getKey();
-}
 
 it('numbers each version after every version the document ever had', function () {
     $first = versionOf($this->document);

@@ -43,6 +43,12 @@ class GovernanceDocument extends Model
         return $this->hasMany(GovernanceDocumentVersion::class, 'document_id');
     }
 
+    /** T-290 — the exceptions the association wrote for this one document. */
+    public function grants(): HasMany
+    {
+        return $this->hasMany(GovernanceDocumentGrant::class, 'document_id');
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

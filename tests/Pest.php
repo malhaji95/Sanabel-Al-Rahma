@@ -5,8 +5,11 @@ use App\Http\Resources\MaskedCaseResource;
 use App\Models\Beneficiary;
 use App\Models\Donation;
 use App\Models\Donor;
+use App\Models\GovernanceDocument;
+use App\Models\GovernanceDocumentVersion;
 use App\Models\HouseholdMember;
 use App\Models\Housing;
+use App\Models\Media;
 use App\Models\Permission;
 use App\Models\Region;
 use App\Models\RegionRate;
@@ -15,6 +18,7 @@ use App\Models\User;
 use App\Services\AssessmentService;
 use App\Services\BasketService;
 use App\Services\DonationService;
+use App\Services\GovernanceService;
 use Database\Seeders\FundSeeder;
 use Database\Seeders\RoleAndPermissionSeeder;
 use Database\Seeders\SettingSeeder;
@@ -436,4 +440,31 @@ function transferProof(): UploadedFile
     Storage::fake(config('sanabel.media_disk'));
 
     return UploadedFile::fake()->image('receipt.jpg');
+}
+
+/*
+ | T-283 and T-290 — a governed document's version, and the cleared file it
+ | carries. Shared, because more than one test file now builds one.
+ */
+/** A version with a file attached, ready to be submitted. */
+function versionOf(GovernanceDocument $document, array $attributes = []): GovernanceDocumentVersion
+{
+    return app(GovernanceService::class)->draft($document, array_merge([
+        'summary_ar' => 'أول إصدار',
+        'media_id' => mediaFor($document),
+    ], $attributes));
+}
+
+/** A cleared file in the private store, owned by the document. */
+function mediaFor(GovernanceDocument $document): int
+{
+    return Media::create([
+        'owner_type' => $document->getMorphClass(),
+        'owner_id' => $document->getKey(),
+        'kind' => 'policy',
+        'storage_key' => 'governance/'.fake()->uuid().'.pdf',
+        'visibility' => 'internal',
+        'mime' => 'application/pdf',
+        'scan_status' => Media::CLEAN,
+    ])->getKey();
 }
