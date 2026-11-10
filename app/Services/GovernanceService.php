@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\GovernanceAcknowledgement;
 use App\Models\GovernanceDocument;
 use App\Models\GovernanceDocumentVersion;
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -92,6 +94,48 @@ class GovernanceService
 
             return $version->refresh();
         });
+    }
+
+    /**
+     | T-292 — the versions this person is asked to read and has not.
+     |
+     | Only approved versions, only documents that ask for it, and only the
+     | one in force for each: nobody is asked to acknowledge a policy that
+     | has already been replaced.
+     |
+     | @return \Illuminate\Support\Collection<int,GovernanceDocumentVersion>
+     */
+    public function awaitingAcknowledgement(User $user): Collection
+    {
+        $read = GovernanceAcknowledgement::where('user_id', $user->getKey())->pluck('version_id');
+
+        return GovernanceDocumentVersion::query()
+            ->with('document')
+            ->where('status', 'approved')
+            ->whereNotIn('id', $read)
+            ->whereHas('document', fn ($q) => $q->where('requires_acknowledgement', true))
+            ->get()
+            // The association may show a document to everyone who works here;
+            // a person is never asked to read what they may not open.
+            ->filter(fn (GovernanceDocumentVersion $v) => $this->access->allows($user, $v->document, 'view'))
+            ->values();
+    }
+
+    /** Written once per person per version, and never rewritten. */
+    public function acknowledge(GovernanceDocumentVersion $version, User $user): GovernanceAcknowledgement
+    {
+        if ($version->status !== 'approved') {
+            throw new \RuntimeException(__('sanabel.governance.only_approved_is_acknowledged'));
+        }
+
+        if (! $this->access->allows($user, $version->document, 'view')) {
+            throw new \RuntimeException(__('sanabel.governance.cannot_acknowledge_unseen'));
+        }
+
+        return GovernanceAcknowledgement::firstOrCreate(
+            ['version_id' => $version->getKey(), 'user_id' => $user->getKey()],
+            ['version_no' => $version->version_no, 'acknowledged_at' => now()],
+        );
     }
 
     public function reject(GovernanceDocumentVersion $version, User $actor, string $note): GovernanceDocumentVersion
