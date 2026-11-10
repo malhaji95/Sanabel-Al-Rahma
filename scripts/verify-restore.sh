@@ -58,7 +58,13 @@ drop_verify_db() {
 
 FAILED=0
 
-for TABLE in beneficiaries assessments donations donation_allocations audit_log regions users; do
+# T-293 — the governance record joins the list the association asked us to
+# prove restorable: the documents, every version of them, and the book of who
+# opened what. A backup that restores the money and loses the minutes is not
+# a backup of this system.
+for TABLE in beneficiaries assessments donations donation_allocations audit_log regions users \
+             governance_documents governance_document_versions governance_access_logs \
+             governance_acknowledgements need_additions; do
     SOURCE="$(count "$DB_DATABASE" "$TABLE")"
     RESTORED="$(count "$VERIFY_DB" "$TABLE")"
 
