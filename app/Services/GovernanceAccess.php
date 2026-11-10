@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\GovernanceAccessLog;
 use App\Models\GovernanceApprovalRoute;
 use App\Models\GovernanceDocument;
 use App\Models\User;
@@ -42,6 +43,35 @@ class GovernanceAccess
 
     /** Accounts that are served by the system rather than running it. */
     private const OUTSIDE_ROLES = ['donor', 'beneficiary', 'provider', 'association'];
+
+    /**
+     * The question, answered and written down.
+     *
+     * T-291 — every ask for a guarded document is recorded, and a refusal
+     * above all: a read by the right person tells you nothing later, and a
+     * refused one tells you something. Public and internal documents are not
+     * logged, because logging every glance at the staff handbook would bury
+     * the lines that matter.
+     */
+    public function check(?User $user, GovernanceDocument $document, string $ability): bool
+    {
+        $allowed = $this->allows($user, $document, $ability);
+
+        if ($document->isRestricted()) {
+            GovernanceAccessLog::create([
+                'document_id' => $document->getKey(),
+                'version_id' => $document->currentVersion()?->getKey(),
+                'user_id' => $user?->getKey(),
+                'action' => $allowed
+                    ? ($ability === 'download' ? 'downloaded' : 'opened')
+                    : 'refused',
+                'ability' => $ability,
+                'classification' => $document->classification,
+            ]);
+        }
+
+        return $allowed;
+    }
 
     public function allows(?User $user, GovernanceDocument $document, string $ability): bool
     {

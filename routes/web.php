@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\FieldController;
+use App\Http\Controllers\GovernanceDocumentController;
 use App\Http\Controllers\PublicController;
 use App\Http\Middleware\KeepFamiliesOutOfTheDonorPortal;
 use App\Livewire\BrowseCases;
@@ -125,4 +126,13 @@ Route::middleware('auth')->group(function () {
 Route::get('/field/manifest.webmanifest', [FieldController::class, 'manifest'])->name('field.manifest');
 
 // CMS pages last, so a slug never shadows a named route.
+/*
+ | T-291 — a guarded governance document is read through the application so
+ | the permission is checked at the moment of opening and the opening is
+ | written down. Above the catch-all page route, which would swallow it.
+ */
+Route::middleware('auth')
+    ->get('/governance/documents/{version}', [GovernanceDocumentController::class, 'show'])
+    ->name('governance.document');
+
 Route::get('/{slug}', [PublicController::class, 'page'])->name('page');
