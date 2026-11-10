@@ -1215,9 +1215,34 @@ class BeneficiaryResource extends Resource
                             Forms\Components\TextInput::make('amount')
                                 ->label(__('sanabel.income.amount'))
                                 ->numeric()->minValue(0)->required()
+                                ->live(onBlur: true)
                                 ->suffix(Money::short()),
-                            Forms\Components\Toggle::make('is_stable')
-                                ->label(__('sanabel.income.is_stable'))
+
+                            /*
+                             | T-285 — «أُدخل راتب بقيمة 500، ودخل إضافي بقيمة
+                             | 100 … لكن الظاهر أنه تم احتساب 500 فقط»,
+                             | 10 November.
+                             |
+                             | Nothing miscounted. This was a toggle, and a
+                             | toggle starts off: the second row was saved as
+                             | an unstable income, which is never deducted.
+                             | And an off toggle looks the same whether the
+                             | researcher decided «غير ثابت» or never saw it,
+                             | which is exactly the complaint T-156 answered
+                             | for the three tables above — «لا» has to be
+                             | said, not inferred from silence.
+                             |
+                             | So it is a question now, and the row cannot be
+                             | saved until it is answered either way.
+                             */
+                            Forms\Components\Radio::make('is_stable')
+                                ->label(__('sanabel.income.is_stable_q'))
+                                ->boolean(
+                                    trueLabel: __('sanabel.income.stable_yes'),
+                                    falseLabel: __('sanabel.income.stable_no'),
+                                )
+                                ->required()
+                                ->validationMessages(['required' => __('sanabel.beneficiary.answer_required')])
                                 ->helperText(__('sanabel.income.stable_help'))
                                 ->live(),
 
@@ -1226,14 +1251,38 @@ class BeneficiaryResource extends Resource
                             // no recurrence to record. It is documentation:
                             // an unstable income is never deducted from the
                             // need, whatever it says.
+                            //
+                            // T-285 — asked when the answer is «لا», not when
+                            // it is still unanswered: a question nobody has
+                            // reached should not already be refusing the row.
                             Forms\Components\Select::make('recurrence')
                                 ->label(__('sanabel.income.recurrence'))
                                 ->helperText(__('sanabel.income.recurrence_help'))
                                 ->options(__('sanabel.income_recurrence'))
-                                ->visible(fn (Forms\Get $get) => ! $get('is_stable'))
-                                ->required(fn (Forms\Get $get) => ! $get('is_stable'))
+                                ->visible(fn (Forms\Get $get) => self::answeredNotStable($get))
+                                ->required(fn (Forms\Get $get) => self::answeredNotStable($get))
                                 ->columnSpanFull(),
                         ])->columns(3),
+
+                    /*
+                     | T-285 — the figure that would have ended the question
+                     | before it was asked: what this page actually takes off
+                     | the need, counted the way the engine counts it.
+                     |
+                     | A reading of the rows as they stand on screen, so a row
+                     | answered «لا» is visibly absent from it rather than
+                     | silently absent from the assessment weeks later.
+                     */
+                    Forms\Components\Placeholder::make('deducted_total')
+                        ->label(__('sanabel.income.deducted_total'))
+                        ->helperText(__('sanabel.income.deducted_total_help'))
+                        ->visible(fn (Forms\Get $get) => $get('has_income') === 'yes')
+                        ->content(fn (Forms\Get $get) => number_format(
+                            collect($get('incomes') ?? [])
+                                ->filter(fn ($row) => in_array($row['is_stable'] ?? null, [true, 1, '1'], true))
+                                ->sum(fn ($row) => (int) ($row['amount'] ?? 0))
+                        ).' '.Money::short())
+                        ->columnSpanFull(),
                 ]),
 
                 Forms\Components\Wizard\Step::make(__('sanabel.beneficiary.step_housing'))->schema([
@@ -3004,6 +3053,18 @@ class BeneficiaryResource extends Resource
     public static function genderOfRelation(?string $relation): ?string
     {
         return self::RELATION_GENDER[$relation] ?? null;
+    }
+
+    /**
+     | T-285 — «the researcher answered, and the answer was no».
+     |
+     | Livewire hands a radio's state back as 0 or '0' as readily as false,
+     | so the three are one answer here. An unanswered question is null and
+     | is none of them.
+     */
+    public static function answeredNotStable(Forms\Get $get): bool
+    {
+        return in_array($get('is_stable'), [false, 0, '0'], true);
     }
 
     public static function getRelations(): array
