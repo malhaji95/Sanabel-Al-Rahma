@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Beneficiary;
 use App\Models\Role;
 use App\Services\PermissionService;
 
@@ -41,8 +42,8 @@ it('gives the trustees chairman everything, and the technical account no family 
     }
 
     // Unchanged by the new structure: the system administrator stays technical.
-    expect(userWithRole('admin')->can('create', App\Models\Beneficiary::class))->toBeFalse()
-        ->and($chair->can('create', App\Models\Beneficiary::class))->toBeTrue();
+    expect(userWithRole('admin')->can('create', Beneficiary::class))->toBeFalse()
+        ->and($chair->can('create', Beneficiary::class))->toBeTrue();
 });
 
 it('lets the board and the oversight committee look at everything and write nothing', function () {

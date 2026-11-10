@@ -1,5 +1,6 @@
 <?php
 
+use App\Filament\Pages\TwoFactor;
 use App\Services\QrCode;
 use App\Services\Totp;
 
@@ -191,7 +192,7 @@ it('shows the enrolling account a code to photograph, and the key only as a fall
     $admin = userWithRole('admin');
 
     $page = Livewire\Livewire::actingAs($admin)
-        ->test(App\Filament\Pages\TwoFactor::class)
+        ->test(TwoFactor::class)
         ->assertSuccessful();
 
     $secret = $page->get('pendingSecret');

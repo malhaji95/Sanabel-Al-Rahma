@@ -52,7 +52,7 @@ it('answers the gender from the kinship, and says nothing where kinship says not
 });
 
 it('sets the gender on the row when a daughter is chosen', function () {
-    $case = familyOf($this->region, adults: 1, children: 0);
+    $case = familyOf($this->region, adults: 2, children: 0);
 
     [$page, $key] = oneMember($case);
 
@@ -70,7 +70,7 @@ it('offers no «يتيم» among the statuses, and keeps the flag that holds it'
 });
 
 it('asks a student for the stage and the grade, and nothing about a workplace', function () {
-    $case = familyOf($this->region, adults: 1, children: 0);
+    $case = familyOf($this->region, adults: 2, children: 0);
 
     [$page, $key] = oneMember($case);
 
@@ -83,7 +83,7 @@ it('asks a student for the stage and the grade, and nothing about a workplace', 
 });
 
 it('asks an employee and a worker the same two questions', function () {
-    $case = familyOf($this->region, adults: 1, children: 0);
+    $case = familyOf($this->region, adults: 2, children: 0);
 
     foreach (['employee', 'worker'] as $status) {
         [$page, $key] = oneMember($case);
@@ -96,7 +96,7 @@ it('asks an employee and a worker the same two questions', function () {
 });
 
 it('asks a jobseeker what they can do, and a pensioner what they draw', function () {
-    $case = familyOf($this->region, adults: 1, children: 0);
+    $case = familyOf($this->region, adults: 2, children: 0);
 
     [$page, $key] = oneMember($case);
 
@@ -113,7 +113,7 @@ it('asks a jobseeker what they can do, and a pensioner what they draw', function
 });
 
 it('asks about the health of somebody who cannot work, and where the paper goes', function () {
-    $case = familyOf($this->region, adults: 1, children: 0);
+    $case = familyOf($this->region, adults: 2, children: 0);
 
     [$page, $key] = oneMember($case);
 
@@ -128,7 +128,7 @@ it('asks about the health of somebody who cannot work, and where the paper goes'
 });
 
 it('saves what the status asked, and keeps the old toggles honest', function () {
-    $case = familyOf($this->region, adults: 1, children: 0);
+    $case = familyOf($this->region, adults: 2, children: 0);
     $member = $case->members()->first();
 
     $member->forceFill([
@@ -153,7 +153,7 @@ it('saves what the status asked, and keeps the old toggles honest', function () 
 });
 
 it('lets the researcher correct the dependency the rules worked out', function () {
-    $case = familyOf($this->region, adults: 1, children: 0);
+    $case = familyOf($this->region, adults: 2, children: 0);
 
     [$page, $key, $id] = oneMember($case);
 

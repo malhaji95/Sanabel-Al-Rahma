@@ -164,6 +164,10 @@ class BeneficiaryResource extends Resource
 
                     Forms\Components\DatePicker::make('birth_date')
                         ->label(__('sanabel.beneficiary.birth_date'))
+                        // T-284 — it decides which reference value the
+                        // applicant is priced at, so it is not optional.
+                        ->helperText(__('sanabel.beneficiary.birth_date_help'))
+                        ->required()
                         ->maxDate(now()),
 
                     Forms\Components\TextInput::make('phone_encrypted')

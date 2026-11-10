@@ -24,6 +24,10 @@ class BeneficiaryFactory extends Factory
             'family_name' => 'عائلة'.fake()->numberBetween(1, 999),
             'phone_encrypted' => '09'.fake()->numerify('########'),
             'region_id' => Region::factory(),
+            // T-284 — the applicant is counted in the need, so a fixture
+            // applicant has an age like a real one.
+            'birth_date' => now()->subYears(38)->toDateString(),
+            'gender' => 'male',
             'marital_status' => 'married',
             // T-152 — a file that is not single names the spouse, so the
             // factory makes one that the form would accept. Synthetic, like

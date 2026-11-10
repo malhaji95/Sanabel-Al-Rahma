@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\FamilyPortal;
 use App\Models\Complaint;
 use App\Models\Disbursement;
 use App\Services\DisbursementService;
@@ -134,14 +135,14 @@ it('shows a family their own payments and nobody else', function () {
     $theirs = $this->service->confirm($other, 4_000, userWithRole('case_officer'));
 
     Livewire::actingAs($this->account)
-        ->test(App\Livewire\FamilyPortal::class)
+        ->test(FamilyPortal::class)
         ->assertSee($this->family->file_number)
         ->assertSee($mine->transfer_ref)
         ->assertDontSee($other->file_number);
 
     // And an id typed into the page reaches nothing that is not theirs.
     Livewire::actingAs($this->account)
-        ->test(App\Livewire\FamilyPortal::class)
+        ->test(FamilyPortal::class)
         ->call('confirm', $theirs->id)
         ->assertSet('error', __('sanabel.disbursement.not_your_payment'));
 
@@ -152,7 +153,7 @@ it('answers from the page, both ways', function () {
     $payment = ($this->payment)();
 
     Livewire::actingAs($this->account)
-        ->test(App\Livewire\FamilyPortal::class)
+        ->test(FamilyPortal::class)
         ->call('confirm', $payment->id)
         ->assertSet('notice', __('sanabel.disbursement.thanks_confirmed'));
 
@@ -161,7 +162,7 @@ it('answers from the page, both ways', function () {
     $second = ($this->payment)(3_000);
 
     Livewire::actingAs($this->account)
-        ->test(App\Livewire\FamilyPortal::class)
+        ->test(FamilyPortal::class)
         ->set('reason', 'لم يصلني شيء حتى اليوم')
         ->call('dispute', $second->id)
         ->assertSet('notice', __('sanabel.disbursement.dispute_recorded'));

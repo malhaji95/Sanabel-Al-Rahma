@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\HouseholdIncomplete;
 use App\Exceptions\ReferenceValueMissing;
 use App\Models\Beneficiary;
 use App\Models\Livestock;
@@ -46,12 +47,51 @@ class NeedEngine
         $housing = $beneficiary->housing()->first();
         $incomes = $beneficiary->incomes()->get();
 
-        // Each member is counted exactly once, under exactly one person_class.
+        /*
+         | T-284 — «لاحظنا في إحدى التجارب أن مقدم الطلب، وهي أم أرملة، لم
+         | يظهر ضمن حساب الاحتياج», 10 November. They were right.
+         |
+         | The engine counted the rows of `household_members` and nothing
+         | else, and the applicant is not one of those rows: they are the file
+         | itself. So a widowed mother with two children was priced as two
+         | children, and the association was told to send a household of three
+         | what a household of two costs. Nothing anywhere said so.
+         |
+         | The applicant is a person and the file already knows their age, so
+         | they are counted here from the file, once. A member row entered
+         | under «رب الأسرة» is the same person written twice and is skipped,
+         | which is the other half of the same bug.
+         |
+         | And an applicant with no date of birth has no class, so there is no
+         | honest figure to compute: it is named and refused, exactly as a
+         | missing reference value is.
+         */
         $perClass = [];
         $rateSnapshot = [];
         $membersTotal = 0;
+        $incomplete = [];
+
+        if ($beneficiary->birth_date === null) {
+            $incomplete[] = __('sanabel.beneficiary.birth_date');
+        } else {
+            $applicantClass = DependencyRules::personClass(
+                (int) $beneficiary->birth_date->diffInYears(now()),
+                'head',
+            );
+
+            $perClass[$applicantClass] = 1;
+        }
+
+        if ($incomplete !== []) {
+            throw new HouseholdIncomplete($incomplete);
+        }
 
         foreach ($members as $member) {
+            // The applicant, written a second time as a member row.
+            if ($member->relation === 'head') {
+                continue;
+            }
+
             $class = $member->person_class;
             $perClass[$class] = ($perClass[$class] ?? 0) + 1;
         }
@@ -82,7 +122,10 @@ class NeedEngine
         // Rent reference — renting households only.
         $isRenting = (bool) $housing?->isRenting();
         $rent = $isRenting
-            ? $this->references->rentReference($region, $members->count(), $asOf)
+            // T-284 — the whole household, the applicant included. This
+            // read `$members->count()` and put a family of five in the band
+            // of four.
+            ? $this->references->rentReference($region, $beneficiary->householdSize(), $asOf)
             : ['amount' => 0, 'version' => null, 'id' => null, 'band' => null];
 
         if ($isRenting && $rent['amount'] === null) {

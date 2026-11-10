@@ -1,8 +1,13 @@
 <?php
 
+use App\Models\Beneficiary;
+use App\Models\Caregiver;
+use App\Models\Debt;
+use App\Models\HouseholdMember;
 use App\Models\Media;
 use App\Services\AnonymiseService;
 use App\Services\NeedEngine;
+use Illuminate\Support\Facades\DB;
 
 /*
  | T-69 — what the filled dossier showed that the column list did not.
@@ -109,7 +114,7 @@ it('encrypts a married dependant\'s husband identity number too', function () {
 
     expect($member->fresh()->spouse_national_id_encrypted)->toBe('12341234123');
 
-    $stored = \Illuminate\Support\Facades\DB::table('household_members')
+    $stored = DB::table('household_members')
         ->where('id', $member->getKey())->value('spouse_national_id_encrypted');
 
     expect($stored)->not->toContain('12341234123');
@@ -171,10 +176,10 @@ it('has a name for the papers the dossier lists', function () {
 
 it('destroys every one of the new personal columns on anonymisation', function () {
     foreach ([
-        'quarter_ar' => \App\Models\Beneficiary::class,
-        'spouse_national_id_encrypted' => \App\Models\HouseholdMember::class,
-        'nature_ar' => \App\Models\Debt::class,
-        'neighbours_relation' => \App\Models\Caregiver::class,
+        'quarter_ar' => Beneficiary::class,
+        'spouse_national_id_encrypted' => HouseholdMember::class,
+        'nature_ar' => Debt::class,
+        'neighbours_relation' => Caregiver::class,
     ] as $column => $class) {
         $named = array_merge(
             AnonymiseService::CLEARED[$class] ?? [],

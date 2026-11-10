@@ -3,6 +3,7 @@
 use App\Models\AppNotification;
 use App\Models\Disbursement;
 use App\Services\DisbursementService;
+use App\Services\NotificationService;
 
 /*
  | T-215 — «رسالة المستفيد تنرسل بعد تسجيل تنفيذ التحويل وإثباته, مو بمجرد
@@ -93,7 +94,7 @@ it('puts the figure in the message, which is what the household confirms', funct
     expect($message->payload_json)->toHaveKey('amount')
         ->and($message->payload_json['amount'])->toContain(number_format($line->amount))
         // And it reads as a sentence, not as a token left unreplaced.
-        ->and(app(App\Services\NotificationService::class)->render($message)['body'])
+        ->and(app(NotificationService::class)->render($message)['body'])
         ->toContain(number_format($line->amount))
         ->not->toContain(':amount');
 });

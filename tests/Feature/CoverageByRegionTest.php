@@ -66,7 +66,7 @@ it('keeps each region on its own row, neediest first', function () {
     publishedCase($bare);
 
     // Enough to cover the first region's only family outright.
-    giveTo($a, app(CoverageService::class)->needAmount($a) , 'TRX-REG-B', $admin);
+    giveTo($a, app(CoverageService::class)->needAmount($a), 'TRX-REG-B', $admin);
 
     $rows = (new CoverageByRegion)->getRows();
 

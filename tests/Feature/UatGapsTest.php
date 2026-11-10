@@ -5,6 +5,7 @@ use App\Models\Income;
 use App\Models\RegionRate;
 use App\Services\AssessmentService;
 use App\Services\CaseService;
+use App\Services\DuplicateService;
 use App\Services\NeedEngine;
 use App\Services\PermissionService;
 use App\Services\ReferenceImporter;
@@ -193,7 +194,7 @@ it('starts the reassessment clock on the path the panel actually uses', function
  */
 it('tells never assessed apart from assessed and expired', function () {
     $region = regionWithRates();
-    $lookup = fn (string $id) => app(App\Services\DuplicateService::class)->coordinationLookup($id);
+    $lookup = fn (string $id) => app(DuplicateService::class)->coordinationLookup($id);
 
     // Nobody at all.
     expect($lookup('99-does-not-exist')['assessment_state'])->toBe('none');
@@ -205,7 +206,7 @@ it('tells never assessed apart from assessed and expired', function () {
     expect($lookup($nationalId)['assessment_state'])->toBe('none')
         ->and($lookup($nationalId)['registered'])->toBeTrue();
 
-    app(App\Services\AssessmentService::class)->create($case, status: 'approved');
+    app(AssessmentService::class)->create($case, status: 'approved');
     $assessment = $case->assessments()->latest('id')->first();
     $assessment->update(['valid_until' => now()->addMonths(3)]);
 

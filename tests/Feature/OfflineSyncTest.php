@@ -211,12 +211,12 @@ it('carries an optional location, and is complete without one', function () {
 
     $push([])->assertCreated();
 
-    $without = App\Models\Visit::latest('id')->first();
+    $without = Visit::latest('id')->first();
     expect($without->hasLocation())->toBeFalse();
 
     $push(['latitude' => 32.6189, 'longitude' => 36.1021])->assertCreated();
 
-    $with = App\Models\Visit::latest('id')->first();
+    $with = Visit::latest('id')->first();
     expect($with->hasLocation())->toBeTrue()
         ->and((float) $with->latitude)->toBe(32.6189);
 
@@ -226,12 +226,12 @@ it('carries an optional location, and is complete without one', function () {
 
 it('shows a visit location only to the field and the executive line', function () {
     foreach (['delegate', 'area_supervisor', 'executive_director', 'board_director'] as $role) {
-        expect(App\Models\Visit::showsLocationTo(userWithRole($role)))->toBeTrue("{$role} should see it");
+        expect(Visit::showsLocationTo(userWithRole($role)))->toBeTrue("{$role} should see it");
     }
 
     foreach (['donor', 'association', 'service_provider', 'finance', 'content_manager', 'treasurer'] as $role) {
-        expect(App\Models\Visit::showsLocationTo(userWithRole($role)))->toBeFalse("{$role} should not see it");
+        expect(Visit::showsLocationTo(userWithRole($role)))->toBeFalse("{$role} should not see it");
     }
 
-    expect(App\Models\Visit::showsLocationTo(null))->toBeFalse();
+    expect(Visit::showsLocationTo(null))->toBeFalse();
 })->group('AUTH-03');

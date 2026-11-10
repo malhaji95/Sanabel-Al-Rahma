@@ -1,7 +1,5 @@
 <?php
 
-use App\Models\Beneficiary;
-
 /*
  | T-67 — the full-page Livewire routes, opened the way a browser opens them.
  |

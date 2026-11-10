@@ -1,10 +1,13 @@
 <?php
 
+use App\Http\Resources\MaskedCaseResource;
+use App\Livewire\DonorBasket;
 use App\Models\Donor;
 use App\Services\BasketService;
 use App\Services\CoverageService;
 use App\Services\DonationService;
 use App\Services\GeneralMoneyService;
+use Livewire\Livewire;
 
 /*
  | An opportunity can be sent on: it has an address of its own, and the card a
@@ -95,7 +98,7 @@ it('offers the donor the nudge and thanks them in the association voice', functi
 
     $this->actingAs($donor->user);
 
-    \Livewire\Livewire::test(\App\Livewire\DonorBasket::class)
+    Livewire::test(DonorBasket::class)
         ->assertSee(__('sanabel.public.nudge_title'))
         ->set('transactionRef', 'REF-THANKS')
         ->call('recordTransfer')
@@ -145,10 +148,10 @@ it('keeps the category out of the masked payload entirely', function () {
     $case = publishedCase(regionWithRates());
     $case->update(['zakat_category' => 'debtors']);
 
-    $payload = (new App\Http\Resources\MaskedCaseResource($case))->toArray(request());
+    $payload = (new MaskedCaseResource($case))->toArray(request());
 
     expect($payload)->toHaveKey('accepts_zakat')
         ->and($payload['accepts_zakat'])->toBeTrue()
         ->and(json_encode($payload))->not->toContain('debtors')
-        ->and(array_diff(array_keys($payload), App\Http\Resources\MaskedCaseResource::ALLOWED_KEYS))->toBeEmpty();
+        ->and(array_diff(array_keys($payload), MaskedCaseResource::ALLOWED_KEYS))->toBeEmpty();
 });

@@ -3,6 +3,7 @@
 use App\Exceptions\ReservationUnavailable;
 use App\Models\Campaign;
 use App\Models\Delivery;
+use App\Models\Donor;
 use App\Services\BasketService;
 
 /*
@@ -20,7 +21,7 @@ it('refuses a pledge to a campaign that has not opened yet', function () {
         'ends_on' => now()->addMonth(),
     ]);
 
-    $basket = app(BasketService::class)->openFor(\App\Models\Donor::factory()->create());
+    $basket = app(BasketService::class)->openFor(Donor::factory()->create());
 
     expect(fn () => app(BasketService::class)->addCampaign($basket, $campaign, 10_000))
         ->toThrow(ReservationUnavailable::class);
@@ -32,7 +33,7 @@ it('refuses a pledge to a campaign whose end has passed', function () {
         'ends_on' => now()->subDay(),
     ]);
 
-    $basket = app(BasketService::class)->openFor(\App\Models\Donor::factory()->create());
+    $basket = app(BasketService::class)->openFor(Donor::factory()->create());
 
     expect(fn () => app(BasketService::class)->addCampaign($basket, $campaign, 10_000))
         ->toThrow(ReservationUnavailable::class);
@@ -47,7 +48,7 @@ it('keeps a campaign without dates open, as every campaign was before', function
 
     expect($campaign->isOpenToday())->toBeTrue()
         ->and(app(BasketService::class)->addCampaign(
-            app(BasketService::class)->openFor(\App\Models\Donor::factory()->create()), $campaign, 10_000
+            app(BasketService::class)->openFor(Donor::factory()->create()), $campaign, 10_000
         ))->not->toBeNull();
 });
 

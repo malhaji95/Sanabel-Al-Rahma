@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -9,7 +10,7 @@ use Illuminate\Support\Facades\Route;
  | build.
  */
 
-function apiRoutes(): Illuminate\Support\Collection
+function apiRoutes(): Collection
 {
     return collect(Route::getRoutes()->getRoutes())
         ->filter(fn ($route) => str_starts_with($route->uri(), 'api/'))

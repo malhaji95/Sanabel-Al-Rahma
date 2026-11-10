@@ -5,6 +5,7 @@ use App\Livewire\PledgeToCampaign;
 use App\Models\Campaign;
 use App\Models\Donor;
 use App\Services\CoverageService;
+use App\Services\Money;
 
 /*
  | T-201 — «أزل رسالة الخطأ بالأحمر واجعلها فقط بالأخضر مشابهة», 1 November,
@@ -63,7 +64,7 @@ it('keeps the green line, which is what tells the donor what happened', function
         'remaining' => app(CoverageService::class)->remainingNeed($case),
     ])->html())->toContain(e(__('sanabel.funding.good_news_will_complete', [
         'amount' => number_format(app(CoverageService::class)->remainingNeed($case)),
-        'currency' => App\Services\Money::label(),
+        'currency' => Money::label(),
     ])));
 });
 

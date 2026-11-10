@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Collection;
 
 class Beneficiary extends Model
 {
@@ -261,6 +262,28 @@ class Beneficiary extends Model
     public function members(): HasMany
     {
         return $this->hasMany(HouseholdMember::class);
+    }
+
+    /*
+     | T-284 — how many people live here.
+     |
+     | The member rows are everybody but the applicant, who is the file
+     | itself; and a row entered under «رب الأسرة» is the applicant written
+     | twice. Four separate places used to answer this question with
+     | `members()->count()`, and all four were short by one: the rent band,
+     | the overcrowding band, the dependants ratio, and the need itself. So
+     | the question is asked here and nowhere else.
+     */
+    public function countedMembers(): Collection
+    {
+        $members = $this->relationLoaded('members') ? $this->members : $this->members()->get();
+
+        return $members->reject(fn (HouseholdMember $m) => $m->relation === 'head')->values();
+    }
+
+    public function householdSize(): int
+    {
+        return $this->countedMembers()->count() + 1;
     }
 
     /**

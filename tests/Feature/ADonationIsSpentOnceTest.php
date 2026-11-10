@@ -1,11 +1,12 @@
 <?php
 
+use App\Models\DisbursementFunding;
 use App\Models\Donation;
 use App\Models\DonationAllocation;
-use App\Models\DisbursementFunding;
 use App\Models\Donor;
 use App\Models\Fund;
 use App\Services\DisbursementService;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -131,7 +132,7 @@ it('refuses a draw past what the donor gave, at the database itself', function (
     expect(fn () => DB::table('donation_allocations')
         ->where('id', $allocation->id)
         ->update(['drawn_amount' => 10_001]))
-        ->toThrow(Illuminate\Database\QueryException::class);
+        ->toThrow(QueryException::class);
 });
 
 it('refuses a negative draw too', function () {
@@ -140,7 +141,7 @@ it('refuses a negative draw too', function () {
     expect(fn () => DB::table('donation_allocations')
         ->where('id', $allocation->id)
         ->update(['drawn_amount' => -1]))
-        ->toThrow(Illuminate\Database\QueryException::class);
+        ->toThrow(QueryException::class);
 });
 
 it('ignores money that has not been verified yet', function () {

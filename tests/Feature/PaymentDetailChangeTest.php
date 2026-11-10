@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\Beneficiary;
+use App\Filament\Resources\BeneficiaryResource;
 use App\Models\ChangeRequest;
 use App\Services\CaseService;
 
@@ -130,10 +130,10 @@ it('leaves every other field on a live file editable', function () {
 })->group('AUTH-03');
 
 it('locks the wallet field on the screen for a live file and not for a draft', function () {
-    expect(\App\Filament\Resources\BeneficiaryResource::paymentDetailsLocked(publishedCase($this->region)))
+    expect(BeneficiaryResource::paymentDetailsLocked(publishedCase($this->region)))
         ->toBeTrue()
-        ->and(\App\Filament\Resources\BeneficiaryResource::paymentDetailsLocked(
+        ->and(BeneficiaryResource::paymentDetailsLocked(
             familyOf($this->region, adults: 1, children: 1)
         ))->toBeFalse()
-        ->and(\App\Filament\Resources\BeneficiaryResource::paymentDetailsLocked(null))->toBeFalse();
+        ->and(BeneficiaryResource::paymentDetailsLocked(null))->toBeFalse();
 })->group('PAY-05');

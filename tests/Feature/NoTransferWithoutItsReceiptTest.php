@@ -3,6 +3,7 @@
 use App\Models\Disbursement;
 use App\Models\Media;
 use App\Services\DisbursementService;
+use App\Services\MediaService;
 
 /*
  | T-226 — «ما منقبل تحويل بدون مرجع قابل للمطابقة وإثبات تنفيذ»,
@@ -82,7 +83,7 @@ it('keeps the receipt against the line it belongs to, and names who uploaded it'
 it('accepts a receipt that is already stored, for a caller that holds one', function () {
     $line = lineAwaitingTransfer($this->region, $this->officer, $this->treasurer, $this->director);
 
-    $stored = app(App\Services\MediaService::class)
+    $stored = app(MediaService::class)
         ->store(transferProof(), $line, 'transfer_proof', $this->treasurer);
 
     $this->service->execute($line, $this->treasurer, 'TRF-4', proofMediaId: $stored->id);

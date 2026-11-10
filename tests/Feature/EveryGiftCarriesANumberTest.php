@@ -5,6 +5,7 @@ use App\Models\Donation;
 use App\Models\Donor;
 use App\Services\BasketService;
 use App\Services\CoverageService;
+use Illuminate\Database\QueryException;
 
 /*
  | T-203 — «ضروري كل تبرع ياخذ رقم تذكرة أو طلب», 1 November.
@@ -53,7 +54,7 @@ it('refuses to hand the same number to two gifts', function () {
     expect(fn () => Donation::factory()->create([
         'donor_id' => $this->donor->id,
         'reference_no' => $taken,
-    ]))->toThrow(Illuminate\Database\QueryException::class);
+    ]))->toThrow(QueryException::class);
 });
 
 it('shows the donor the number on their own page', function () {

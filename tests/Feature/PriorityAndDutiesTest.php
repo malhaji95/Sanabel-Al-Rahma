@@ -1,10 +1,13 @@
 <?php
 
+use App\Http\Resources\MaskedCaseResource;
 use App\Models\Beneficiary;
 use App\Models\Delivery;
+use App\Models\Donor;
 use App\Models\Setting;
 use App\Services\CoverageService;
 use App\Services\DonationService;
+use App\Services\GeneralMoneyService;
 
 /*
  | Decisions of 4 Oct 2026:
@@ -22,7 +25,7 @@ beforeEach(function () {
 function fund(Beneficiary $case, int $amount): void
 {
     $donation = app(DonationService::class)->record([
-        'donor_id' => \App\Models\Donor::factory()->create()->id,
+        'donor_id' => Donor::factory()->create()->id,
         'amount' => $amount,
         'transaction_ref' => 'REF-'.uniqid(),
         'basket_id' => null,
@@ -32,7 +35,7 @@ function fund(Beneficiary $case, int $amount): void
     $admin = userWithRole('admin');
 
     app(DonationService::class)->verify($donation, $admin->id);
-    app(\App\Services\GeneralMoneyService::class)->allocate(
+    app(GeneralMoneyService::class)->allocate(
         $donation, $case, $amount, app(CoverageService::class)->currentMonth(), $admin
     );
 }
@@ -83,7 +86,7 @@ it('shows the donor the band and keeps urgency as its own marker', function () {
     $case = publishedCase($region, attributes: ['urgency_deadline_at' => now()->addDays(2)]);
     fund($case, (int) round(app(CoverageService::class)->needAmount($case) * 0.8));
 
-    $card = (new \App\Http\Resources\MaskedCaseResource($case->refresh()))->resolve();
+    $card = (new MaskedCaseResource($case->refresh()))->resolve();
 
     expect($card['priority_band'])->toBe('low')
         ->and($card['priority_label'])->toBe('أولوية متدنية')

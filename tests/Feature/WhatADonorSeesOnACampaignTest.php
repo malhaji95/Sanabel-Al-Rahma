@@ -1,11 +1,16 @@
 <?php
 
+use App\Livewire\GeneralDonation;
 use App\Models\Campaign;
 use App\Models\Donation;
 use App\Models\Donor;
 use App\Models\Media;
+use App\Models\Role;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\BasketService;
+use App\Services\DonationService;
+use App\Services\QrCode;
 use Illuminate\Http\UploadedFile;
 use Livewire\Livewire;
 
@@ -26,19 +31,19 @@ beforeEach(function () {
 function fundCampaign(Campaign $campaign, int $amount): void
 {
     $donor = Donor::factory()->create();
-    $basket = app(App\Services\BasketService::class)->openFor($donor);
+    $basket = app(BasketService::class)->openFor($donor);
 
-    app(App\Services\BasketService::class)->addCampaign($basket, $campaign, $amount);
-    app(App\Services\BasketService::class)->reserve($basket);
+    app(BasketService::class)->addCampaign($basket, $campaign, $amount);
+    app(BasketService::class)->reserve($basket);
 
-    $donation = app(App\Services\DonationService::class)->record([
+    $donation = app(DonationService::class)->record([
         'donor_id' => $donor->id,
         'basket_id' => $basket->id,
         'amount' => $amount,
         'transaction_ref' => 'CAMP-BAND-'.$campaign->id.'-'.$amount,
     ]);
 
-    app(App\Services\DonationService::class)->verify($donation, userWithRole('finance')->id);
+    app(DonationService::class)->verify($donation, userWithRole('finance')->id);
 }
 
 function publishedCampaign(array $attributes = []): Campaign
@@ -133,7 +138,7 @@ it('shows the wallet as a code to photograph as well as a number to read', funct
     // The code carries the wallet number and nothing else — no name, no
     // amount, and nothing about the donor. Drawn at the size the screen
     // draws it, so this is the same markup and not merely a similar one.
-    $qr = app(App\Services\QrCode::class)->svg('0933123456', moduleSize: 4);
+    $qr = app(QrCode::class)->svg('0933123456', moduleSize: 4);
 
     expect($body)->toContain($qr);
 });
@@ -141,7 +146,7 @@ it('shows the wallet as a code to photograph as well as a number to read', funct
 it('takes the slip for a transfer, from a guest as readily as from an account', function () {
     Setting::put('platform_wallet', ['number' => '0933123456', 'holder' => 'جمعية سنابل الوفاء']);
 
-    Livewire::test(App\Livewire\GeneralDonation::class)
+    Livewire::test(GeneralDonation::class)
         ->set('name', 'أبو محمد')
         ->set('amount', 50_000)
         ->set('transactionRef', 'REF-WITH-SLIP')
@@ -163,7 +168,7 @@ it('takes the slip for a transfer, from a guest as readily as from an account', 
 });
 
 it('refuses a file that is not an image or a PDF', function () {
-    Livewire::test(App\Livewire\GeneralDonation::class)
+    Livewire::test(GeneralDonation::class)
         ->set('name', 'أبو محمد')
         ->set('amount', 50_000)
         ->set('transactionRef', 'REF-BAD-FILE')
@@ -180,13 +185,13 @@ it('keeps the donation when the slip is the only thing that fails', function () 
      | saying so about; it is not worth losing the record of the transfer.
      */
     $donor = Donor::factory()->create();
-    $user = User::factory()->create(['role_id' => App\Models\Role::where('key', 'donor')->value('id')]);
+    $user = User::factory()->create(['role_id' => Role::where('key', 'donor')->value('id')]);
     $donor->update(['user_id' => $user->id]);
 
     config()->set('sanabel.media.max_bytes', 10);
 
     Livewire::actingAs($user)
-        ->test(App\Livewire\GeneralDonation::class)
+        ->test(GeneralDonation::class)
         ->set('amount', 50_000)
         ->set('transactionRef', 'REF-BIG-SLIP')
         ->set('receipt', UploadedFile::fake()->image('slip.jpg')->size(64))

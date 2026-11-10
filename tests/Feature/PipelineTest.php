@@ -215,7 +215,6 @@ it('clears a historical blob by its content and never by its name', function () 
         expect($exists->successful())->toBeTrue($hash.' is allowed and is not in this repository');
     }
 
-
     // And each one carries its reason above it, not a bare line.
     expect(substr_count($allowed, '#'))->toBeGreaterThan($hashes->count());
 })->skip(fn () => hasShallowHistory(), 'a shallow clone does not carry the blobs the list names')

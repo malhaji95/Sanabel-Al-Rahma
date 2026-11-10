@@ -40,6 +40,8 @@ it('registers a household from the association own screen', function () {
             'family_name' => 'العلي',
             'national_id_encrypted' => '12345678901',
             'gender' => 'male',
+            // T-284 — the applicant is priced by their age.
+            'birth_date' => now()->subYears(38)->toDateString(),
             'region_area_id' => $this->village->parent_id,
             'region_id' => $this->village->id,
             'support_type' => array_key_first(__('sanabel.masked.need_type')),

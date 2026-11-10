@@ -3,8 +3,12 @@
 use App\Filament\Pages\PermissionMatrix;
 use App\Filament\Resources\AuditLogResource;
 use App\Models\AuditLog;
+use App\Models\Beneficiary;
 use App\Models\Permission;
 use App\Models\Role;
+use App\Models\Setting;
+use App\Services\AnonymiseService;
+use App\Services\PermissionService;
 use Filament\Facades\Filament;
 
 /*
@@ -27,7 +31,7 @@ it('opens the audit log and shows what a change looked like before and after', f
         ->get(AuditLogResource::getUrl('index'))
         ->assertSuccessful();
 
-    $entry = AuditLog::where('entity_type', App\Models\Beneficiary::class)
+    $entry = AuditLog::where('entity_type', Beneficiary::class)
         ->where('entity_id', $case->id)
         ->where('action', 'updated')
         ->latest('id')
@@ -82,7 +86,7 @@ it('strikes every write off a role that only looks', function () {
     foreach (['council', 'oversight_director'] as $key) {
         $role = Role::with('permissions')->where('key', $key)->first();
 
-        foreach (Permission::whereIn('key', App\Services\PermissionService::WRITE_PERMISSIONS)->get() as $write) {
+        foreach (Permission::whereIn('key', PermissionService::WRITE_PERMISSIONS)->get() as $write) {
             expect($page->grant($role, $write))->toBeNull("{$key} must show no {$write->key}");
         }
 
@@ -113,14 +117,14 @@ it('opens the matrix to the roles that oversee, and to nobody else', function ()
 it('logs who moved an operational switch, and what it was before', function () {
     $director = userWithRole('executive_director');
 
-    App\Models\Setting::put(App\Services\AnonymiseService::ADMIN_SWITCH, false);
+    Setting::put(AnonymiseService::ADMIN_SWITCH, false);
 
     $this->actingAs($director);
-    App\Models\Setting::put(App\Services\AnonymiseService::ADMIN_SWITCH, true);
+    Setting::put(AnonymiseService::ADMIN_SWITCH, true);
 
-    $row = App\Models\Setting::where('key', App\Services\AnonymiseService::ADMIN_SWITCH)->first();
+    $row = Setting::where('key', AnonymiseService::ADMIN_SWITCH)->first();
 
-    $entry = AuditLog::where('entity_type', App\Models\Setting::class)
+    $entry = AuditLog::where('entity_type', Setting::class)
         ->where('entity_id', $row->getKey())
         ->where('action', 'updated')
         ->latest('id')

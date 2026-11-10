@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\Donor;
+
 /*
  | T-56 — APP-06 and IAM-02 of the security roadmap: the response headers a
  | browser needs in order to defend the page, and a session cookie that cannot
@@ -188,7 +190,7 @@ it('never lets a browser store an internal panel screen', function () {
 
 it('never lets a browser store an API response', function () {
     $donor = userWithRole('donor', ['region_id' => $this->region->id]);
-    App\Models\Donor::factory()->create(['user_id' => $donor->id]);
+    Donor::factory()->create(['user_id' => $donor->id]);
 
     assertNotStored(
         $this->actingAs($donor, 'sanctum')->getJson(route('donor.cases.index', 'monthly')),

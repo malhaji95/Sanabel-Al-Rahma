@@ -37,6 +37,9 @@ function identityOnly(Region $locality): array
         'family_name' => 'العلي',
         'national_id_encrypted' => '12345678901',
         'gender' => 'male',
+        // T-284 — the applicant is priced by their age, so the form asks for
+        // it the way it asks for a member's.
+        'birth_date' => now()->subYears(38)->toDateString(),
         'marital_status' => 'married',
         // T-152 — a file that is not single names the spouse, and T-187 —
         // a married one gives the spouse's number along with the name.

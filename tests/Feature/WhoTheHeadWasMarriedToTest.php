@@ -46,6 +46,8 @@ function fileForm(Region $village, array $overrides = []): array
         'father_name' => 'أب',
         'family_name' => 'اختبار',
         'gender' => 'female',
+        // T-284 — the applicant is priced by their age.
+        'birth_date' => now()->subYears(36)->toDateString(),
         'region_id' => $village->id,
         'support_type' => 'monthly',
     ], gatesAnsweredNo(), $overrides);

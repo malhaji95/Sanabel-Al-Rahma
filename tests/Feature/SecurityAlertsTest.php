@@ -1,10 +1,14 @@
 <?php
 
+use App\Filament\Pages\ManageSettings;
 use App\Models\AppNotification;
 use App\Models\Media;
+use App\Models\Role;
 use App\Models\Setting;
+use App\Models\User;
 use App\Services\SecurityAlerts;
 use Filament\Facades\Filament;
+use Illuminate\Support\Collection;
 
 /*
  | T-95 — OPS-03, and AT-14 of the acceptance list: «محاكاة تسرب أو تغيير
@@ -33,7 +37,7 @@ beforeEach(function () {
     $this->watcher = userWithRole('council');
 });
 
-function alertsFor(int $recipient): \Illuminate\Support\Collection
+function alertsFor(int $recipient): Collection
 {
     return AppNotification::query()
         ->where('recipient_id', $recipient)
@@ -46,7 +50,7 @@ it('tells the oversight accounts when a role is changed on an account', function
 
     $before = alertsFor($this->watcher->id)->count();
 
-    $staff->forceFill(['role_id' => \App\Models\Role::where('key', 'case_officer')->value('id')])->save();
+    $staff->forceFill(['role_id' => Role::where('key', 'case_officer')->value('id')])->save();
 
     expect(alertsFor($this->watcher->id)->count())->toBeGreaterThan($before);
 })->group('OPS-03', 'AUTH-01');
@@ -123,10 +127,10 @@ it('watches the writes that change authority, and names them in one place', func
     // The list is code rather than a setting on purpose: a control the watched
     // party can edit down to nothing is not a control.
     expect(SecurityAlerts::WATCHED)->toHaveKeys([
-        \App\Models\User::class,
-        \App\Models\Setting::class,
+        User::class,
+        Setting::class,
         Media::class,
-    ])->and(SecurityAlerts::WATCHED[\App\Models\User::class])
+    ])->and(SecurityAlerts::WATCHED[User::class])
         ->toContain('role_id')
         ->toContain('is_active')
         ->toContain('password');
@@ -137,7 +141,7 @@ it('offers the association the choice of who hears, on the settings screen', fun
     passTwoFactor();
 
     Livewire\Livewire::actingAs(userWithRole('admin'))
-        ->test(\App\Filament\Pages\ManageSettings::class)
+        ->test(ManageSettings::class)
         ->assertSuccessful()
         ->fillForm(['security_alert_roles' => ['oversight_director']])
         ->call('save');

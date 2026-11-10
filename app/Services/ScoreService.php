@@ -39,8 +39,11 @@ class ScoreService
 
         $f = (float) $need['f'];
         $m = $this->health($health, $monthlyNeed, $w);
-        $v = $this->vulnerability($members, $w);
-        $h = $this->housing($housing, $members->count(), $stableIncome, $need, $w);
+        // T-284 — the household is the member rows and the applicant.
+        $householdSize = $beneficiary->householdSize();
+
+        $v = $this->vulnerability($members, $householdSize, $w);
+        $h = $this->housing($housing, $householdSize, $stableIncome, $need, $w);
         $u = $this->urgency($beneficiary, $asOf);
         $d = $this->deprivation($beneficiary, $monthlyNeed);
         $b = $this->debt($beneficiary, $monthlyNeed);
@@ -82,13 +85,10 @@ class ScoreService
     }
 
     /** V = min(100, 60×dependents_ratio + 15×single_caregiver + 15×orphans + 10×unsupported_elderly) */
-    private function vulnerability($members, array $w): float
+    private function vulnerability($members, int $householdSize, array $w): float
     {
-        $total = $members->count();
-
-        if ($total === 0) {
-            return 0.0;
-        }
+        // The applicant is one of the people the dependants are a share of.
+        $total = max(1, $householdSize);
 
         $dependentsRatio = $members->where('dependent', true)->count() / $total;
 

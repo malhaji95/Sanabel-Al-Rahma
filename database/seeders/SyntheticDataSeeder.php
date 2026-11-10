@@ -202,6 +202,13 @@ class SyntheticDataSeeder extends Seeder
             // T-101 — the donor card now says who the applicant is and
             // whether they smoke, so the demo has to have an answer.
             'gender' => $index % 4 === 0 ? 'female' : 'male',
+            /*
+             | T-284 — the applicant is counted in the need like anybody else,
+             | so the demo gives them an age. Spread over working ages rather
+             | than fixed: the guides photograph a list, and a column of
+             | identical birthdays reads as a bug.
+             */
+            'birth_date' => now()->subYears(26 + ($index % 34))->toDateString(),
             'smokes' => $index % 5 === 0,
             'support_type' => $index % 3 === 0 ? 'one_time' : 'monthly',
             'status' => 'draft',

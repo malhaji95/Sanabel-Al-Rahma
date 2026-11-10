@@ -87,7 +87,13 @@ function familyOf(Region $region, int $adults = 2, int $children = 3, array $att
         array_merge(['region_id' => placeIn($region, 'village')->id], $attributes)
     );
 
-    HouseholdMember::factory()->count($adults)->adult()->create(['beneficiary_id' => $beneficiary->id]);
+    /*
+     | T-284 — the applicant is one of the adults, because the engine now
+     | counts them from the file. So `$adults` keeps meaning what it says —
+     | how many adults live here — and the rows are the ones beside the
+     | applicant. Every figure a test asserts stays what it was.
+     */
+    HouseholdMember::factory()->count(max(0, $adults - 1))->adult()->create(['beneficiary_id' => $beneficiary->id]);
     HouseholdMember::factory()->count($children)->child()->create(['beneficiary_id' => $beneficiary->id]);
     Housing::factory()->create(['beneficiary_id' => $beneficiary->id]);
 

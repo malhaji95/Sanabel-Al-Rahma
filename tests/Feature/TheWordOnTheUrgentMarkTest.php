@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Resources\MaskedCaseResource;
+use App\Models\Region;
 
 /*
  | T-192 — «ظهر على الحالة المضافة جديد: حالة طارئة. هذا شلون ظهرت على أي
@@ -18,7 +19,7 @@ beforeEach(function () {
 });
 
 /** The words a donor reads on a file whose deadline is this far off. */
-function markOn(\App\Models\Region $region, ?string $deadline): array
+function markOn(Region $region, ?string $deadline): array
 {
     $case = publishedCase($region);
     $case->forceFill(['urgency_deadline_at' => $deadline])->save();

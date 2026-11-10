@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Redis;
+use Symfony\Component\Process\Process;
 
 /*
  | T-68 — Redis, a keyspace each.
@@ -23,7 +24,7 @@ function redisReachable(): bool
         Redis::connection('default')->ping();
 
         return true;
-    } catch (\Throwable) {
+    } catch (Throwable) {
         return false;
     }
 }
@@ -46,7 +47,7 @@ it('points the session at its own keyspace the moment redis is chosen, with noth
      | environment is read once per boot.
      */
     $run = function (array $env) {
-        $process = new \Symfony\Component\Process\Process(
+        $process = new Process(
             [PHP_BINARY, 'artisan', 'tinker', '--execute=echo var_export(config("session.connection"), true);'],
             base_path(),
             $env + ['PATH' => getenv('PATH')],

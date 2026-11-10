@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Resources\MaskedCaseResource;
 use App\Models\Media;
 use App\Services\MediaService;
 use Illuminate\Http\UploadedFile;
@@ -52,7 +53,7 @@ it('keeps a paper off the public disk and behind a link that expires', function 
     Storage::disk('public')->assertMissing($media->storage_key);
 
     // And nothing about it reaches a donor.
-    $payload = (new App\Http\Resources\MaskedCaseResource($case))->toArray(request());
+    $payload = (new MaskedCaseResource($case))->toArray(request());
 
     expect(json_encode($payload))->not->toContain($media->storage_key)
         ->and(array_keys($payload))->not->toContain('documents');
