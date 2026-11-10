@@ -1,5 +1,6 @@
 <?php
 
+use App\Filament\Resources\BeneficiaryResource;
 use App\Models\Income;
 use App\Services\NeedEngine;
 
@@ -50,9 +51,19 @@ it('does not deduct an unstable income whatever its recurrence', function () {
 });
 
 it('asks for a recurrence only when the income is unstable', function () {
-    $form = file_get_contents(app_path('Filament/Resources/BeneficiaryResource.php'));
+    /*
+     | T-285 — this used to read the resource file and assert the exact text
+     | of the closure, so it broke the moment the closure was given a name,
+     | without anything on any screen changing. The rule it was written to
+     | hold is the one asserted now: the recurrence is asked of an income
+     | answered «لا», and of no other.
+     */
+    $answered = fn (mixed $state) => BeneficiaryResource::answeredNotStable($state);
 
-    expect($form)->toContain("Select::make('recurrence')")
-        ->and($form)->toContain("->visible(fn (Forms\\Get \$get) => ! \$get('is_stable'))")
-        ->and($form)->toContain("->required(fn (Forms\\Get \$get) => ! \$get('is_stable'))");
+    expect($answered('0'))->toBeTrue()
+        ->and($answered(false))->toBeTrue()
+        // Unanswered is not an answer of «لا»: a question nobody has reached
+        // should not already be refusing the row.
+        ->and($answered(null))->toBeFalse()
+        ->and($answered('1'))->toBeFalse();
 });

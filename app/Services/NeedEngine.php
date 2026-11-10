@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\HouseholdIncomplete;
 use App\Exceptions\ReferenceValueMissing;
 use App\Models\Beneficiary;
+use App\Models\Income;
 use App\Models\Livestock;
 use App\Models\Scopes\RegionScope;
 use Carbon\CarbonInterface;
@@ -171,7 +172,12 @@ class NeedEngine
             + (int) $beneficiary->spouse_work_income
             + (int) $members->sum('work_income');
 
-        $stableIncome = (int) $incomes->where('is_stable', true)->sum('amount')
+        /*
+         | T-287 — each row says what it puts into a month: the amount if it
+         | is steady, its yearly total over twelve if it is seasonal and
+         | counted on, and nothing if it is neither.
+         */
+        $stableIncome = (int) $incomes->sum(fn (Income $income) => $income->monthlyContribution())
             + $livestockIncome
             + $personWorkIncome;
         // This month's money against this month's need (approved 24 Sep 2026).

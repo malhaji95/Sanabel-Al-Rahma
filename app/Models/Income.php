@@ -13,12 +13,41 @@ class Income extends Model
 {
     use Auditable, HasFactory, SoftDeletes, TracksCreator;
 
-    protected $fillable = ['beneficiary_id', 'source_type', 'amount', 'currency', 'is_stable', 'recurrence', 'created_by'];
+    protected $fillable = ['beneficiary_id', 'source_type', 'amount', 'currency', 'is_stable', 'recurrence', 'times_per_year', 'created_by'];
 
-    protected $casts = ['is_stable' => 'boolean', 'amount' => 'integer'];
+    protected $casts = ['is_stable' => 'boolean', 'amount' => 'integer', 'times_per_year' => 'integer'];
 
     public function beneficiary(): BelongsTo
     {
         return $this->belongsTo(Beneficiary::class);
+    }
+
+    /*
+     | T-287 — what this row puts into the household's month.
+     |
+     | Three answers, which are the four the association named:
+     |
+     |   steady          — the amount, every month.
+     |   not steady, but
+     |   counted on      — the amount times how often a year, over twelve.
+     |   not steady and
+     |   not counted on  — nothing. It is on the file and deducted from no
+     |                     month, which is where a one-off gift and work that
+     |                     may not come both belong.
+     |
+     | The division is done here rather than in the researcher's head, which
+     | is the whole point: a sum nobody can see is a sum nobody can check.
+     */
+    public function monthlyContribution(): int
+    {
+        if ($this->is_stable) {
+            return (int) $this->amount;
+        }
+
+        if (($this->times_per_year ?? 0) < 1) {
+            return 0;
+        }
+
+        return (int) floor((int) $this->amount * (int) $this->times_per_year / 12);
     }
 }

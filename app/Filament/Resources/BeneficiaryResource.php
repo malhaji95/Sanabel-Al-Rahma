@@ -6,6 +6,7 @@ use App\Filament\Resources\BeneficiaryResource\Pages;
 use App\Models\Beneficiary;
 use App\Models\ChangeRequest;
 use App\Models\HouseholdMember;
+use App\Models\Income;
 use App\Models\Region;
 use App\Models\Scopes\RegionScope;
 use App\Models\User;
@@ -1259,8 +1260,27 @@ class BeneficiaryResource extends Resource
                                 ->label(__('sanabel.income.recurrence'))
                                 ->helperText(__('sanabel.income.recurrence_help'))
                                 ->options(__('sanabel.income_recurrence'))
-                                ->visible(fn (Forms\Get $get) => self::answeredNotStable($get))
-                                ->required(fn (Forms\Get $get) => self::answeredNotStable($get))
+                                ->visible(fn (Forms\Get $get) => self::answeredNotStable($get('is_stable')))
+                                ->required(fn (Forms\Get $get) => self::answeredNotStable($get('is_stable'))),
+
+                            /*
+                             | T-287 — «كيف يُحول الدخل الموسمي إلى متوسط
+                             | شهري», 10 November.
+                             |
+                             | Asked of an unsteady income, and optional on
+                             | purpose: land rent collected once a year is
+                             | money the household lives on, and a gift that
+                             | came once is not. The researcher who saw the
+                             | family says which, and leaving it empty keeps
+                             | today's behaviour — documented, deducted from
+                             | nothing.
+                             */
+                            Forms\Components\TextInput::make('times_per_year')
+                                ->label(__('sanabel.income.times_per_year'))
+                                ->helperText(__('sanabel.income.times_per_year_help'))
+                                ->numeric()->minValue(1)->maxValue(12)
+                                ->visible(fn (Forms\Get $get) => self::answeredNotStable($get('is_stable')))
+                                ->live(onBlur: true)
                                 ->columnSpanFull(),
                         ])->columns(3),
 
@@ -1278,9 +1298,11 @@ class BeneficiaryResource extends Resource
                         ->helperText(__('sanabel.income.deducted_total_help'))
                         ->visible(fn (Forms\Get $get) => $get('has_income') === 'yes')
                         ->content(fn (Forms\Get $get) => number_format(
-                            collect($get('incomes') ?? [])
-                                ->filter(fn ($row) => in_array($row['is_stable'] ?? null, [true, 1, '1'], true))
-                                ->sum(fn ($row) => (int) ($row['amount'] ?? 0))
+                            collect($get('incomes') ?? [])->sum(fn ($row) => (new Income([
+                                'amount' => (int) ($row['amount'] ?? 0),
+                                'is_stable' => in_array($row['is_stable'] ?? null, [true, 1, '1'], true),
+                                'times_per_year' => $row['times_per_year'] ?? null,
+                            ]))->monthlyContribution())
                         ).' '.Money::short())
                         ->columnSpanFull(),
                 ]),
@@ -3062,9 +3084,9 @@ class BeneficiaryResource extends Resource
      | so the three are one answer here. An unanswered question is null and
      | is none of them.
      */
-    public static function answeredNotStable(Forms\Get $get): bool
+    public static function answeredNotStable(mixed $state): bool
     {
-        return in_array($get('is_stable'), [false, 0, '0'], true);
+        return in_array($state, [false, 0, '0'], true);
     }
 
     public static function getRelations(): array
