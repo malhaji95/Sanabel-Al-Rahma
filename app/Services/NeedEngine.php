@@ -7,6 +7,7 @@ use App\Exceptions\ReferenceValueMissing;
 use App\Models\Beneficiary;
 use App\Models\Income;
 use App\Models\Livestock;
+use App\Models\NeedAddition;
 use App\Models\Scopes\RegionScope;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -137,7 +138,18 @@ class NeedEngine
             throw new ReferenceValueMissing($missing, $region->name_ar);
         }
 
-        $monthlyNeed = $membersTotal + $adjustmentsTotal + $rent['amount'] + $manualAdjustment;
+        /*
+         | T-289 — amounts the association approved towards a named cost, for
+         | the months they approved them for. Never derived from the medical
+         | cost or the debt on the file: those raise the score and add no
+         | money, which is the separation the association asked for. These
+         | exist only because somebody decided they should.
+         */
+        $additions = $beneficiary->needAdditions()->inForce($asOf)->get();
+        $additionsTotal = (int) $additions->sum('amount');
+
+        $monthlyNeed = $membersTotal + $adjustmentsTotal + $rent['amount']
+            + $additionsTotal + $manualAdjustment;
 
         // A steady net income from animals is income, a seasonal one is not
         // (approved 11 Oct 2026). It is read here rather than mirrored into an
@@ -208,6 +220,17 @@ class NeedEngine
                 'adjustments' => $adjustments,
                 'rent_reference' => $rent,
                 'manual_adjustment' => $manualAdjustment,
+                // Each one on its own line, so the breakdown can say what the
+                // money was for and who approved it (rule 8: frozen here).
+                'need_additions' => $additions->map(fn (NeedAddition $a) => [
+                    'id' => $a->getKey(),
+                    'kind' => $a->kind,
+                    'amount' => (int) $a->amount,
+                    'reason_ar' => $a->reason_ar,
+                    'approved_by' => $a->approver?->name,
+                    'approved_at' => $a->approved_at?->toIso8601String(),
+                ])->values()->all(),
+                'need_additions_total' => $additionsTotal,
                 'is_renting' => $isRenting,
                 'members_total' => $membersTotal,
                 'adjustments_total' => $adjustmentsTotal,

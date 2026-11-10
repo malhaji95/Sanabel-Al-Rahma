@@ -180,6 +180,25 @@ class Assessment extends Model
             'band' => $snapshot['rent_reference']['band'] ?? null,
         ];
 
+        /*
+         | T-289 — one line per approved addition, with what it was for and
+         | who approved it. Read from the study's own snapshot like the rest,
+         | so the row can be ended tomorrow and the study still says why the
+         | money was in it.
+         */
+        foreach ($snapshot['need_additions'] ?? [] as $addition) {
+            $need[] = [
+                'kind' => 'addition',
+                'key' => $addition['kind'] ?? 'other',
+                'count' => 1,
+                'unit' => (int) ($addition['amount'] ?? 0),
+                'version' => null,
+                'total' => (int) ($addition['amount'] ?? 0),
+                'reason_ar' => $addition['reason_ar'] ?? null,
+                'approved_by' => $addition['approved_by'] ?? null,
+            ];
+        }
+
         if ((int) ($snapshot['manual_adjustment'] ?? 0) !== 0) {
             $need[] = [
                 'kind' => 'manual',

@@ -3094,6 +3094,7 @@ class BeneficiaryResource extends Resource
         return [
             BeneficiaryResource\RelationManagers\DocumentsRelationManager::class,
             BeneficiaryResource\RelationManagers\AssessmentsRelationManager::class,
+            BeneficiaryResource\RelationManagers\NeedAdditionsRelationManager::class,
         ];
     }
 

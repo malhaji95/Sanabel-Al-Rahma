@@ -57,6 +57,7 @@
                                             : $row['key'] }}
                                     @break
                                     @case('rent') {{ __('sanabel.rent_reference.amount') }} @break
+                                    @case('addition') {{ __('sanabel.need_addition.kinds.'.$row['key']) }} @break
                                     @default {{ __('sanabel.need_breakdown.sources.manual') }}
                                 @endswitch
                             </div>
@@ -67,6 +68,15 @@
                                     · {{ __('sanabel.need_breakdown.version') }} {{ $row['version'] }}
                                 @endif
                             </div>
+
+                            @if ($row['kind'] === 'addition')
+                                <div style="opacity: 0.75;">{{ $row['reason_ar'] }}</div>
+                                @if ($row['approved_by'])
+                                    <div style="opacity: 0.75;">
+                                        {{ __('sanabel.need_addition.approved_by') }}: {{ $row['approved_by'] }}
+                                    </div>
+                                @endif
+                            @endif
 
                             @if ($row['kind'] === 'rent')
                                 <div style="opacity: 0.75;">

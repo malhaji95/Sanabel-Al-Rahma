@@ -264,6 +264,12 @@ class Beneficiary extends Model
         return $this->hasMany(HouseholdMember::class);
     }
 
+    /** T-289 — amounts the association approved towards a named cost. */
+    public function needAdditions(): HasMany
+    {
+        return $this->hasMany(NeedAddition::class);
+    }
+
     /*
      | T-284 — how many people live here.
      |
