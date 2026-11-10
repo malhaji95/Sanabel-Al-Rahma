@@ -155,6 +155,8 @@ class Assessment extends Model
                 'unit' => (int) ($adjustment['amount'] ?? 0),
                 'version' => $adjustment['version'] ?? null,
                 'total' => (int) ($adjustment['amount'] ?? 0),
+                // T-288 — switched off on the day, not merely unset.
+                'stopped' => (bool) ($adjustment['stopped'] ?? false),
             ];
         }
 
@@ -486,6 +488,8 @@ class Assessment extends Model
                 'value' => round($value, 2),
                 'weight' => $weight,
                 'share' => round($weight * $value, 2),
+                // T-288 — switched off by the association, not merely nought.
+                'stopped' => in_array($key, $this->snapshot_json['weights_stopped'] ?? [], true),
                 'parts' => array_values(array_map(
                     fn (string $part) => ['key' => $part, 'weight' => (float) ($weights[$part] ?? 0)],
                     $parts,

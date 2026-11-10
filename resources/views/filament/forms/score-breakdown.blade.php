@@ -42,6 +42,11 @@
                         <td style="padding: 0.4rem 0.25rem;">
                             <div style="font-weight: 600;">
                                 {{ __('sanabel.weight.factors.'.$row['key']) }}
+                                @if ($row['stopped'] ?? false)
+                                    <span style="font-weight: 600; color: #9B2C2C;">
+                                        — {{ __('sanabel.weight.stopped_note') }}
+                                    </span>
+                                @endif
                                 <span style="opacity: 0.55; font-weight: 400;">({{ $row['key'] }})</span>
                             </div>
                             <div style="opacity: 0.75;">{{ __('sanabel.score_breakdown.about.'.$row['key']) }}</div>

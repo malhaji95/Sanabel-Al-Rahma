@@ -69,6 +69,12 @@
                                 @endif
                             </div>
 
+                            @if (($row['stopped'] ?? false) && $row['kind'] === 'adjustment')
+                                <div style="font-weight: 600; color: #9B2C2C;">
+                                    {{ __('sanabel.weight.stopped_note') }}
+                                </div>
+                            @endif
+
                             @if ($row['kind'] === 'addition')
                                 <div style="opacity: 0.75;">{{ $row['reason_ar'] }}</div>
                                 @if ($row['approved_by'])

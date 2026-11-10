@@ -40,6 +40,12 @@ class ScoringWeightResource extends Resource
                 ->options(__('sanabel.weight.factors'))
                 ->searchable()->required(),
             Forms\Components\TextInput::make('weight')->label(__('sanabel.weight.value'))->numeric()->required(),
+            // T-288 — off is a decision the association can state and read
+            // back; a nought is a value nobody filled in.
+            Forms\Components\Toggle::make('is_active')
+                ->label(__('sanabel.weight.is_active'))
+                ->helperText(__('sanabel.weight.is_active_help'))
+                ->default(true),
             Forms\Components\DatePicker::make('effective_from')->label(__('sanabel.reference.effective_from'))->required(),
             Forms\Components\TextInput::make('version')->label(__('sanabel.reference.version'))->numeric()->minValue(0)->required(),
         ])->columns(2);
@@ -56,6 +62,9 @@ class ScoringWeightResource extends Resource
                     ->description(fn (ScoringWeight $record) => $record->factor_key)
                     ->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('weight')->label(__('sanabel.weight.value'))->numeric()->sortable(),
+                Tables\Columns\IconColumn::make('is_active')
+                    ->label(__('sanabel.weight.is_active'))
+                    ->boolean(),
                 Tables\Columns\TextColumn::make('effective_from')->label(__('sanabel.reference.effective_from'))->date()->sortable(),
                 Tables\Columns\TextColumn::make('version')->label(__('sanabel.reference.version'))->numeric()->sortable(),
             ])

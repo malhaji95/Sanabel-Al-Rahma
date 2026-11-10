@@ -16,10 +16,10 @@ class AdjustmentCatalog extends Model
     protected $table = 'adjustments_catalog';
 
     protected $fillable = [
-        'key', 'name_ar', 'amount', 'currency', 'region_id', 'effective_from', 'version', 'created_by',
+        'key', 'name_ar', 'amount', 'is_active', 'currency', 'region_id', 'effective_from', 'version', 'created_by',
     ];
 
-    protected $casts = ['effective_from' => 'date', 'amount' => 'integer', 'version' => 'integer'];
+    protected $casts = ['effective_from' => 'date', 'amount' => 'integer', 'version' => 'integer', 'is_active' => 'boolean'];
 
     /*
      | T-286 — «ظهر خطأ (تعذر إتمام الطلب) أثناء تعديل أحد البنود المرجعية»,

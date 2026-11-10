@@ -56,7 +56,14 @@ class ScoreService
         return [
             'base_score' => round(min(100, max(0, $base)), 2),
             'factors' => array_map(fn ($x) => round($x, 4), array_change_key_case($factors, CASE_UPPER)),
-            'snapshot' => ['weights' => $w, 'weight_versions' => $weights['versions']],
+            'snapshot' => [
+                'weights' => $w,
+                'weight_versions' => $weights['versions'],
+                // T-288 — the factors the association had switched off on
+                // the day, so an old study says «موقوف» rather than showing
+                // a nought nobody can account for.
+                'weights_stopped' => $weights['stopped'] ?? [],
+            ],
         ];
     }
 

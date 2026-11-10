@@ -111,19 +111,29 @@ class ReferenceResolver
             // Unlike a rate or a rent, a missing adjustment really is zero:
             // the decision sheet says the condition exists but its money value
             // "لا يفعّل الأثر المالي حتى تحديدها" — so it simply does not apply.
+            // T-288 — a stopped item is worth nothing and says so, rather
+            // than looking like an amount nobody has set yet.
             $out[$key] = $row
-                ? ['amount' => (int) $row->amount, 'version' => (int) $row->version, 'id' => $row->id]
-                : ['amount' => 0, 'version' => null, 'id' => null];
+                ? [
+                    'amount' => $row->is_active === false ? 0 : (int) $row->amount,
+                    'version' => (int) $row->version,
+                    'id' => $row->id,
+                    'stopped' => $row->is_active === false,
+                ]
+                : ['amount' => 0, 'version' => null, 'id' => null, 'stopped' => false];
         }
 
         return $out;
     }
 
-    /** @return array{values:array<string,float>,versions:array<string,int>} */
+    /**
+     * @return array{values:array<string,float>,versions:array<string,int>,stopped:array<int,string>}
+     */
     public function weights(CarbonInterface $asOf): array
     {
         $values = self::DEFAULT_WEIGHTS;
         $versions = [];
+        $stopped = [];
 
         $rows = ScoringWeight::withoutGlobalScope(RegionScope::class)
             ->whereDate('effective_from', '<=', $asOf)
@@ -132,11 +142,30 @@ class ReferenceResolver
             ->get();
 
         foreach ($rows as $row) {
+            /*
+             | T-288 — a weight the association switched off is nought, and
+             | not the default it would fall back to. Falling back would make
+             | switching one off raise it to whatever we had proposed, which
+             | is the opposite of what the switch says.
+             |
+             | It is named as stopped as well as counted as nought, because a
+             | nought on a screen reads as a value nobody filled in, and this
+             | one is a decision.
+             */
+            if ($row->is_active === false) {
+                $values[$row->factor_key] = 0.0;
+                $versions[$row->factor_key] = (int) $row->version;
+                $stopped[] = $row->factor_key;
+
+                continue;
+            }
+
             $values[$row->factor_key] = (float) $row->weight;
             $versions[$row->factor_key] = (int) $row->version;
+            $stopped = array_values(array_diff($stopped, [$row->factor_key]));
         }
 
-        return ['values' => $values, 'versions' => $versions];
+        return ['values' => $values, 'versions' => $versions, 'stopped' => array_values(array_unique($stopped))];
     }
 
     public static function familySizeBand(int $size): string

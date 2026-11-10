@@ -38,6 +38,11 @@ class AdjustmentCatalogResource extends Resource
             Forms\Components\TextInput::make('key')->label(__('sanabel.adjustment.key'))->required(),
             Forms\Components\TextInput::make('name_ar')->label(__('sanabel.adjustment.name'))->required(),
             Forms\Components\TextInput::make('amount')->label(__('sanabel.adjustment.amount'))->numeric()->minValue(0)->required()->suffix(Money::short()),
+            // T-288 — the same switch as on a weight, for the same reason.
+            Forms\Components\Toggle::make('is_active')
+                ->label(__('sanabel.weight.is_active'))
+                ->helperText(__('sanabel.weight.is_active_help'))
+                ->default(true),
             Forms\Components\Select::make('region_id')->label(__('sanabel.beneficiary.region'))->relationship('region', 'name_ar')->searchable()->preload(),
             Forms\Components\DatePicker::make('effective_from')->label(__('sanabel.reference.effective_from'))->required(),
             Forms\Components\TextInput::make('version')->label(__('sanabel.reference.version'))->numeric()->minValue(0)->required(),
@@ -51,6 +56,9 @@ class AdjustmentCatalogResource extends Resource
                 Tables\Columns\TextColumn::make('key')->label(__('sanabel.adjustment.key'))->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('name_ar')->label(__('sanabel.adjustment.name'))->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('amount')->label(__('sanabel.adjustment.amount'))->numeric()->sortable(),
+                Tables\Columns\IconColumn::make('is_active')
+                    ->label(__('sanabel.weight.is_active'))
+                    ->boolean(),
                 Tables\Columns\TextColumn::make('region.name_ar')->label(__('sanabel.beneficiary.region'))->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('effective_from')->label(__('sanabel.reference.effective_from'))->date()->sortable(),
             ])
