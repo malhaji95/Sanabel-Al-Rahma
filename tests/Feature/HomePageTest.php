@@ -102,8 +102,13 @@ it('draws a card with no artwork as its icon rather than an empty frame', functi
         ->and($tile->imageUrl())->toBeNull();
 
     // The icon's own artwork, inlined — an <img> could not take the brand
-    // colour, which is why the component inlines it.
-    $this->get('/')->assertOk()->assertSee('<title>book</title>', false);
+    // colour, which is why the component inlines it. T-294 — its drawing is
+    // what proves it, not its <title>: that is the drawing tool's English
+    // word for it and the component now strips it.
+    $body = $this->get('/')->assertOk()->getContent();
+
+    expect($body)->toContain('M12 5C8 2 3 3 2 4v16c5-2 8-1 10 1 3-2 6-3 10-1V4c-5-2-8-1-10 1v16')
+        ->and($body)->not->toContain('<title>book</title>');
 });
 
 it('never puts a family photograph on the page, whatever the design shows', function () {
@@ -428,4 +433,26 @@ it('keeps the banner off most of a phone screen, and within the pack sizes above
         ->and($body)->not->toContain('h-[260px]')
         // Two tiles to a row on a phone.
         ->and($body)->toContain('grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4');
+});
+
+it('says once what the page is, and says it in Arabic', function () {
+    /*
+     | T-294 — two things the review found on the published page.
+     |
+     | The hero drew a heading per slide, so a page with five banners told a
+     | reader moving by heading five different titles for one page, and the
+     | campaign card called its own title the page's heading, on the home page
+     | and again on the campaigns page under that page's heading.
+     |
+     | And every icon shipped with the drawing tool's <title>heart</title>.
+     | Nothing announced it, but a browser shows it as a tooltip when a reader
+     | points at the icon, so an Arabic page offered English words for its
+     | decoration.
+     */
+    $body = $this->get('/')->assertOk()->getContent();
+
+    expect(substr_count($body, '<h1'))->toBe(1)
+        ->and($body)->toContain(__('sanabel.app_name'))
+        ->and($body)->not->toContain('<title>heart</title>')
+        ->and($body)->not->toContain('<title>scales</title>');
 });

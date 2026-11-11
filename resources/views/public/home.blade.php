@@ -11,6 +11,13 @@
 --}}
 
 @section('content')
+    {{-- T-294 — the page's one heading. It is not drawn: the slides used to
+         carry it, and there are five of them, so the page claimed five
+         headings and a reader moving by heading was told the same thing five
+         times. The slides are promotions, the association's name is what the
+         page is. --}}
+    <h1 class="sr-only">{{ __('sanabel.app_name') }}</h1>
+
     {{-- ---------- the hero ---------------------------------------------- --}}
     @if ($banners->isNotEmpty())
         <section
@@ -68,7 +75,7 @@
                         class="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4 text-center sm:gap-4 sm:p-6"
                         style="background: linear-gradient(to left, rgb(0 0 0 / 0.55), rgb(0 0 0 / 0.25));"
                     >
-                        <h1 class="text-xl font-bold text-white drop-shadow sm:text-3xl lg:text-4xl">{{ $banner->title_ar }}</h1>
+                        <h2 class="text-xl font-bold text-white drop-shadow sm:text-3xl lg:text-4xl">{{ $banner->title_ar }}</h2>
 
                         {{-- Hidden on a phone rather than wrapped to four
                              lines over the picture: the headline and the

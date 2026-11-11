@@ -35,7 +35,7 @@
     @endif
 
     @if ($full)
-        <h1 class="text-2xl leading-snug">{{ $campaign->title_ar }}</h1>
+        <h2 class="text-2xl leading-snug">{{ $campaign->title_ar }}</h2>
     @else
         <h3 class="text-base">
             <a href="{{ route('campaign.public', $campaign) }}" class="no-underline hover:underline">
