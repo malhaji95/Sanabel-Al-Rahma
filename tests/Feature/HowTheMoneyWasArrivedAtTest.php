@@ -124,3 +124,66 @@ it('draws it on the screen the association actually opens', function () {
         // a study computed months ago.
         ->assertSee(__('sanabel.need_breakdown.frozen_note'));
 });
+
+it('draws the funding percent and the target beside the deficit, on the study in force', function () {
+    /*
+     | T-298 — the sixth and seventh of the nine values the association asked
+     | to see on its own line in every family's file. They are the only two in
+     | that list the study's snapshot does not hold: the percent is a setting
+     | on the region, read at the moment it is asked for.
+     |
+     | So they are read from today and say so, and they are drawn only on the
+     | study in force — «today's target» over a study from August is a figure
+     | that means nothing.
+     */
+    $case = publishedCase($this->region);
+
+    $this->actingAs(userWithRole('executive_director'));
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+
+    $coverage = app(CoverageService::class);
+
+    Livewire\Livewire::test(ViewBeneficiary::class, ['record' => $case->getRouteKey()])
+        ->assertSee(__('sanabel.need_breakdown.target_percent'))
+        ->assertSee(__('sanabel.need_breakdown.target_amount'))
+        ->assertSee(__('sanabel.need_breakdown.target_note'))
+        ->assertSee($coverage->targetPercent($case).'%')
+        ->assertSee(number_format($coverage->targetAmount($case)));
+});
+
+it('is the deficit times the percent, and nothing else', function () {
+    // The screen may not quietly invent a third figure: the target is the
+    // deficit the page just showed, taken at the percent the page just named.
+    $case = publishedCase($this->region);
+    $coverage = app(CoverageService::class);
+
+    $deficit = $case->currentAssessment()->needBreakdown()['totals']['deficit'];
+
+    expect($coverage->targetAmount($case))
+        ->toBe(intdiv($deficit * $coverage->targetPercent($case), 100));
+});
+
+it('keeps today’s target off a study that is no longer the one in force', function () {
+    $case = publishedCase($this->region);
+
+    // A second, newer study takes over, so the first is history.
+    $older = $case->currentAssessment();
+    app(AssessmentService::class)->create($case->refresh(), status: 'approved');
+
+    expect($case->refresh()->currentAssessment()->getKey())->not->toBe($older->getKey());
+
+    $this->actingAs(userWithRole('executive_director'));
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+
+    // The file still draws it, because the file draws the study in force.
+    Livewire\Livewire::test(ViewBeneficiary::class, ['record' => $case->getRouteKey()])
+        ->assertSee(__('sanabel.need_breakdown.target_percent'));
+
+    // The older study, read on its own, does not: it is not what is funded.
+    $view = view('filament.forms.need-breakdown', [
+        'getRecord' => fn () => Assessment::find($older->getKey()),
+    ])->render();
+
+    expect($view)->not->toContain(__('sanabel.need_breakdown.target_percent'))
+        ->and($view)->toContain(__('sanabel.need_breakdown.deficit_note'));
+});

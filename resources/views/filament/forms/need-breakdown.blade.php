@@ -22,6 +22,21 @@
         : $record?->currentAssessment();
     $breakdown = $assessment?->needBreakdown() ?? [];
     $money = \App\Services\Money::short();
+
+    /*
+     | T-298 — «نسبة التمويل المعتمدة» و«المبلغ المستهدف», وهما السادس
+     | والسابع من القيم التسع التي طلبت الجمعية إظهارها مستقلّة.
+     |
+     | وهما الوحيدان في القائمة اللذان لا تحملهما لقطة الدراسة: النسبة
+     | إعدادٌ للمنطقة يُقرأ ساعة السؤال, فتتغيّر بتغيّره ولا تتجمّد بالقاعدة ٨
+     | كما يتجمّد كلّ ما فوقهما. ولهذا يُقرآن هنا من اليوم, ويُقالان على
+     | أنّهما اليوم, ولا يُرسمان إلّا على الدراسة السارية: «هدف اليوم» فوق
+     | دراسةٍ من آب رقمٌ لا يعني شيئًا.
+     */
+    $household = $assessment?->beneficiary;
+    $isInForce = $assessment
+        && $household
+        && $assessment->getKey() === $household->currentAssessment()?->getKey();
 @endphp
 
 <div dir="rtl" style="font-size: 0.875rem; line-height: 1.6;">
@@ -142,6 +157,31 @@
             </div>
             <div style="opacity: 0.8; margin-top: 0.2rem;">{{ __('sanabel.need_breakdown.deficit_note') }}</div>
         </div>
+
+        {{-- ٣ب — نسبة التمويل المعتمدة والمبلغ المستهدف --}}
+        @if ($isInForce)
+            @php($coverage = app(\App\Services\CoverageService::class))
+            @php($percent = $coverage->targetPercent($household))
+
+            <table style="width: 100%; border-collapse: collapse; text-align: right; margin-top: 0.75rem;">
+                <tbody>
+                    <tr style="border-bottom: 1px solid rgba(128,128,128,0.18);">
+                        <td style="padding: 0.4rem 0.25rem;">{{ __('sanabel.need_breakdown.target_percent') }}</td>
+                        <td style="padding: 0.4rem 0.25rem; white-space: nowrap; text-align: left; font-weight: 600;">
+                            {{ $percent }}%
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 0.4rem 0.25rem;">{{ __('sanabel.need_breakdown.target_amount') }}</td>
+                        <td style="padding: 0.4rem 0.25rem; white-space: nowrap; text-align: left; font-weight: 600;">
+                            {{ number_format($coverage->targetAmount($household)) }} {{ $money }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div style="opacity: 0.8; margin-top: 0.4rem;">{{ __('sanabel.need_breakdown.target_note') }}</div>
+        @endif
 
         {{-- ٤ — ما وصل عن هذا الشهر --}}
         <div style="font-weight: 600; margin: 1rem 0 0.4rem;">{{ __('sanabel.need_breakdown.received_title') }}</div>
