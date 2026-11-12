@@ -456,3 +456,38 @@ it('says once what the page is, and says it in Arabic', function () {
         ->and($body)->not->toContain('<title>heart</title>')
         ->and($body)->not->toContain('<title>scales</title>');
 });
+
+it('holds the slides back the one way the carousel can let them go again', function () {
+    /*
+     | T-295 — «الشريط بيختفي بعد ما بدّل الشريحة», 12 November.
+     |
+     | The slides after the first were held back with Tailwind's `hidden`, so
+     | that a reader on a slow line would not see all six stacked before
+     | Alpine woke up. But `x-show` only ever writes and clears the element's
+     | own `display`: it cannot take a class off. So the first time the
+     | carousel advanced, slide 0 was given `display:none` and slide 1 had its
+     | inline style cleared onto a class that still said `display:none`. The
+     | hero collapsed to two pixels and stayed collapsed until the count came
+     | back round to nought, six slides later.
+     |
+     | The guard is still there. It is written inline, which is the one place
+     | `x-show` can undo.
+     */
+    // The seeder puts the association's own slides on the page; the rule
+    // holds for however many there are, and needs at least two to mean
+    // anything at all.
+    $slides = collect(
+        str($this->get('/')->assertOk()->getContent())
+            ->matchAll('/<div\s[^>]*?aria-roledescription="slide"/s')
+    );
+
+    expect($slides->count())->toBeGreaterThan(1);
+
+    // Not one of them may carry a class the carousel cannot take off again.
+    $slides->each(fn (string $tag) => expect($tag)->not->toMatch('/class="[^"]*\bhidden\b/'));
+
+    // The first shows; every one after it starts hidden, inline.
+    expect($slides->first())->not->toContain('display:none');
+
+    $slides->skip(1)->each(fn (string $tag) => expect($tag)->toContain('display:none'));
+});

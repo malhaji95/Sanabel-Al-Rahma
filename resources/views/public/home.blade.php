@@ -44,10 +44,25 @@
             aria-label="{{ __('sanabel.public.hero_carousel') }}"
         >
             @foreach ($banners as $index => $banner)
+                {{-- T-295 — «الشريط بيختفي بعد ما بدّل الشريحة».
+                     The slides after the first were held back with Tailwind's
+                     `hidden`, so the page would not flash all six before
+                     Alpine booted. But `x-show` only ever writes and clears
+                     the element's own `display`; it cannot take a class off.
+                     So the moment the carousel advanced, slide 0 was given
+                     `display:none` and slide 1 had its inline style cleared
+                     onto a class that still said `display:none` — and the
+                     hero collapsed from 382px to 2 and stayed collapsed
+                     until the count wrapped round to nought.
+
+                     The guard it was there for is kept, written the one way
+                     `x-show` can undo: inline. With no JavaScript at all the
+                     first slide still shows alone, exactly as before. --}}
                 <div
                     x-show="slide === {{ $index }}"
                     x-transition.opacity.duration.400ms
-                    @class(['relative', 'hidden' => $index > 0])
+                    class="relative"
+                    @style(['display:none' => $index > 0])
                     role="group"
                     aria-roledescription="slide"
                 >
