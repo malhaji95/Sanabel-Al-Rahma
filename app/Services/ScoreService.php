@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Beneficiary;
+use App\Models\Debt;
 use App\Models\Setting;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -228,9 +229,29 @@ class ScoreService
         return 100 * (1 - min(1, $confirmed / $essential));
     }
 
-    /** B = 100 × min(1, documented_necessary_debt ÷ (3 × MonthlyNeed)) */
+    /**
+     * B = 100 × min(1, eligible_debt ÷ (3 × MonthlyNeed))
+     *
+     * T-302 — «منع الباحث من إدخال إجمالي مستقل يخالف الديون المعتمدة»,
+     * 12 November.
+     *
+     * This read a figure typed into a box on the file, beside a table of
+     * creditors that need not have agreed with it. It reads the table now,
+     * and only the rows somebody verified and placed as a basic need. A debt
+     * recorded and unchecked is still recorded; it simply does not move a
+     * family up the queue on nobody's word.
+     */
+    public static function eligibleDebt(Beneficiary $beneficiary): int
+    {
+        $debts = $beneficiary->relationLoaded('debts')
+            ? $beneficiary->debts->filter(fn (Debt $d) => $d->isEligible())
+            : $beneficiary->debts()->eligible()->get();
+
+        return (int) $debts->sum('amount');
+    }
+
     private function debt(Beneficiary $beneficiary, int $monthlyNeed): float
     {
-        return 100 * min(1, (int) $beneficiary->documented_debt / max(1, 3 * $monthlyNeed));
+        return 100 * min(1, self::eligibleDebt($beneficiary) / max(1, 3 * $monthlyNeed));
     }
 }

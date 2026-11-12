@@ -17,6 +17,7 @@ use App\Services\FamilyNames;
 use App\Services\IdentityFormat;
 use App\Services\Money;
 use App\Services\RankingService;
+use App\Services\ScoreService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -1914,7 +1915,45 @@ class BeneficiaryResource extends Resource
                                 ->label(__('sanabel.debt.reason_ar'))
                                 ->rows(2)
                                 ->columnSpanFull(),
-                        ])->columns(2),
+
+                            /*
+                             | T-302 — the three states the association asked
+                             | for. Recorded is the row; these two make it
+                             | verified and then eligible, and only the third
+                             | reaches the score.
+                             |
+                             | «أساسي؟» is a question with three answers, not a
+                             | switch: unanswered is not «لا», and a debt
+                             | nobody has placed scores nothing rather than
+                             | scoring on a guess.
+                             */
+                            Forms\Components\Radio::make('is_essential')
+                                ->label(__('sanabel.debt.is_essential'))
+                                ->boolean(
+                                    trueLabel: __('sanabel.beneficiary.answer_yes'),
+                                    falseLabel: __('sanabel.beneficiary.answer_no'),
+                                )
+                                ->helperText(__('sanabel.debt.is_essential_help')),
+
+                            Forms\Components\Select::make('verification_method')
+                                ->label(__('sanabel.debt.verification_method'))
+                                ->options(__('sanabel.debt.verification_methods'))
+                                ->helperText(__('sanabel.debt.verification_help'))
+                                ->live(),
+
+                            Forms\Components\TextInput::make('verification_note_ar')
+                                ->label(__('sanabel.debt.verification_note_ar'))
+                                ->visible(fn (Forms\Get $get) => filled($get('verification_method')))
+                                ->required(fn (Forms\Get $get) => filled($get('verification_method')))
+                                ->columnSpanFull(),
+                        ])
+                        ->columns(2)
+                        // T-302 — naming the means is the act of verifying, and
+                        // the row records who did it and when. Clearing the
+                        // means unverifies it again, so a row cannot keep a
+                        // signature it no longer stands on.
+                        ->mutateRelationshipDataBeforeCreateUsing(fn (array $data) => self::stampDebtVerification($data))
+                        ->mutateRelationshipDataBeforeSaveUsing(fn (array $data) => self::stampDebtVerification($data)),
 
                     Forms\Components\Repeater::make('supportSources')
                         ->relationship()
@@ -2215,11 +2254,22 @@ class BeneficiaryResource extends Resource
                         ->numeric()->minValue(0)
                         ->suffix(Money::short()),
 
-                    Forms\Components\TextInput::make('documented_debt')
+                    /*
+                     | T-302 — «منع الباحث من إدخال إجمالي مستقل يخالف الديون
+                     | المعتمدة», 12 November.
+                     |
+                     | This was a box. The score read the box and not the
+                     | table of creditors beside it, so the figure that moved
+                     | a family up the queue need not have matched the debts
+                     | the family named. It is a reading now, of the rows that
+                     | were verified and placed as a basic need.
+                     */
+                    Forms\Components\Placeholder::make('eligible_debt')
                         ->label(__('sanabel.beneficiary.documented_debt'))
                         ->helperText(__('sanabel.beneficiary.debt_help'))
-                        ->numeric()->minValue(0)->default(0)
-                        ->suffix(Money::short()),
+                        ->content(fn (?Beneficiary $record) => $record?->exists
+                            ? number_format(ScoreService::eligibleDebt($record)).' '.Money::short()
+                            : '—'),
 
                     // Read-only. The engine computes these; the form never accepts them.
                     Forms\Components\Placeholder::make('computed_need')
@@ -3070,6 +3120,28 @@ class BeneficiaryResource extends Resource
      * with the family may correct it. What this adds is the filling, for the
      * one person in the file who never had it.
      */
+    /**
+     * T-302 — who verified this debt and when, stamped from the act itself.
+     *
+     * Naming the means is the verification; there is no second button to
+     * forget to press. And clearing the means clears the signature with it,
+     * so a row cannot go on carrying a check it no longer stands on.
+     */
+    public static function stampDebtVerification(array $data): array
+    {
+        if (blank($data['verification_method'] ?? null)) {
+            $data['verified_by'] = null;
+            $data['verified_at'] = null;
+
+            return $data;
+        }
+
+        $data['verified_by'] ??= auth()->id();
+        $data['verified_at'] ??= now();
+
+        return $data;
+    }
+
     public static function deriveApplicantFlags(array $data): array
     {
         $age = isset($data['birth_date'])
