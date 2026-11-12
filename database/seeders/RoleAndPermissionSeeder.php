@@ -186,6 +186,7 @@ class RoleAndPermissionSeeder extends Seeder
              | screen as the director and was answered 403.
              */
             'edit_config' => 'all',
+            'waive_conflict' => 'all',
         ],
 
         // Same powers, own account, own name on every action. The time-bounded
@@ -206,6 +207,7 @@ class RoleAndPermissionSeeder extends Seeder
             // And the deputy holds the same key to the settings screen, for
             // the same reason: a deputy is an account, not a shared login.
             'edit_config' => 'all',
+            'waive_conflict' => 'all',
         ],
 
         'deputy_area_supervisor' => [
@@ -228,6 +230,13 @@ class RoleAndPermissionSeeder extends Seeder
 
         // Oversight: sees everything, changes nothing. is_read_only below is
         // what enforces that, so no stored grant can make this role write.
+        /*
+         | T-305 — «عدم إتاحة تجاوز المنع إلا بصلاحية مستقلة». `waive_conflict`
+         | مفتاحٌ قائم بذاته لا يأتي مع الاعتماد: من يعتمد الملفّات ليس بذلك
+         | وحده مخوَّلًا برفع مانعٍ عن نفسه أو عن غيره. ومن يرفعه لا يكون هو
+         | الممنوع, والسبب مكتوب, والأمر كلّه في سجلّ التدقيق حيث تقرؤه
+         | لجنة الرقابة.
+         */
         'oversight_director' => [
             'view_full_case' => 'all', 'view_masked_case' => 'all',
             'search_by_national_id' => 'all', 'view_reports' => 'all',

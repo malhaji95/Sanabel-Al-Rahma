@@ -17,6 +17,7 @@ use App\Models\RegionRentReference;
 use App\Models\User;
 use App\Services\AssessmentService;
 use App\Services\BasketService;
+use App\Services\ConflictOfInterest;
 use App\Services\DonationService;
 use App\Services\GovernanceService;
 use Database\Seeders\FundSeeder;
@@ -337,6 +338,20 @@ function memberRow(array $overrides = []): array
  *
  * @return array<string,string>
  */
+/**
+ * T-305 — one person, saying on the record that nothing ties them to this
+ * household.
+ *
+ * The disclosure is compulsory before anybody verifies, endorses, approves
+ * or refuses a file, so a test that walks that path has to make it, the way
+ * a person would. It is said here rather than assumed away: a helper that
+ * silently satisfied the rule would be a helper that hid it.
+ */
+function declaresNoTie(User $user, Beneficiary $case): void
+{
+    app(ConflictOfInterest::class)->declare($case, $user, hasRelationship: false);
+}
+
 function gatesAnsweredNo(): array
 {
     return [

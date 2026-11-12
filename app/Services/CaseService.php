@@ -113,6 +113,10 @@ class CaseService
             throw new \RuntimeException(__('sanabel.cases.field_verifier_only'));
         }
 
+        // T-305 — nobody moves a file they have not answered for, and a
+        // stated tie takes them off the deciding of it.
+        app(ConflictOfInterest::class)->guard($case, $delegate, 'verify');
+
         $case->forceFill([
             'status' => 'verified',
             'field_verified_by' => $delegate->getKey(),
@@ -137,6 +141,10 @@ class CaseService
             throw new \RuntimeException(__('sanabel.cases.self_endorsement_blocked'));
         }
 
+        // T-305 — that guards a person against their own hand; this guards
+        // the file against the hand of a cousin.
+        app(ConflictOfInterest::class)->guard($case, $supervisor, 'endorse');
+
         $case->forceFill([
             'status' => 'pending_approval',
             'endorsed_by' => $supervisor->getKey(),
@@ -159,6 +167,11 @@ class CaseService
         if ($case->created_by !== null && $case->created_by === $approver->getKey()) {
             throw new \RuntimeException(__('sanabel.cases.self_approval_blocked'));
         }
+
+        // T-305 — approving and refusing are both deciding, and a tie bars
+        // a person from either: saying «no» to a stranger's file on behalf
+        // of a cousin's is the same conflict read the other way round.
+        app(ConflictOfInterest::class)->guard($case, $approver, 'approve');
 
         return DB::transaction(function () use ($case, $approver) {
             $case->forceFill([
@@ -185,6 +198,11 @@ class CaseService
         if ($case->created_by !== null && $case->created_by === $approver->getKey()) {
             throw new \RuntimeException(__('sanabel.cases.self_approval_blocked'));
         }
+
+        // T-305 — approving and refusing are both deciding, and a tie bars
+        // a person from either: saying «no» to a stranger's file on behalf
+        // of a cousin's is the same conflict read the other way round.
+        app(ConflictOfInterest::class)->guard($case, $approver, 'approve');
 
         $case->forceFill([
             'status' => 'rejected',

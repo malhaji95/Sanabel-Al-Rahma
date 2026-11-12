@@ -20,6 +20,14 @@ class PermissionService
     public const WRITE_PERMISSIONS = [
         'create_case', 'edit_draft', 'upload_media', 'record_visit', 'recommend',
         'approve_case', 'suspend_graduate', 'edit_config',
+        /*
+         | T-305 — lifting a conflict-of-interest bar. A key of its own and
+         | not a shade of `approve_case`: somebody who approves files is not
+         | by that alone entitled to set aside the rule that keeps a cousin
+         | off one. «صلاحية مستقلة» is what the association asked for, and a
+         | separate key is what that means in a matrix.
+         */
+        'waive_conflict',
         // T-250 — the area supervisor's step in the graduation policy.
         'recommend_graduation',
         // T-257 — acting on a confidential report. Reading one is

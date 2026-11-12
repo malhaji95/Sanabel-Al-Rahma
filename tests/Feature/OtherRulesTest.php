@@ -75,6 +75,7 @@ it('hides a job profile when a case approval is revoked', function () {
         'status' => 'published',
     ]);
 
+    declaresNoTie($this->admin, $case); // T-305
     app(CaseService::class)->reject($case->refresh(), $this->admin, 'تبيّن عدم استحقاق');
 
     expect($case->fresh()->jobProfile->status)->toBe('hidden');

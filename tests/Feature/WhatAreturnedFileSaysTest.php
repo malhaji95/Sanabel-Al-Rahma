@@ -69,6 +69,7 @@ it('shows a refusal’s reason to the supervisor too', function () {
 
     $case = familyOf($this->region, adults: 1, children: 0);
     $case->forceFill(['status' => 'pending_approval'])->save();
+    declaresNoTie($this->director, $case); // T-305
     app(CaseService::class)->reject($case, $this->director, 'الأسرة مسجّلة في جمعية أخرى.');
 
     $this->actingAs($supervisor);
@@ -84,12 +85,15 @@ it('lets the delegate correct it and send it back up the same path', function ()
     // approves. The path out of «أُعيد للتعديل» is the path in.
     $supervisor = userWithRole('area_supervisor', ['region_id' => $this->region->id]);
 
+    declaresNoTie($this->delegate, $case); // T-305
     $case = app(CaseService::class)->verifyInField($case, $this->delegate);
     expect($case->status)->toBe('verified');
 
+    declaresNoTie($supervisor, $case); // T-305
     $case = app(CaseService::class)->endorse($case, $supervisor);
     expect($case->status)->toBe('pending_approval');
 
+    declaresNoTie($this->director, $case); // T-305
     $case = app(CaseService::class)->approve($case, $this->director);
     expect($case->status)->toBe('approved');
 });

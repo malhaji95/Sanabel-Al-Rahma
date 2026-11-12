@@ -151,8 +151,11 @@ it('lets the file still reach approval without the administrator in the chain', 
     ]);
 
     $service = app(CaseService::class);
+    declaresNoTie($delegate, $case); // T-305
     $case = $service->verifyInField($case, $delegate);
+    declaresNoTie($supervisor, $case); // T-305
     $case = $service->endorse($case, $supervisor);
 
+    declaresNoTie($director, $case); // T-305
     expect($service->approve($case, $director)->status)->toBe('approved');
 })->group('AUTH-01');

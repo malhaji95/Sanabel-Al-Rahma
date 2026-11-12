@@ -181,10 +181,12 @@ it('stops the creator from being the final approver', function () {
     // permission and all. It is the person the rule is about, not the role.
     expect($officer->can('approve', $case))->toBeFalse();
 
+    declaresNoTie($officer, $case); // T-305
     expect(fn () => app(CaseService::class)->approve($case, $officer))
         ->toThrow(RuntimeException::class, __('sanabel.cases.self_approval_blocked'));
 
     // Another officer, who did not create it, can.
+    declaresNoTie($second, $case); // T-305
     expect($second->can('approve', $case->refresh()))->toBeTrue()
         ->and(app(CaseService::class)->approve($case, $second)->status)->toBe('approved');
 })->group('APP-01');

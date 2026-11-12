@@ -80,11 +80,13 @@ it('S24 — the person who created a case cannot approve or reject it', function
         'status' => 'pending_approval',
     ]);
 
+    declaresNoTie($officer, $case); // T-305
     expect(fn () => app(CaseService::class)->approve($case, $officer))
         ->toThrow(RuntimeException::class);
     expect(fn () => app(CaseService::class)->reject($case, $officer, 'سبب'))
         ->toThrow(RuntimeException::class);
 
+    declaresNoTie($admin, $case); // T-305
     expect(app(CaseService::class)->approve($case, $admin)->status)->toBe('approved');
 });
 
@@ -93,9 +95,11 @@ it('S25 — rejection without a reason is refused, and the reason is stored', fu
     $admin = userWithRole('admin');
     $case = familyOf($region, attributes: ['status' => 'submitted']);
 
+    declaresNoTie($admin, $case); // T-305
     expect(fn () => app(CaseService::class)->reject($case, $admin, '  '))
         ->toThrow(RuntimeException::class);
 
+    declaresNoTie($admin, $case); // T-305
     $rejected = app(CaseService::class)->reject($case, $admin, 'المستندات غير مكتملة');
 
     expect($rejected->status)->toBe('rejected')
@@ -110,6 +114,7 @@ it('S26 — a case can only be published once it is approved', function () {
     expect(fn () => app(CaseService::class)->publish($case, $admin))
         ->toThrow(RuntimeException::class);
 
+    declaresNoTie($admin, $case); // T-305
     $approved = app(CaseService::class)->approve($case, $admin);
 
     expect(app(CaseService::class)->publish($approved, $admin)->status)->toBe('published');

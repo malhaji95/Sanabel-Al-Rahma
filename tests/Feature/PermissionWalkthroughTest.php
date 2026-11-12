@@ -44,12 +44,15 @@ it('walks a case from creation to approval across four accounts', function () {
 
     // 4. The two field sign-offs come first: the delegate, then the supervisor,
     //    who cannot be the same person.
+    declaresNoTie($this->delegate, $case); // T-305
     $case = app(CaseService::class)->verifyInField($case, $this->delegate);
     expect($case->status)->toBe('verified');
 
+    declaresNoTie($this->delegate, $case); // T-305
     expect(fn () => app(CaseService::class)->endorse($case, $this->delegate))
         ->toThrow(RuntimeException::class);
 
+    declaresNoTie($this->supervisor, $case); // T-305
     $case = app(CaseService::class)->endorse($case, $this->supervisor);
     expect($case->status)->toBe('pending_approval');
 
@@ -66,6 +69,7 @@ it('walks a case from creation to approval across four accounts', function () {
     expect($this->admin->can('approve', $case))->toBeFalse()
         ->and($director->can('approve', $case))->toBeTrue();
 
+    declaresNoTie($director, $case); // T-305
     $approved = app(CaseService::class)->approve($case, $director);
 
     expect($approved->status)->toBe('approved')
@@ -83,6 +87,7 @@ it('keeps the creator out of the approval, whichever role created it', function 
         expect($creator->can('approve', $case))->toBeFalse("{$roleKey} approved a case it created")
             ->and($creator->can('reject', $case))->toBeFalse("{$roleKey} rejected a case it created");
 
+        declaresNoTie($creator, $case); // T-305
         expect(fn () => app(CaseService::class)->approve($case, $creator))
             ->toThrow(RuntimeException::class);
     }

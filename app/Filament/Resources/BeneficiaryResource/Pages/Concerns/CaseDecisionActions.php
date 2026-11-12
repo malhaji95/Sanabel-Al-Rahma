@@ -5,9 +5,11 @@ namespace App\Filament\Resources\BeneficiaryResource\Pages\Concerns;
 use App\Filament\Resources\BeneficiaryResource;
 use App\Models\Assessment;
 use App\Models\Beneficiary;
+use App\Models\User;
 use App\Services\AnonymiseService;
 use App\Services\AssessmentService;
 use App\Services\CaseService;
+use App\Services\ConflictOfInterest;
 use App\Services\CoverageService;
 use App\Services\GraduationService;
 use Filament\Actions;
@@ -34,9 +36,127 @@ use Illuminate\Support\Carbon;
 trait CaseDecisionActions
 {
     /** @return array<int,Actions\Action> */
+    /**
+     * T-305 — the disclosure, where the person who has to make it is.
+     *
+     * A bar with no way to answer the question behind it is a dead end, so
+     * the question sits beside the decisions it stands in front of, and the
+     * button says which of the two states the account is in.
+     */
+    protected function conflictDisclosureAction(): Actions\Action
+    {
+        return Actions\Action::make('declare_conflict')
+            ->label(__('sanabel.conflict.title'))
+            ->icon('heroicon-o-hand-raised')
+            ->color(fn (Beneficiary $record) => app(ConflictOfInterest::class)
+                ->isBarred($record, auth()->user()) ? 'danger' : 'gray')
+            ->modalHeading(__('sanabel.conflict.question'))
+            ->modalDescription(__('sanabel.conflict.help'))
+            ->form([
+                Forms\Components\Radio::make('has_relationship')
+                    ->label(__('sanabel.conflict.question'))
+                    ->boolean(
+                        trueLabel: __('sanabel.beneficiary.answer_yes'),
+                        falseLabel: __('sanabel.beneficiary.answer_no'),
+                    )
+                    ->required()
+                    ->validationMessages(['required' => __('sanabel.beneficiary.answer_required')])
+                    ->live(),
+
+                Forms\Components\Select::make('relation_type')
+                    ->label(__('sanabel.conflict.relation_type'))
+                    ->options(__('sanabel.conflict.relations'))
+                    ->visible(fn (Forms\Get $get) => $get('has_relationship') === true)
+                    ->required(fn (Forms\Get $get) => $get('has_relationship') === true),
+
+                Textarea::make('relation_note_ar')
+                    ->label(__('sanabel.conflict.relation_note_ar'))
+                    ->rows(2)
+                    ->visible(fn (Forms\Get $get) => $get('has_relationship') === true),
+            ])
+            ->fillForm(function (Beneficiary $record) {
+                $said = app(ConflictOfInterest::class)->disclosureFor($record, auth()->user());
+
+                return [
+                    'has_relationship' => $said?->has_relationship,
+                    'relation_type' => $said?->relation_type,
+                    'relation_note_ar' => $said?->relation_note_ar,
+                ];
+            })
+            ->action(function (Beneficiary $record, array $data) {
+                $said = app(ConflictOfInterest::class)->declare(
+                    $record,
+                    auth()->user(),
+                    (bool) $data['has_relationship'],
+                    $data['relation_type'] ?? null,
+                    $data['relation_note_ar'] ?? null,
+                );
+
+                Notification::make()
+                    ->title(__($said->has_relationship
+                        ? 'sanabel.conflict.declared_yes'
+                        : 'sanabel.conflict.declared_no'))
+                    ->{$said->has_relationship ? 'warning' : 'success'}()
+                    ->send();
+            });
+    }
+
+    /**
+     * T-305 — lifting a bar, for the account that holds the key of its own.
+     *
+     * Shown only where there is a bar to lift, and never to the person it
+     * would be lifted for: the service refuses that, and a button that only
+     * ever refuses is a button that should not be there.
+     */
+    protected function conflictWaiverAction(): Actions\Action
+    {
+        return Actions\Action::make('waive_conflict')
+            ->label(__('sanabel.conflict.waiver'))
+            ->icon('heroicon-o-key')
+            ->color('warning')
+            ->visible(fn (Beneficiary $record) => auth()->user()?->can_(ConflictOfInterest::WAIVER_KEY)
+                && $record->conflictDisclosures()
+                    ->where('has_relationship', true)
+                    ->where('user_id', '<>', auth()->id())
+                    ->exists())
+            ->form([
+                Forms\Components\Select::make('user_id')
+                    ->label(__('sanabel.conflict.waiver'))
+                    ->options(fn (Beneficiary $record) => $record->conflictDisclosures()
+                        ->with('user')
+                        ->where('has_relationship', true)
+                        ->where('user_id', '<>', auth()->id())
+                        ->get()
+                        ->mapWithKeys(fn ($d) => [
+                            $d->user_id => $d->user?->name.' — '
+                                .__('sanabel.conflict.relations.'.($d->relation_type ?? 'other')),
+                        ]))
+                    ->required(),
+
+                Textarea::make('reason_ar')
+                    ->label(__('sanabel.conflict.waiver_reason'))
+                    ->helperText(__('sanabel.conflict.waiver_reason_help'))
+                    ->rows(3)
+                    ->required(),
+            ])
+            ->action(function (Beneficiary $record, array $data) {
+                app(ConflictOfInterest::class)->waive(
+                    $record,
+                    User::findOrFail($data['user_id']),
+                    auth()->user(),
+                    (string) $data['reason_ar'],
+                );
+
+                Notification::make()->title(__('sanabel.conflict.waived'))->success()->send();
+            });
+    }
+
     protected function caseDecisionActions(): array
     {
         return [
+            // T-305 — before the decisions, because it stands in front of them.
+            $this->conflictDisclosureAction(),
+            $this->conflictWaiverAction(),
             /*
              | T-133 — «ضمن الحاجة الشهرية المحتسبة ونسبة التغطية … في حال
              | تعديل البيانات والضغط على حساب تقييم جديد كيف تتم العملية وهل

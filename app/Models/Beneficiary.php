@@ -323,6 +323,12 @@ class Beneficiary extends Model
      *
      * @return Collection<int,object>
      */
+    /** T-305 — what each person who worked this file said about their tie to it. */
+    public function conflictDisclosures(): HasMany
+    {
+        return $this->hasMany(ConflictDisclosure::class);
+    }
+
     public function people(): Collection
     {
         $applicant = (object) [

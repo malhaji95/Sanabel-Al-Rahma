@@ -93,6 +93,7 @@ it('٤ — the person who created a case cannot approve it', function () {
     $case = familyOf($this->region, attributes: ['created_by' => $officer->id, 'status' => 'pending_approval']);
 
     // Not merely hidden in the interface: the policy refuses, and so does the service.
+    declaresNoTie($officer, $case); // T-305
     expect($officer->can('approve', $case))->toBeFalse()
         ->and(fn () => app(CaseService::class)->approve($case, $officer))
         ->toThrow(RuntimeException::class);
@@ -101,6 +102,7 @@ it('٤ — the person who created a case cannot approve it', function () {
     // taken off every decision on 16 October, this one among them.
     $other = userWithRole('executive_director');
 
+    declaresNoTie($other, $case); // T-305
     expect($other->can('approve', $case))->toBeTrue()
         ->and(app(CaseService::class)->approve($case, $other)->status)->toBe('approved');
 })->group('APP-01');

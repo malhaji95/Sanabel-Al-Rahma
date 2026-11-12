@@ -20,7 +20,18 @@ beforeEach(function () {
 
 function draftCase($region, array $attributes = []): Beneficiary
 {
-    return familyOf($region, attributes: array_merge(['status' => 'draft'], $attributes));
+    $case = familyOf($region, attributes: array_merge(['status' => 'draft'], $attributes));
+
+    /*
+     | T-305 — nobody moves a file they have not answered for. This class is
+     | about the chain itself, so its three standing actors answer the way an
+     | ordinary person with no tie to the family would, once per file.
+     */
+    foreach ([test()->delegate, test()->supervisor, test()->admin] as $actor) {
+        declaresNoTie($actor, $case);
+    }
+
+    return $case;
 }
 
 it('walks a file from draft to approved through both sign-offs', function () {
@@ -83,7 +94,9 @@ it('offers neither step to a user outside the file region', function () {
 
     expect($this->delegate->can('verifyInField', $case))->toBeFalse();
 
-    $this->cases->verifyInField($case, userWithRole('delegate', ['region_id' => $elsewhere->id]));
+    $theirs = userWithRole('delegate', ['region_id' => $elsewhere->id]);
+    declaresNoTie($theirs, $case); // T-305
+    $this->cases->verifyInField($case, $theirs);
 
     expect($this->supervisor->can('endorse', $case->refresh()))->toBeFalse();
 })->group('AUTH-02');
@@ -127,6 +140,7 @@ it('refuses a partner association the field sign-off on the file it raised itsel
     // The delegate does it, and the rest of the chain is unchanged: the
     // supervisor endorses, the executive director approves.
     $delegate = userWithRole('delegate', ['region_id' => $this->region->id]);
+    declaresNoTie($delegate, $case); // T-305
     $case = $this->cases->verifyInField($case->refresh(), $delegate);
 
     expect($case->status)->toBe('verified')
@@ -137,7 +151,9 @@ it('refuses a partner association the field sign-off on the file it raised itsel
 
     $case = $this->cases->endorse($case, $this->supervisor);
 
-    expect($this->cases->approve($case, userWithRole('executive_director'))->status)->toBe('approved');
+    $director = userWithRole('executive_director');
+    declaresNoTie($director, $case); // T-305
+    expect($this->cases->approve($case, $director)->status)->toBe('approved');
 });
 
 it('does not let an association sign off a file it did not raise', function () {
