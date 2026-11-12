@@ -2125,16 +2125,29 @@ class BeneficiaryResource extends Resource
                             Forms\Components\Select::make('need_addition_id')
                                 ->label(__('sanabel.support_source.need_addition'))
                                 ->helperText(__('sanabel.support_source.need_addition_help'))
-                                ->options(fn (?Beneficiary $record) => $record?->exists
-                                    ? $record->needAdditions()
+                                /*
+                                 | Inside a repeater `$record` is the row, not
+                                 | the file: typing it as a Beneficiary threw
+                                 | on every edit page that carried a support
+                                 | row. The file is the page's record, so it
+                                 | is asked of the page.
+                                 */
+                                ->options(function ($livewire) {
+                                    $case = method_exists($livewire, 'getRecord') ? $livewire->getRecord() : null;
+
+                                    if (! $case instanceof Beneficiary || ! $case->exists) {
+                                        return [];
+                                    }
+
+                                    return $case->needAdditions()
                                         ->whereNotNull('approved_at')
                                         ->get()
                                         ->mapWithKeys(fn (NeedAddition $a) => [
                                             $a->getKey() => __('sanabel.need_addition.kinds.'.$a->kind)
                                                 .' — '.number_format((int) $a->amount).' '.Money::short()
                                                 .($a->reason_ar ? ' · '.$a->reason_ar : ''),
-                                        ])
-                                    : [])
+                                        ]);
+                                })
                                 ->visible(fn (Forms\Get $get) => $get('purpose') === 'earmarked')
                                 ->searchable(),
 

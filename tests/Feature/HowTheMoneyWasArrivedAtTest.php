@@ -2,6 +2,7 @@
 
 use App\Filament\Resources\BeneficiaryResource\Pages\ViewBeneficiary;
 use App\Models\Assessment;
+use App\Models\NeedAddition;
 use App\Models\RegionRate;
 use App\Services\AssessmentService;
 use App\Services\CoverageService;
@@ -195,4 +196,39 @@ it('keeps today’s target off a study that is no longer the one in force', func
 
     expect($view)->not->toContain(__('sanabel.need_breakdown.target_percent'))
         ->and($view)->toContain(__('sanabel.need_breakdown.deficit_note'));
+});
+
+it('names every kind of line it can draw, rather than printing a key', function () {
+    /*
+     | A screenshot caught this, not a test: the breakdown builds its source
+     | label from the row's own kind — `sources.{kind}` — so a kind added to
+     | the table without a line in the language file prints the raw key on
+     | the screen, and the scanner that checks every key the code asks for
+     | cannot see a key the code assembles.
+     |
+     | So the check is here: every kind the table can carry has a sentence.
+     */
+    $case = publishedCase($this->region);
+
+    NeedAddition::create([
+        'beneficiary_id' => $case->getKey(),
+        'kind' => 'medical',
+        'amount' => 10_000,
+        'currency' => config('sanabel.currency'),
+        'reason_ar' => 'دواء',
+        'starts_on' => now()->startOfMonth()->toDateString(),
+        'approved_at' => now(),
+    ]);
+
+    $assessment = app(AssessmentService::class)->create($case->refresh(), status: 'approved');
+
+    $kinds = collect($assessment->needBreakdown()['need'])->pluck('kind')->unique();
+
+    expect($kinds)->toContain('addition');
+
+    $kinds->each(function (string $kind) {
+        $key = 'sanabel.need_breakdown.sources.'.$kind;
+
+        expect(__($key))->not->toBe($key, "the {$kind} line has no sentence");
+    });
 });

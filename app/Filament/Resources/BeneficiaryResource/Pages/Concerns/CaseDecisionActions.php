@@ -35,7 +35,12 @@ use Illuminate\Support\Carbon;
  */
 trait CaseDecisionActions
 {
-    /** @return array<int,Actions\Action> */
+    /** A boolean radio answers 1 or '1' or true; all three mean yes. */
+    public static function saidYes(mixed $state): bool
+    {
+        return in_array($state, [true, 1, '1'], true);
+    }
+
     /**
      * T-305 — the disclosure, where the person who has to make it is.
      *
@@ -63,16 +68,24 @@ trait CaseDecisionActions
                     ->validationMessages(['required' => __('sanabel.beneficiary.answer_required')])
                     ->live(),
 
+                /*
+                 | A boolean radio hands back 1, not true, so a strict
+                 | comparison here hid the field that names the tie — and the
+                 | service refuses a declared tie that does not name one, so
+                 | the person was left with a refusal and no way to answer it.
+                 | Found in a screenshot, not a test. The idiom is the one
+                 | T-285 settled on for the same thing.
+                 */
                 Forms\Components\Select::make('relation_type')
                     ->label(__('sanabel.conflict.relation_type'))
                     ->options(__('sanabel.conflict.relations'))
-                    ->visible(fn (Forms\Get $get) => $get('has_relationship') === true)
-                    ->required(fn (Forms\Get $get) => $get('has_relationship') === true),
+                    ->visible(fn (Forms\Get $get) => self::saidYes($get('has_relationship')))
+                    ->required(fn (Forms\Get $get) => self::saidYes($get('has_relationship'))),
 
                 Textarea::make('relation_note_ar')
                     ->label(__('sanabel.conflict.relation_note_ar'))
                     ->rows(2)
-                    ->visible(fn (Forms\Get $get) => $get('has_relationship') === true),
+                    ->visible(fn (Forms\Get $get) => self::saidYes($get('has_relationship'))),
             ])
             ->fillForm(function (Beneficiary $record) {
                 $said = app(ConflictOfInterest::class)->disclosureFor($record, auth()->user());
