@@ -147,8 +147,19 @@ class NeedEngine
          | money, which is the separation the association asked for. These
          | exist only because somebody decided they should.
          */
-        $additions = $beneficiary->needAdditions()->inForce($asOf)->get();
-        $additionsTotal = (int) $additions->sum('amount');
+        $additions = $beneficiary->needAdditions()->inForce($asOf)->with('coveringPayments')->get();
+
+        /*
+         | T-304 — «منع تمويل المصروف نفسه مرتين», 12 November.
+         |
+         | An item is funded for what is left of it after another body has
+         | answered part or all of it. Sanabel approving an amount towards a
+         | course of treatment, and another association paying for that same
+         | treatment, used to be two facts in two tables that did not know
+         | about each other — so the money was raised twice and nothing
+         | noticed.
+         */
+        $additionsTotal = (int) $additions->sum(fn (NeedAddition $a) => $a->netAmount($asOf));
 
         $monthlyNeed = $membersTotal + $adjustmentsTotal + $rent['amount']
             + $additionsTotal + $manualAdjustment;
@@ -258,6 +269,15 @@ class NeedEngine
                     'id' => $a->getKey(),
                     'kind' => $a->kind,
                     'amount' => (int) $a->amount,
+                    // T-304 — what another body answered of it, what is left
+                    // for the association, and which of the three states that
+                    // makes it. Frozen with the study like everything else
+                    // here, so an old one still says why it asked for what it
+                    // asked for (rule 8).
+                    'covered' => $a->coveredAmount($asOf),
+                    'net' => $a->netAmount($asOf),
+                    'coverage_state' => $a->coverageState($asOf),
+                    'covered_by_health_path' => (bool) $a->covered_by_health_path,
                     'reason_ar' => $a->reason_ar,
                     'approved_by' => $a->approver?->name,
                     'approved_at' => $a->approved_at?->toIso8601String(),

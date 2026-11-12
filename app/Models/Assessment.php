@@ -189,13 +189,29 @@ class Assessment extends Model
          | money was in it.
          */
         foreach ($snapshot['need_additions'] ?? [] as $addition) {
+            /*
+             | T-304 — the line carries what was approved, what another body
+             | answered of it, and what is left. The total is the last of the
+             | three, because that is what the engine put into the need: the
+             | lines of this table add to the figure above them or the screen
+             | is lying to whoever reads it.
+             |
+             | An older study has no coverage in its snapshot and reads nought
+             | for it, so its line is its amount exactly as it always was.
+             */
+            $approved = (int) ($addition['amount'] ?? 0);
+            $covered = (int) ($addition['covered'] ?? 0);
+
             $need[] = [
                 'kind' => 'addition',
                 'key' => $addition['kind'] ?? 'other',
                 'count' => 1,
-                'unit' => (int) ($addition['amount'] ?? 0),
+                'unit' => $approved,
                 'version' => null,
-                'total' => (int) ($addition['amount'] ?? 0),
+                'total' => (int) ($addition['net'] ?? $approved),
+                'covered' => $covered,
+                'coverage_state' => $addition['coverage_state'] ?? 'none',
+                'covered_by_health_path' => (bool) ($addition['covered_by_health_path'] ?? false),
                 'reason_ar' => $addition['reason_ar'] ?? null,
                 'approved_by' => $addition['approved_by'] ?? null,
             ];

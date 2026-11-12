@@ -7,6 +7,7 @@ use App\Models\Beneficiary;
 use App\Models\ChangeRequest;
 use App\Models\HouseholdMember;
 use App\Models\Income;
+use App\Models\NeedAddition;
 use App\Models\Region;
 use App\Models\Scopes\RegionScope;
 use App\Models\User;
@@ -2110,6 +2111,32 @@ class BeneficiaryResource extends Resource
                                 ->helperText(__('sanabel.support_source.purpose_note_help'))
                                 ->visible(fn (Forms\Get $get) => $get('purpose') === 'earmarked')
                                 ->required(fn (Forms\Get $get) => $get('purpose') === 'earmarked'),
+
+                            /*
+                             | T-304 — «ربط المساعدة المخصصة ببند الاحتياج
+                             | الذي تغطيه», 12 November.
+                             |
+                             | Without this the payment is recorded and
+                             | deducted from nothing: the association goes on
+                             | collecting for a treatment another body has
+                             | paid for. Offered only where the file carries
+                             | an approved item to point at.
+                             */
+                            Forms\Components\Select::make('need_addition_id')
+                                ->label(__('sanabel.support_source.need_addition'))
+                                ->helperText(__('sanabel.support_source.need_addition_help'))
+                                ->options(fn (?Beneficiary $record) => $record?->exists
+                                    ? $record->needAdditions()
+                                        ->whereNotNull('approved_at')
+                                        ->get()
+                                        ->mapWithKeys(fn (NeedAddition $a) => [
+                                            $a->getKey() => __('sanabel.need_addition.kinds.'.$a->kind)
+                                                .' — '.number_format((int) $a->amount).' '.Money::short()
+                                                .($a->reason_ar ? ' · '.$a->reason_ar : ''),
+                                        ])
+                                    : [])
+                                ->visible(fn (Forms\Get $get) => $get('purpose') === 'earmarked')
+                                ->searchable(),
 
                             // The month this payment answers, and only this
                             // month: it comes off that month's remaining need

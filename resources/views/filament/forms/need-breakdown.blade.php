@@ -102,6 +102,22 @@
                                 @endif
                             @endif
 
+                            {{-- T-304 — البند المعتمَد يقول ما غطّته جهةٌ
+                                 أخرى منه, وما بقي منه على الجمعية, وأيَّ
+                                 الحالات الثلاث هو. والحالة مقروءةٌ من
+                                 المبالغ لا مكتوبة. --}}
+                            @if (($row['kind'] ?? null) === 'addition' && ($row['covered'] ?? 0) > 0)
+                                <div style="opacity: 0.75; margin-top: 0.2rem;">
+                                    {{ __('sanabel.need_addition.coverage_states.'.($row['coverage_state'] ?? 'none')) }}
+                                    ·
+                                    {{ __('sanabel.need_addition.covered') }}:
+                                    {{ number_format($row['covered']) }}
+                                    @if (($row['covered_by_health_path'] ?? false))
+                                        ({{ __('sanabel.need_addition.covered_by_health_path') }})
+                                    @endif
+                                </div>
+                            @endif
+
                             @if ($row['kind'] === 'rent')
                                 <div style="opacity: 0.75;">
                                     {{ ($row['applied'] ?? false)

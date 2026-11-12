@@ -59,6 +59,18 @@ class SupportSource extends Model
     }
 
     /**
+     * T-304 — the approved item this payment answers, where it answers one.
+     *
+     * An earmarked payment used to be deducted from nothing at all: recorded,
+     * shown, and attached to no expense. Naming the item is what stops the
+     * association collecting for a treatment somebody else has paid for.
+     */
+    public function needAddition(): BelongsTo
+    {
+        return $this->belongsTo(NeedAddition::class);
+    }
+
+    /**
      * A payment the system may deduct from a month: an amount, against a
      * named month, and not a standing arrangement.
      *

@@ -71,6 +71,26 @@ class NeedAdditionsRelationManager extends RelationManager
                 ->rows(2)->required()
                 ->columnSpanFull(),
 
+            /*
+             | T-304 — «مراعاة الخدمات التي يقدمها المسار الصحي أو مزودو
+             | الخدمات المعتمدون», 12 November.
+             |
+             | The health path carries no figure: it routes the family to a
+             | provider who treats them. So this is not an amount but a
+             | statement — the expense is answered elsewhere — and an item so
+             | marked is recorded and funded at nothing.
+             */
+            Forms\Components\Toggle::make('covered_by_health_path')
+                ->label(__('sanabel.need_addition.covered_by_health_path'))
+                ->helperText(__('sanabel.need_addition.covered_by_health_path_help'))
+                ->live(),
+
+            Forms\Components\TextInput::make('coverage_note_ar')
+                ->label(__('sanabel.need_addition.coverage_note_ar'))
+                ->visible(fn (Forms\Get $get) => (bool) $get('covered_by_health_path'))
+                ->required(fn (Forms\Get $get) => (bool) $get('covered_by_health_path'))
+                ->columnSpanFull(),
+
             Forms\Components\DatePicker::make('starts_on')
                 ->label(__('sanabel.need_addition.starts_on'))
                 ->displayFormat('Y-m')->format('Y-m-01')
