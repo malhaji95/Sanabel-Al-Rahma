@@ -2300,15 +2300,15 @@ class BeneficiaryResource extends Resource
                     ->formatStateUsing(fn (?string $state) => $state ? __('sanabel.case_classification.'.$state) : '—')
                     ->toggleable(isToggledHiddenByDefault: true),
                 /*
-                 | T-157 — «بصفحة مدير المنطقة ما نحتاج اظهار الكنية ممكن فقط
-                 | الاسم الاول», 29 October.
+                 | T-157, then T-296 — «بصفحة مدير المنطقة ما نحتاج اظهار
+                 | الكنية ممكن فقط الاسم الاول», 29 October, and «نحتاج يظهر
+                 | الاسم الاول وليست الكنية», 12 November.
                  |
-                 | A supervisor reads this list to see how their area is
-                 | moving, not to know which family is which: the file number
-                 | names the file and the area names the place. So the column
-                 | is the first name for them, and the surname is not on the
-                 | screen and not searchable from it — a name that cannot be
-                 | typed into a box cannot be fished out of one.
+                 | The file number names the file and the area names the
+                 | place, so the name on this list is the person's: the first
+                 | name, for every role. The surname is searchable for the
+                 | people who work the file and not for a supervisor — a name
+                 | that cannot be typed into a box cannot be fished out of one.
                  */
                 self::nameColumn(),
                 Tables\Columns\TextColumn::make('region.name_ar')
@@ -2877,24 +2877,32 @@ class BeneficiaryResource extends Resource
     /**
      * T-157 — the name column, as much of it as the account needs.
      *
-     * An area supervisor is shown the first name alone. Everybody else who
-     * can open this list works the file itself — the researcher who visits,
-     * the case officer who assesses, the director who approves — and reads
-     * the family's name.
+     * T-157 drew that line at the area supervisor's page, 29 October, and
+     * left every other role reading the surname.
+     *
+     * T-296 — «نحتاج يظهر الاسم الاول وليست الكنية», 12 November, of the rest
+     * of them. The list named each file by its surname and nothing else, so
+     * a screen of «الرفاعي» said which families these were and never which
+     * people — and the file number was already saying which file.
+     *
+     * So the column is the first name for everybody now. What the supervisor
+     * still does not get is the search: the surname stays a way for the
+     * people who work the file to find it, and stays a name that cannot be
+     * typed into a supervisor's box and so cannot be fished out of one.
      */
     public static function nameColumn(): Tables\Columns\TextColumn
     {
+        $column = Tables\Columns\TextColumn::make('first_name')
+            ->label(__('sanabel.beneficiary.first_name'))
+            // The place the file is in, under the person it belongs to.
+            ->description(fn (Beneficiary $record) => $record->region?->name_ar);
+
         if (auth()->user()?->role?->key === 'area_supervisor') {
-            return Tables\Columns\TextColumn::make('first_name')
-                ->label(__('sanabel.beneficiary.first_name'))
-                ->description(fn (Beneficiary $record) => $record->region?->name_ar);
+            return $column;
         }
 
-        return Tables\Columns\TextColumn::make('family_name')
-            ->label(__('sanabel.beneficiary.family_name'))
-            ->searchable()
-            // The place the file is in, under the family it belongs to.
-            ->description(fn (Beneficiary $record) => $record->region?->name_ar);
+        // Shown by the first name, still found by either.
+        return $column->searchable(['first_name', 'family_name']);
     }
 
     /**

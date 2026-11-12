@@ -19,7 +19,8 @@ class FieldController extends Controller
             // «بانتظار الزيارة» is, so the field app carries it too.
             ->whereIn('status', ['draft', 'pending_visit', 'returned', 'verified', 'approved', 'published', 'needs_reassessment'])
             ->orderBy('file_number')
-            ->get(['id', 'file_number', 'family_name', 'region_id', 'updated_at']);
+            // T-296 — the delegate picks the person they are going to see.
+            ->get(['id', 'file_number', 'first_name', 'region_id', 'updated_at']);
 
         return view('field.index', ['cases' => $cases]);
     }

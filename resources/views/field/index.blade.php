@@ -68,7 +68,7 @@
                     <option
                         value="{{ $case->id }}"
                         data-updated="{{ $case->updated_at?->toIso8601String() }}"
-                    >{{ $case->file_number }} — {{ $case->family_name }}</option>
+                    >{{ $case->file_number }} — {{ $case->first_name }}</option>
                 @endforeach
             </select>
         </label>

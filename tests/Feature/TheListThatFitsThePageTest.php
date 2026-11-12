@@ -41,8 +41,9 @@ it('draws few enough columns to fit the page', function () {
 
     expect(count($drawn))->toBeLessThanOrEqual(6)
         // The four a reader looks for, and the two badges beside them.
+        // T-296 — the name among them is the person's, not the family's.
         ->and($drawn)->toContain('file_number')
-        ->and($drawn)->toContain('family_name')
+        ->and($drawn)->toContain('first_name')
         ->and($drawn)->toContain('status');
 });
 

@@ -70,7 +70,11 @@ class CaseResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('file_number')->label(__('sanabel.beneficiary.file_number'))->searchable(),
-                Tables\Columns\TextColumn::make('family_name')->label(__('sanabel.beneficiary.family_name'))->searchable(),
+                // T-296 — the person's name on the list, the surname still a way to
+                // find them.
+                Tables\Columns\TextColumn::make('first_name')
+                    ->label(__('sanabel.beneficiary.first_name'))
+                    ->searchable(['first_name', 'family_name']),
                 Tables\Columns\TextColumn::make('region.name_ar')->label(__('sanabel.beneficiary.region')),
                 Tables\Columns\TextColumn::make('status')
                     ->label(__('sanabel.beneficiary.status'))

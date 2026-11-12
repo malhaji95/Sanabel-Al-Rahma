@@ -7,12 +7,14 @@ use Filament\Facades\Filament;
 
 /*
  | T-157 — «بصفحة مدير المنطقة ما نحتاج اظهار الكنية ممكن فقط الاسم الاول»,
- | 29 October.
+ | 29 October — and T-296 — «نحتاج يظهر الاسم الاول وليست الكنية»,
+ | 12 November, which says the same of every other role.
  |
- | A supervisor reads the list to see how their area is moving; the file
- | number names the file and the area names the place. The surname is not on
- | that screen, and it is not searchable from it either — a name that cannot
- | be typed into a box cannot be fished out of one.
+ | The file number names the file and the area names the place, so the name
+ | on the list is the person's. What the supervisor still does not get is the
+ | search: the surname stays a way for the people who work the file to find
+ | it, and stays a name that cannot be typed into a supervisor's box and so
+ | cannot be fished out of one.
  */
 
 beforeEach(function () {
@@ -48,7 +50,12 @@ it('shows the supervisor the first name and not the surname', function () {
         ->assertDontSee('الحلبي');
 });
 
-it('still gives the case officer the family’s name', function () {
+it('names the file to the case officer by the person, not the family', function () {
+    /*
+     | T-296 reversed what T-157 had left standing here. The officer used to
+     | read «الحلبي» and nothing else, which named the family and never the
+     | person, on a list where the file number was already naming the file.
+     */
     [, $case] = familyUnderASupervisor($this->region);
 
     $officer = userWithRole('case_officer', ['region_id' => $this->region->id]);
@@ -56,7 +63,26 @@ it('still gives the case officer the family’s name', function () {
 
     Livewire\Livewire::actingAs($officer)
         ->test(ListBeneficiaries::class)
-        ->assertSee('الحلبي');
+        ->assertCanSeeTableRecords([$case])
+        ->assertSee('سميرة')
+        ->assertDontSee('الحلبي');
+});
+
+it('still lets the case officer find a family by its surname', function () {
+    /*
+     | Taking the surname off the screen is not taking it out of their hands:
+     | the people who work the file still know families by it, and still have
+     | to be able to reach one.
+     */
+    [, $case] = familyUnderASupervisor($this->region);
+
+    $officer = userWithRole('case_officer', ['region_id' => $this->region->id]);
+    $this->actingAs($officer);
+
+    Livewire\Livewire::actingAs($officer)
+        ->test(ListBeneficiaries::class)
+        ->searchTable('الحلبي')
+        ->assertCanSeeTableRecords([$case]);
 });
 
 it('does not let the supervisor search the surname out of the list', function () {
