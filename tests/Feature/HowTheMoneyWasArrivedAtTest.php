@@ -62,14 +62,23 @@ it('names every line and where its figure came from', function () {
     }
 });
 
-it('keeps the three incomes apart, which is where double counting was asked about', function () {
+it('keeps every income apart, which is where double counting was asked about', function () {
+    /*
+     | T-303 — three sources became five: the rent of a property and the
+     | standing arrangements with neighbours, relatives and other
+     | associations now reach the engine too, each read where it was written
+     | and none of them twice.
+     */
     $case = publishedCase($this->region);
 
     $income = collect($case->currentAssessment()->needBreakdown()['income']);
 
-    expect($income->pluck('key')->all())
-        ->toBe(['income_rows', 'person_work_income', 'livestock_income'])
-        // The three together are the stable income and nothing else.
+    expect($income->pluck('key')->all())->toBe([
+        'income_rows', 'person_work_income', 'livestock_income',
+        'asset_income', 'support_income',
+    ])
+        // And together they are the stable income, and nothing else: the
+        // guarantee that holds however many lines there come to be.
         ->and($income->sum('total'))->toBe($case->currentAssessment()->stable_income);
 });
 

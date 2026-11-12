@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\Auditable;
 use App\Models\Concerns\TracksCreator;
+use App\Services\MonthlyAverage;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -52,6 +53,24 @@ class Livestock extends Model
      */
     public function countsAsIncome(): bool
     {
-        return $this->is_stable === true && $this->monthly_income > 0;
+        return $this->monthlyContribution() > 0;
+    }
+
+    /**
+     * T-303 — what the animals put into a month.
+     *
+     * The amount was counted only where `is_stable` was true, and that was a
+     * switch on a form: a researcher who never touched it left a steady
+     * income at nought with nothing on the screen to say so. It is a question
+     * now, and a seasonal income is averaged rather than dropped — a flock
+     * sold once a year is money the household lives on all twelve months.
+     */
+    public function monthlyContribution(): int
+    {
+        return MonthlyAverage::of(
+            $this->is_stable,
+            (int) $this->monthly_income,
+            $this->times_per_year,
+        );
     }
 }

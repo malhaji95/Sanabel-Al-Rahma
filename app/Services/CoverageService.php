@@ -274,7 +274,19 @@ class CoverageService
      */
     private static function deductibleSupport(): Builder
     {
-        return SupportSource::query()->where('purpose', '<>', 'earmarked');
+        return SupportSource::query()
+            ->where('purpose', '<>', 'earmarked')
+            /*
+             | T-303 — «منع خصم المساعدة نفسها مرتين، مرة من الدخل ومرة من
+             | المتبقي للتمويل», 12 November.
+             |
+             | A standing arrangement is income now, so it must not also be
+             | coverage. `isPayment()` says so on the model and the loaded
+             | path honoured it; this is the query path, which did not — so a
+             | recurring row that happened to carry a month was deducted
+             | twice, which is the very thing the association warned about.
+             */
+            ->where(fn ($q) => $q->where('kind', '<>', 'recurring')->orWhereNull('kind'));
     }
 
     /** The same figure for many families in one query, keyed by beneficiary id. */

@@ -219,13 +219,22 @@ class Assessment extends Model
          | person, livestock off its own record, and neither is copied into
          | an income row.
          */
-        $income = [
-            ['key' => 'income_rows', 'total' => (int) $this->stable_income
-                - (int) ($snapshot['livestock_income'] ?? 0)
-                - (int) ($snapshot['person_work_income'] ?? 0)],
-            ['key' => 'person_work_income', 'total' => (int) ($snapshot['person_work_income'] ?? 0)],
-            ['key' => 'livestock_income', 'total' => (int) ($snapshot['livestock_income'] ?? 0)],
+        // T-303 — each source on its own line, so a reader can see that every
+        // one of them arrived once. The first is what is left when the named
+        // ones are taken off, which keeps the lines adding to the total
+        // however many of them an older study happens to carry.
+        $named = [
+            'person_work_income' => (int) ($snapshot['person_work_income'] ?? 0),
+            'livestock_income' => (int) ($snapshot['livestock_income'] ?? 0),
+            'asset_income' => (int) ($snapshot['asset_income'] ?? 0),
+            'support_income' => (int) ($snapshot['support_income'] ?? 0),
         ];
+
+        $income = [['key' => 'income_rows', 'total' => (int) $this->stable_income - array_sum($named)]];
+
+        foreach ($named as $key => $total) {
+            $income[] = ['key' => $key, 'total' => $total];
+        }
 
         return [
             'need' => $need,
@@ -393,7 +402,7 @@ class Assessment extends Model
 
         $rows = [];
 
-        foreach (['income_rows', 'person_work_income', 'livestock_income'] as $key) {
+        foreach (['income_rows', 'person_work_income', 'livestock_income', 'asset_income', 'support_income'] as $key) {
             $l = (int) ($left[$key]['total'] ?? 0);
             $r = (int) ($right[$key]['total'] ?? 0);
 

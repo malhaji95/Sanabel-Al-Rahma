@@ -1775,6 +1775,43 @@ class BeneficiaryResource extends Resource
                                 ->numeric()->minValue(0)
                                 ->suffix(Money::short()),
 
+                            /*
+                             | T-303 — «إيجار عقار أو أرض أو سيارة: احتساب
+                             | صافي الدخل الدوري», 12 November.
+                             |
+                             | The table said what a thing is worth and never
+                             | what it brings in, and the engine did not read
+                             | it. So a family letting a plot had that rent
+                             | counted only if somebody wrote it a second time
+                             | in the income table — and «عدم اشتراط إدخال
+                             | المصدر مرتين في شاشتين مختلفتين» is the answer
+                             | to that.
+                             */
+                            Forms\Components\TextInput::make('net_income')
+                                ->label(__('sanabel.asset.net_income'))
+                                ->helperText(__('sanabel.asset.net_income_help'))
+                                ->numeric()->minValue(0)
+                                ->suffix(Money::short())
+                                ->live(onBlur: true),
+
+                            Forms\Components\Radio::make('is_stable')
+                                ->label(__('sanabel.asset.is_stable_q'))
+                                ->boolean(
+                                    trueLabel: __('sanabel.income.stable_yes'),
+                                    falseLabel: __('sanabel.income.stable_no'),
+                                )
+                                ->required(fn (Forms\Get $get) => (int) $get('net_income') > 0)
+                                ->validationMessages(['required' => __('sanabel.beneficiary.answer_required')])
+                                ->live()
+                                ->visible(fn (Forms\Get $get) => (int) $get('net_income') > 0),
+
+                            Forms\Components\TextInput::make('times_per_year')
+                                ->label(__('sanabel.income.times_per_year'))
+                                ->helperText(__('sanabel.income.times_per_year_help'))
+                                ->numeric()->minValue(1)->maxValue(12)
+                                ->visible(fn (Forms\Get $get) => (int) $get('net_income') > 0
+                                    && self::answeredNotStable($get('is_stable'))),
+
                             // T-64 — the two questions a number could not
                             // answer, asked of the researcher on the visit.
                             Forms\Components\Toggle::make('is_exploited')
@@ -1846,16 +1883,45 @@ class BeneficiaryResource extends Resource
                                     true,
                                 )),
 
-                            // The one answer the engine reads. Asked only when
-                            // there is an income to ask about.
-                            Forms\Components\Toggle::make('is_stable')
-                                ->label(__('sanabel.livestock.is_stable'))
+                            /*
+                             | T-303 — «تحويل سؤال انتظام الدخل إلى حقل إلزامي
+                             | لا يسمح بحفظ المصدر دون إجابته», 12 November.
+                             |
+                             | This was a switch, and a switch starts off: a
+                             | researcher who wrote a cow's income and never
+                             | saw it left the whole of it at nought, with
+                             | nothing on the screen to say so. It is the same
+                             | fault T-285 answered for the income rows, left
+                             | standing here.
+                             */
+                            Forms\Components\Radio::make('is_stable')
+                                ->label(__('sanabel.livestock.is_stable_q'))
+                                ->boolean(
+                                    trueLabel: __('sanabel.income.stable_yes'),
+                                    falseLabel: __('sanabel.income.stable_no'),
+                                )
+                                ->required(fn (Forms\Get $get) => in_array(
+                                    $get('income_kind'),
+                                    ['partial_income', 'main_income'],
+                                    true,
+                                ))
+                                ->validationMessages(['required' => __('sanabel.beneficiary.answer_required')])
                                 ->helperText(__('sanabel.livestock.is_stable_help'))
+                                ->live()
                                 ->visible(fn (Forms\Get $get) => in_array(
                                     $get('income_kind'),
                                     ['partial_income', 'main_income'],
                                     true,
                                 )),
+
+                            // And a seasonal income is averaged rather than
+                            // dropped: a flock sold once a year is money the
+                            // household lives on all twelve months.
+                            Forms\Components\TextInput::make('times_per_year')
+                                ->label(__('sanabel.income.times_per_year'))
+                                ->helperText(__('sanabel.income.times_per_year_help'))
+                                ->numeric()->minValue(1)->maxValue(12)
+                                ->visible(fn (Forms\Get $get) => self::answeredNotStable($get('is_stable'))),
                         ])->columns(2),
                 ]),
 
@@ -1973,15 +2039,52 @@ class BeneficiaryResource extends Resource
                                 ->label(__('sanabel.support_source.name_ar'))
                                 ->required(),
 
+                            /*
+                             | T-303 — the kind decides which of two things a
+                             | row is, so it can no longer be left blank. A
+                             | standing arrangement is income; a payment made
+                             | against a named month is coverage. The two are
+                             | exclusive, which is how the same help is never
+                             | deducted twice.
+                             */
                             Forms\Components\Select::make('kind')
                                 ->label(__('sanabel.support_source.kind'))
-                                ->helperText(__('sanabel.support_source.one_off_help'))
-                                ->options(__('sanabel.support_source.kinds')),
+                                ->helperText(__('sanabel.support_source.kind_help'))
+                                ->options(__('sanabel.support_source.kinds'))
+                                ->required()
+                                ->validationMessages(['required' => __('sanabel.beneficiary.answer_required')])
+                                ->live(),
 
                             Forms\Components\TextInput::make('amount')
                                 ->label(__('sanabel.support_source.amount'))
                                 ->numeric()->minValue(0)
-                                ->suffix(Money::short()),
+                                ->suffix(Money::short())
+                                ->live(onBlur: true),
+
+                            /*
+                             | T-303 — «عدم احتساب الوعود غير المؤكدة كدخل»
+                             | and «التحقق من استمرارها». An arrangement
+                             | somebody described is not an arrangement
+                             | somebody confirmed, and only the second is
+                             | money the household can be said to have.
+                             */
+                            Forms\Components\Radio::make('is_confirmed')
+                                ->label(__('sanabel.support_source.is_confirmed'))
+                                ->boolean(
+                                    trueLabel: __('sanabel.beneficiary.answer_yes'),
+                                    falseLabel: __('sanabel.beneficiary.answer_no'),
+                                )
+                                ->helperText(__('sanabel.support_source.is_confirmed_help'))
+                                ->required(fn (Forms\Get $get) => $get('kind') === 'recurring'
+                                    && (int) $get('amount') > 0)
+                                ->validationMessages(['required' => __('sanabel.beneficiary.answer_required')])
+                                ->visible(fn (Forms\Get $get) => $get('kind') === 'recurring'),
+
+                            Forms\Components\TextInput::make('times_per_year')
+                                ->label(__('sanabel.support_source.times_per_year'))
+                                ->helperText(__('sanabel.support_source.times_help'))
+                                ->numeric()->minValue(1)->maxValue(12)
+                                ->visible(fn (Forms\Get $get) => $get('kind') === 'recurring'),
 
                             // T-280 — what the payment answers. A payment for
                             // the family's living comes off the month's need;
@@ -2011,11 +2114,16 @@ class BeneficiaryResource extends Resource
                             // The month this payment answers, and only this
                             // month: it comes off that month's remaining need
                             // the way a partial donation does.
+                            // T-303 — a month belongs to a payment, not to a
+                            // standing arrangement: asking for one beside
+                            // «يدفع كل شهر» invites the double deduction the
+                            // association warned about.
                             Forms\Components\DatePicker::make('coverage_month')
                                 ->label(__('sanabel.support_source.coverage_month'))
                                 ->helperText(__('sanabel.support_source.coverage_month_help'))
                                 ->displayFormat('Y-m')
-                                ->format('Y-m-01'),
+                                ->format('Y-m-01')
+                                ->visible(fn (Forms\Get $get) => $get('kind') !== 'recurring'),
 
                             Forms\Components\DatePicker::make('paid_on')
                                 ->label(__('sanabel.support_source.paid_on')),

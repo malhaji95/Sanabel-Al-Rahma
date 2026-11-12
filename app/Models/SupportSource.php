@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\Auditable;
 use App\Models\Concerns\TracksCreator;
+use App\Services\MonthlyAverage;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -47,6 +48,7 @@ class SupportSource extends Model
         return [
             'amount' => 'integer',
             'coverage_month' => 'date',
+            'is_confirmed' => 'boolean',
             'paid_on' => 'date',
         ];
     }
@@ -56,12 +58,48 @@ class SupportSource extends Model
         return $this->belongsTo(Beneficiary::class);
     }
 
-    /** A payment the system may deduct: an amount, against a named month. */
+    /**
+     * A payment the system may deduct from a month: an amount, against a
+     * named month, and not a standing arrangement.
+     *
+     * T-303 — «منع خصم المساعدة نفسها مرتين، مرة من الدخل ومرة من المتبقي
+     * للتمويل», 12 November. A recurring arrangement is income now, so it
+     * must not also be coverage: the kind decides which of the two a row is,
+     * and the two are exclusive by construction.
+     */
     public function isPayment(): bool
     {
-        return $this->amount > 0
+        return $this->kind !== 'recurring'
+            && $this->amount > 0
             && $this->coverage_month !== null
             && $this->purpose !== 'earmarked';
+    }
+
+    /**
+     * T-303 — what a standing arrangement puts into a month.
+     *
+     * «مساعدات الجيران الشهرية ... مساعدات الأقارب الشهرية ... مساعدة زوج
+     * البنت ... مساعدات الجمعيات الشهرية» — all of them recorded here, and
+     * all of them reaching nothing: the table was built for a payment against
+     * a named month, so an arrangement with no month deducted from nothing
+     * and was not income either.
+     *
+     * Three conditions, each of them theirs. It must be recurring, because a
+     * one-off payment is coverage and counting it here would count it twice.
+     * It must be confirmed as arriving, because «عدم احتساب الوعود غير
+     * المؤكدة كدخل». And it must be for the family's living, because money
+     * given for one named thing did not raise what the household has to live
+     * on (T-280).
+     */
+    public function monthlyContribution(): int
+    {
+        if ($this->kind !== 'recurring' || $this->is_confirmed !== true || $this->isEarmarked()) {
+            return 0;
+        }
+
+        // A recurring arrangement with no count stated arrives every month,
+        // which is what «يدفع كل شهر» says on the screen the delegate reads.
+        return MonthlyAverage::of(false, (int) $this->amount, $this->times_per_year ?? 12);
     }
 
     /** Recorded, shown, and never deducted from the monthly need. */

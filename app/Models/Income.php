@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\Auditable;
 use App\Models\Concerns\TracksCreator;
+use App\Services\MonthlyAverage;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -40,14 +41,12 @@ class Income extends Model
      */
     public function monthlyContribution(): int
     {
-        if ($this->is_stable) {
-            return (int) $this->amount;
-        }
-
-        if (($this->times_per_year ?? 0) < 1) {
-            return 0;
-        }
-
-        return (int) floor((int) $this->amount * (int) $this->times_per_year / 12);
+        // T-303 — one rule, in one place, for the four kinds of money that
+        // now answer to it.
+        return MonthlyAverage::of(
+            (bool) $this->is_stable,
+            (int) $this->amount,
+            $this->times_per_year,
+        );
     }
 }

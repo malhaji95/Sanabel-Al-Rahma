@@ -4,11 +4,13 @@ namespace App\Services;
 
 use App\Exceptions\HouseholdIncomplete;
 use App\Exceptions\ReferenceValueMissing;
+use App\Models\Asset;
 use App\Models\Beneficiary;
 use App\Models\Income;
 use App\Models\Livestock;
 use App\Models\NeedAddition;
 use App\Models\Scopes\RegionScope;
+use App\Models\SupportSource;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 
@@ -151,12 +153,40 @@ class NeedEngine
         $monthlyNeed = $membersTotal + $adjustmentsTotal + $rent['amount']
             + $additionsTotal + $manualAdjustment;
 
-        // A steady net income from animals is income, a seasonal one is not
-        // (approved 11 Oct 2026). It is read here rather than mirrored into an
-        // `incomes` row, so the two can never drift apart.
+        /*
+         | T-303 — «ربط جميع مصادر الدخل بمحرك الاحتساب تلقائيًا», and «عدم
+         | اشتراط إدخال المصدر مرتين في شاشتين مختلفتين», 12 November.
+         |
+         | Each source is read where the researcher wrote it, once. None is
+         | mirrored into an `incomes` row, so no two of them can drift apart
+         | and none has to be typed twice to be counted.
+         |
+         | The animals: a steady income was counted and a seasonal one lost.
+         | It is averaged now, by the same rule as every other seasonal sum.
+         */
         $livestockIncome = (int) $beneficiary->livestock()->get()
-            ->filter(fn (Livestock $l) => $l->countsAsIncome())
-            ->sum('monthly_income');
+            ->sum(fn (Livestock $l) => $l->monthlyContribution());
+
+        /*
+         | The rent of a plot, a house or a vehicle. The assets table recorded
+         | what a thing was worth and never what it brought in, and the engine
+         | did not read it at all.
+         */
+        $assetIncome = (int) $beneficiary->assets()->get()
+            ->sum(fn (Asset $a) => $a->monthlyContribution());
+
+        /*
+         | The standing arrangements: neighbours, relatives, a daughter's
+         | husband, another association. Recorded, and reaching nothing —
+         | neither income nor coverage — because the table they live in was
+         | built for a payment against a named month.
+         |
+         | A one-off payment is still coverage and is still deducted from the
+         | month it answers, over in `externalForMonth`. The two are exclusive
+         | by construction, which is how the same help is not deducted twice.
+         */
+        $supportIncome = (int) $beneficiary->supportSources()->get()
+            ->sum(fn (SupportSource $s) => $s->monthlyContribution());
 
         /*
          | T-221 — «ينجمع تلقائياً», 1 November, choosing (ب) of the two we
@@ -191,6 +221,8 @@ class NeedEngine
          */
         $stableIncome = (int) $incomes->sum(fn (Income $income) => $income->monthlyContribution())
             + $livestockIncome
+            + $assetIncome
+            + $supportIncome
             + $personWorkIncome;
         // This month's money against this month's need (approved 24 Sep 2026).
         // A payment another body made for the same month counts here and only
@@ -236,6 +268,10 @@ class NeedEngine
                 'adjustments_total' => $adjustmentsTotal,
                 'external_support' => $external,
                 'livestock_income' => $livestockIncome,
+                // T-303 — written beside the rest, so an old study still says
+                // where each part of its income came from (rule 8).
+                'asset_income' => $assetIncome,
+                'support_income' => $supportIncome,
                 // T-221 — written down beside the rest, so an old assessment
                 // still says where its income figure came from (rule 8).
                 'person_work_income' => $personWorkIncome,

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\Auditable;
 use App\Models\Concerns\TracksCreator;
+use App\Services\MonthlyAverage;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -45,7 +46,31 @@ class Asset extends Model
             'estimated_value' => 'integer',
             'is_exploited' => 'boolean',
             'has_control' => 'boolean',
+            'net_income' => 'integer',
+            'is_stable' => 'boolean',
         ];
+    }
+
+    /**
+     * T-303 — «إيجار عقار أو أرض أو سيارة: احتساب صافي الدخل الدوري»,
+     * 12 November.
+     *
+     * The table recorded what a thing is worth and never what it brings in,
+     * and the engine did not read it at all. So a family renting out a plot
+     * had that rent counted only if a researcher happened to write it a
+     * second time as a row in the income table — and «عدم اشتراط إدخال
+     * المصدر مرتين في شاشتين مختلفتين» is the association's answer to that.
+     *
+     * Net of what it costs to keep, which is what the question asks for. And
+     * a plot let for a year is averaged like any other seasonal money.
+     */
+    public function monthlyContribution(): int
+    {
+        return MonthlyAverage::of(
+            $this->is_stable,
+            (int) $this->net_income,
+            $this->times_per_year,
+        );
     }
 
     public function beneficiary(): BelongsTo
