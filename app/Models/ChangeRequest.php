@@ -63,6 +63,9 @@ class ChangeRequest extends Model
         // Its social survey.
         'gender', 'birth_date', 'town_ar', 'quarter_ar', 'latitude', 'longitude', 'works', 'workplace_ar', 'work_income',
         'declared_monthly_income',
+        // T-299 — ما تقوله الأسرة عن معيشتها الفعلية يُصحَّح كما يُصحَّح
+        // ما تقوله عن دخلها, لا بفتح الملفّ من جديد.
+        'livelihood_means', 'livelihood_means_other_ar',
         // T-127 — the three-valued answer and the questions behind it. A
         // breadwinner who finds work after approval is corrected this way.
         'work_status', 'profession_ar', 'sought_trade_ar', 'has_certificate', 'experience_years', 'can_teach_quran',

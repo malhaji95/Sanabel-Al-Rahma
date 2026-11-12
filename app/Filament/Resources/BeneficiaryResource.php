@@ -1305,6 +1305,45 @@ class BeneficiaryResource extends Resource
                             ]))->monthlyContribution())
                         ).' '.Money::short())
                         ->columnSpanFull(),
+
+                    /*
+                     | T-299 — «كيف قامت الأسرة بتغطية مصاريف معيشتها خلال آخر
+                     | ٣٠ يومًا؟», 12 November.
+                     |
+                     | «الهدف ليس اعتبار جميع هذه الموارد دخلًا, بل معرفة الواقع
+                     | المالي للأسرة والتحقق من صحة بياناتها.»
+                     |
+                     | It is asked here, at the foot of the income step, because
+                     | this is the moment the figure is in front of the
+                     | researcher: a household that has just declared nothing,
+                     | or next to nothing, has lived on something these thirty
+                     | days, and this is where saying so costs least.
+                     |
+                     | Description, not arithmetic. Nothing answered here
+                     | reaches the need, the income, the deficit or the score,
+                     | and a family living on debt and the kindness of
+                     | neighbours is not thereby credited with an income.
+                     |
+                     | Asked of every file, not only of those declaring
+                     | nothing: a question put to the suspicious alone is an
+                     | accusation.
+                     */
+                    Forms\Components\CheckboxList::make('livelihood_means')
+                        ->label(__('sanabel.livelihood.question'))
+                        ->helperText(__('sanabel.livelihood.help'))
+                        ->options(__('sanabel.livelihood.means'))
+                        ->columns(2)
+                        ->required()
+                        ->validationMessages(['required' => __('sanabel.beneficiary.answer_required')])
+                        ->live()
+                        ->columnSpanFull(),
+
+                    Forms\Components\TextInput::make('livelihood_means_other_ar')
+                        ->label(__('sanabel.livelihood.other_ar'))
+                        ->helperText(__('sanabel.livelihood.other_help'))
+                        ->visible(fn (Forms\Get $get) => in_array('other', (array) $get('livelihood_means'), true))
+                        ->required(fn (Forms\Get $get) => in_array('other', (array) $get('livelihood_means'), true))
+                        ->columnSpanFull(),
                 ]),
 
                 Forms\Components\Wizard\Step::make(__('sanabel.beneficiary.step_housing'))->schema([

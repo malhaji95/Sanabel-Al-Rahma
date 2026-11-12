@@ -37,6 +37,10 @@ class BeneficiaryFactory extends Factory
             // fixture carries one the way a real file does.
             'spouse_national_id_encrypted' => '08'.fake()->numerify('#########'),
             'support_type' => 'monthly',
+            // T-299 — the form asks every file how the household got through
+            // the last thirty days, so a fixture answers it the way a real
+            // file does and an edit of one is not refused over it.
+            'livelihood_means' => ['cutting_back'],
             'status' => 'draft',
             'source' => 'delegate',
             'documented_debt' => 0,

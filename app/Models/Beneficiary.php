@@ -118,7 +118,10 @@ class Beneficiary extends Model
         // T-177 — the approver's own note on a file they are keeping.
         'management_note_ar',
         // T-69 — what the filled dossier of 12 October showed.
-        'quarter_ar', 'declared_monthly_income', 'donor_visit_consent', 'donor_visit_consent_on',
+        'quarter_ar', 'declared_monthly_income',
+        // T-299 — كيف غطّت الأسرة مصاريفها خلال آخر ثلاثين يومًا. وصفٌ لا حساب.
+        'livelihood_means', 'livelihood_means_other_ar',
+        'donor_visit_consent', 'donor_visit_consent_on',
         'privacy_policy_seen', 'privacy_consent', 'privacy_consent_on', 'privacy_policy_version',
         'declaration_on',
         // The association's own social survey, carried into the file.
@@ -223,6 +226,9 @@ class Beneficiary extends Model
             // «فقيرة، يتيمة».
             'case_classifications' => 'array',
             'declared_monthly_income' => 'integer',
+            // More than one way of getting through a month, because a
+            // family that borrows also cuts back.
+            'livelihood_means' => 'array',
             'work_income' => 'integer',
             'spouse_work_income' => 'integer',
             'donor_visit_consent' => 'boolean',

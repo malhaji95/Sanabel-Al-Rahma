@@ -339,7 +339,14 @@ function memberRow(array $overrides = []): array
  */
 function gatesAnsweredNo(): array
 {
-    return ['has_income' => 'no', 'has_health' => 'no', 'has_assets' => 'no'];
+    return [
+        'has_income' => 'no', 'has_health' => 'no', 'has_assets' => 'no',
+        // T-299 — and how the household got through the last thirty days,
+        // which the form now asks of every file. A family that answers «لا»
+        // to income has still eaten, and the form will not move on until it
+        // says on what.
+        'livelihood_means' => ['cutting_back'],
+    ];
 }
 
 /**

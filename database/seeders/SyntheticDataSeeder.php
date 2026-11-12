@@ -210,6 +210,20 @@ class SyntheticDataSeeder extends Seeder
              */
             'birth_date' => now()->subYears(26 + ($index % 34))->toDateString(),
             'smokes' => $index % 5 === 0,
+            /*
+             | T-299 — how the household got through the last thirty days.
+             | Spread over the answers the association listed, because a demo
+             | where every family lives the same way teaches nothing, and the
+             | screens that read it are the point of asking.
+             */
+            'livelihood_means' => [
+                ['cutting_back', 'relatives_neighbours'],
+                ['work'],
+                ['shop_credit', 'cutting_back'],
+                ['associations', 'in_kind'],
+                ['work', 'relatives_neighbours'],
+                ['savings', 'selling_assets'],
+            ][$index % 6],
             'support_type' => $index % 3 === 0 ? 'one_time' : 'monthly',
             'status' => 'draft',
             'source' => $index % 5 === 0 ? 'association' : 'delegate',
