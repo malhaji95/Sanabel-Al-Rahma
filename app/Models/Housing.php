@@ -25,8 +25,24 @@ class Housing extends Model
         'home_impression', 'missing_items', 'missing_items_other_ar',
     ];
 
-    /** شهري أو سنوي، كما يسأل الاستبيان. */
-    public const RENT_PERIODS = ['monthly', 'yearly'];
+    /*
+     | T-300 — «تحويل الإيجار السنوي إلى متوسط شهري قبل استخدامه في أي
+     | معادلة», 12 November.
+     |
+     | كم شهرًا تغطّي الدفعةُ الواحدة. والقائمة هي التي يعرضها الاستبيان
+     | نفسه: كان هنا ثابتٌ يقول «monthly أو yearly», و«yearly» لا تُكتب في
+     | هذا الجدول أبدًا — النموذج يكتب مفاتيح قائمة اللغة الأربعة. فكان
+     | الثابت ميّتًا ومخالفًا لما يُخزَّن.
+     */
+    public const RENT_PERIOD_MONTHS = [
+        'monthly' => 1,
+        'quarterly' => 3,
+        'semiannual' => 6,
+        'annual' => 12,
+    ];
+
+    /** The periods the survey offers, which are the ones it stores. */
+    public const RENT_PERIODS = ['monthly', 'quarterly', 'semiannual', 'annual'];
 
     protected $hidden = ['landlord_name_ar', 'landlord_phone_encrypted'];
 
@@ -54,5 +70,26 @@ class Housing extends Model
     public function isRenting(): bool
     {
         return $this->housing_type === 'rent';
+    }
+
+    /**
+     * T-300 — what the family pays in one month, whatever period the figure
+     * was written for.
+     *
+     * The column is called `monthly_rent` and was read as a month's rent by
+     * everything that touched it, while the question beside it offered
+     * «كل ثلاثة أشهر» and «سنوي». So a year's rent entered as a year's rent
+     * was read as a month's: in the housing factor it pushed the rent burden
+     * to its ceiling, worth up to fifty-five points of that sub-factor on a
+     * family whose real rent sits below the reference — which is most of them.
+     *
+     * An unanswered period is a month, which is what every figure already
+     * written was taken to mean.
+     */
+    public function monthlyRent(): int
+    {
+        $months = self::RENT_PERIOD_MONTHS[$this->rent_period] ?? 1;
+
+        return intdiv(max(0, (int) $this->monthly_rent), $months);
     }
 }

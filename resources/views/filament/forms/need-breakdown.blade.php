@@ -34,6 +34,9 @@
      | دراسةٍ من آب رقمٌ لا يعني شيئًا.
      */
     $household = $assessment?->beneficiary;
+    // T-300 — the rent the family actually pays, read today, beside the
+    // reference the study was computed on.
+    $housing = $household?->housing;
     $isInForce = $assessment
         && $household
         && $assessment->getKey() === $household->currentAssessment()?->getKey();
@@ -105,6 +108,30 @@
                                         ? __('sanabel.need_breakdown.rent_applied')
                                         : __('sanabel.need_breakdown.rent_not_applied') }}
                                 </div>
+
+                                {{-- T-300 — «إظهار الإيجار الفعلي والمحتسب
+                                     والفرق بينهما في تفاصيل الدراسة». الفعليّ
+                                     يُقرأ من السكن اليوم, فيُقال إنّه اليوم:
+                                     المحتسَب فوقه مجمّدٌ مع الدراسة. --}}
+                                @if (($row['applied'] ?? false) && $housing?->isRenting())
+                                    @php($paid = $housing->monthlyRent())
+                                    <div style="opacity: 0.75; margin-top: 0.2rem;">
+                                        {{ __('sanabel.need_breakdown.rent_paid', [
+                                            'amount' => number_format($paid),
+                                            'period' => __('sanabel.rent_period.'.($housing->rent_period ?: 'monthly')),
+                                        ]) }}
+                                        @if ($paid !== (int) $row['total'])
+                                            <span style="font-weight: 600;">
+                                                {{ __('sanabel.need_breakdown.rent_difference', [
+                                                    'amount' => number_format(abs($paid - (int) $row['total'])),
+                                                    'direction' => $paid > (int) $row['total']
+                                                        ? __('sanabel.need_breakdown.rent_above')
+                                                        : __('sanabel.need_breakdown.rent_below'),
+                                                ]) }}
+                                            </span>
+                                        @endif
+                                    </div>
+                                @endif
                             @endif
                         </td>
                         <td style="padding: 0.4rem 0.25rem; white-space: nowrap;">{{ number_format($row['unit']) }}</td>

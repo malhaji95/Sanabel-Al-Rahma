@@ -42,7 +42,8 @@ class ScoreService
         // T-284 — the household is the member rows and the applicant.
         $householdSize = $beneficiary->householdSize();
 
-        $v = $this->vulnerability($members, $householdSize, $w);
+        // T-301 — the household as people, the applicant among them.
+        $v = $this->vulnerability($beneficiary->people(), $householdSize, $w);
         $h = $this->housing($housing, $householdSize, $stableIncome, $need, $w);
         $u = $this->urgency($beneficiary, $asOf);
         $d = $this->deprivation($beneficiary, $monthlyNeed);
@@ -91,21 +92,30 @@ class ScoreService
             + $w['M_cost_burden'] * $costBurden;
     }
 
-    /** V = min(100, 60×dependents_ratio + 15×single_caregiver + 15×orphans + 10×unsupported_elderly) */
-    private function vulnerability($members, int $householdSize, array $w): float
+    /**
+     * V = min(100, 60×dependents_ratio + 15×single_caregiver + 15×orphans + 10×unsupported_elderly)
+     *
+     * T-301 — read over everybody in the household, the applicant included.
+     * It used to read the member rows alone, so an applicant who worked was
+     * not an earner and an applicant who was old was not an unsupported
+     * elder: the widow keeping three children scored as a house with no
+     * carer in it at all, and the grandmother as a house with no elder.
+     */
+    private function vulnerability($people, int $householdSize, array $w): float
     {
         // The applicant is one of the people the dependants are a share of.
         $total = max(1, $householdSize);
 
-        $dependentsRatio = $members->where('dependent', true)->count() / $total;
+        $dependants = $people->where('dependent', true)->count();
+        $dependentsRatio = $dependants / $total;
 
-        $earners = $members->filter(fn ($m) => ! $m->dependent && ! $m->unable_to_earn);
-        $singleCaregiver = ($earners->count() === 1 && $members->where('dependent', true)->count() > 0) ? 1 : 0;
+        $earners = $people->filter(fn ($p) => ! $p->dependent && ! $p->unable_to_earn);
+        $singleCaregiver = ($earners->count() === 1 && $dependants > 0) ? 1 : 0;
 
         $orphanKeys = config('sanabel.orphan_relation_keys');
-        $orphans = $members->contains(fn ($m) => in_array($m->relation, $orphanKeys, true)) ? 1 : 0;
+        $orphans = $people->contains(fn ($p) => in_array($p->relation, $orphanKeys, true)) ? 1 : 0;
 
-        $unsupportedElderly = ($members->contains(fn ($m) => $m->person_class === 'elderly')
+        $unsupportedElderly = ($people->contains(fn ($p) => $p->person_class === 'elderly')
             && $earners->isEmpty()) ? 1 : 0;
 
         return min(100, $w['V_dependents'] * $dependentsRatio
@@ -123,7 +133,8 @@ class ScoreService
 
         $overcrowding = self::overcrowdingBand($familySize, (int) $housing->habitable_rooms);
         $reference = (int) ($need['snapshot']['rent_reference']['amount'] ?? 0);
-        $rentBurden = self::rentBurden((int) $housing->monthly_rent, $reference, $income);
+        // T-300 — a month's rent, whatever period it was written for.
+        $rentBurden = self::rentBurden($housing->monthlyRent(), $reference, $income);
 
         return $w['H_safety'] * $housing->safety_band
             + $w['H_overcrowding'] * $overcrowding

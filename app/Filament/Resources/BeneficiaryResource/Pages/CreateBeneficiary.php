@@ -20,6 +20,9 @@ class CreateBeneficiary extends CreateRecord
         $data['source'] = auth()->user()->hasRole('association') ? 'association' : 'delegate';
         $data['status'] ??= 'draft';
 
+        // T-301 — the applicant carries the same two flags a member does.
+        $data = BeneficiaryResource::deriveApplicantFlags($data);
+
         return $data;
     }
 

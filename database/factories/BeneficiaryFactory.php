@@ -41,6 +41,10 @@ class BeneficiaryFactory extends Factory
             // the last thirty days, so a fixture answers it the way a real
             // file does and an edit of one is not refused over it.
             'livelihood_means' => ['cutting_back'],
+            // T-301 — a fixture applicant carries what a fixture member does.
+            'dependent' => false,
+            'has_documented_condition' => false,
+            'unable_to_earn' => false,
             'status' => 'draft',
             'source' => 'delegate',
             'documented_debt' => 0,

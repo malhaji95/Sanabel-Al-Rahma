@@ -36,6 +36,9 @@ class EditBeneficiary extends EditRecord
             $data['national_id_hash'] = Beneficiary::hashNationalId((string) $data['national_id_encrypted']);
         }
 
+        // T-301 — the applicant carries the same two flags a member does.
+        $data = BeneficiaryResource::deriveApplicantFlags($data);
+
         return $data;
     }
 

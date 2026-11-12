@@ -171,6 +171,35 @@ class BeneficiaryResource extends Resource
                         ->required()
                         ->maxDate(now()),
 
+                    /*
+                     | T-301 — the two answers every other person in this file
+                     | already carries, asked of the one holding it.
+                     |
+                     | They are what the additional items and the vulnerability
+                     | factor read, and the applicant had neither — so a
+                     | grandmother of seventy keeping two grandchildren opened
+                     | no elderly item and counted as nobody's carer. Derived
+                     | by the same rules as a member's, and correctable by the
+                     | researcher who sat with the family, exactly as T-129
+                     | asked for the members.
+                     */
+                    Forms\Components\Toggle::make('has_documented_condition')
+                        ->label(__('sanabel.beneficiary.has_documented_condition'))
+                        ->helperText(__('sanabel.beneficiary.condition_help'))
+                        ->live()
+                        ->afterStateUpdated(fn ($state, Forms\Set $set) => $set(
+                            'unable_to_earn',
+                            DependencyRules::isUnableToEarn((bool) $state),
+                        )),
+
+                    Forms\Components\Toggle::make('unable_to_earn')
+                        ->label(__('sanabel.beneficiary.unable_to_earn'))
+                        ->helperText(__('sanabel.beneficiary.unable_help')),
+
+                    Forms\Components\Toggle::make('dependent')
+                        ->label(__('sanabel.beneficiary.dependent'))
+                        ->helperText(__('sanabel.beneficiary.dependent_help')),
+
                     Forms\Components\TextInput::make('phone_encrypted')
                         ->label(__('sanabel.beneficiary.phone'))
                         ->tel()
@@ -3033,6 +3062,37 @@ class BeneficiaryResource extends Resource
      * somebody corrected it. A row written by an import or the offline sync
      * sends neither, and is derived as before.
      */
+    /**
+     * T-301 — the applicant's own two flags, derived the way a member's are.
+     *
+     * The submitted answer wins where there is one, exactly as it does for a
+     * member row (T-129): the rules fill the box and the researcher who sat
+     * with the family may correct it. What this adds is the filling, for the
+     * one person in the file who never had it.
+     */
+    public static function deriveApplicantFlags(array $data): array
+    {
+        $age = isset($data['birth_date'])
+            ? (int) Carbon::parse($data['birth_date'])->diffInYears(now())
+            : null;
+
+        if ($age !== null && ! array_key_exists('dependent', $data)) {
+            $data['dependent'] = DependencyRules::isDependent(
+                $age,
+                isStudent: false,
+                hasOwnIncome: (int) ($data['work_income'] ?? 0) > 0,
+            );
+        }
+
+        if (! array_key_exists('unable_to_earn', $data)) {
+            $data['unable_to_earn'] = DependencyRules::isUnableToEarn(
+                (bool) ($data['has_documented_condition'] ?? false),
+            );
+        }
+
+        return $data;
+    }
+
     private static function deriveMemberFlags(array $data): array
     {
         $age = (int) date('Y') - (int) ($data['birth_year'] ?? date('Y'));

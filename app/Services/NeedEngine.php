@@ -251,17 +251,28 @@ class NeedEngine
      */
     private function applicableAdjustmentKeys(Beneficiary $beneficiary, $members, $housing): array
     {
+        /*
+         | T-301 — «احتسابه في البدلات الإضافية وعوامل الهشاشة عند انطباق
+         | شروطها», 12 November.
+         |
+         | These three were read off the member rows alone, and the applicant
+         | is not one of those rows. So a grandmother of seventy keeping two
+         | grandchildren opened no elderly item: the only elderly person in
+         | the house was the one holding the file. The household is read as
+         | people now, and the applicant is one of them.
+         */
+        $people = $beneficiary->people();
         $keys = [];
 
-        if ($members->contains(fn ($m) => $m->person_class === 'child')) {
+        if ($people->contains(fn ($p) => $p->person_class === 'child')) {
             $keys[] = 'children_present';
         }
 
-        if ($members->contains(fn ($m) => $m->person_class === 'elderly')) {
+        if ($people->contains(fn ($p) => $p->person_class === 'elderly')) {
             $keys[] = 'elderly_present';
         }
 
-        if ($members->contains(fn ($m) => $m->unable_to_earn)) {
+        if ($people->contains(fn ($p) => $p->unable_to_earn)) {
             $keys[] = 'unable_to_earn_present';
         }
 

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\Auditable;
 use App\Models\Concerns\BelongsToRegion;
 use App\Models\Concerns\TracksCreator;
+use App\Services\DependencyRules;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -119,6 +120,8 @@ class Beneficiary extends Model
         'management_note_ar',
         // T-69 — what the filled dossier of 12 October showed.
         'quarter_ar', 'declared_monthly_income',
+        // T-301 — ما يحمله كلّ فرد في الأسرة, ومقدّم الطلب منهم.
+        'dependent', 'has_documented_condition', 'unable_to_earn',
         // T-299 — كيف غطّت الأسرة مصاريفها خلال آخر ثلاثين يومًا. وصفٌ لا حساب.
         'livelihood_means', 'livelihood_means_other_ar',
         'donor_visit_consent', 'donor_visit_consent_on',
@@ -226,6 +229,9 @@ class Beneficiary extends Model
             // «فقيرة، يتيمة».
             'case_classifications' => 'array',
             'declared_monthly_income' => 'integer',
+            'dependent' => 'boolean',
+            'has_documented_condition' => 'boolean',
+            'unable_to_earn' => 'boolean',
             // More than one way of getting through a month, because a
             // family that borrows also cuts back.
             'livelihood_means' => 'array',
@@ -296,6 +302,54 @@ class Beneficiary extends Model
     public function householdSize(): int
     {
         return $this->countedMembers()->count() + 1;
+    }
+
+    /**
+     * T-301 — «أن يُعامل مقدم الطلب كفرد من أفراد الأسرة في جميع المعادلات»,
+     * 12 November.
+     *
+     * Everybody the household is made of, the applicant among them, each
+     * carrying the same four answers: which money class they fall in,
+     * whether they are a dependant, whether a documented condition keeps them
+     * from earning, and what their own work pays.
+     *
+     * The engine used to read `members` and then make an exception for the
+     * applicant in one place and forget them in two others. So the result of
+     * a study depended on which member of a household had been written as its
+     * applicant, which is the thing the association asked us to end.
+     *
+     * A member row written under «ربّ الأسرة» is the applicant a second time
+     * and is left out, exactly as it is left out of the pricing.
+     *
+     * @return Collection<int,object>
+     */
+    public function people(): Collection
+    {
+        $applicant = (object) [
+            'is_applicant' => true,
+            'relation' => 'head',
+            'person_class' => $this->birth_date === null
+                ? null
+                : DependencyRules::personClass(
+                    (int) $this->birth_date->diffInYears(now()),
+                    'head',
+                ),
+            'dependent' => (bool) $this->dependent,
+            'unable_to_earn' => (bool) $this->unable_to_earn,
+            'work_income' => (int) $this->work_income,
+        ];
+
+        return $this->countedMembers()
+            ->map(fn (HouseholdMember $m) => (object) [
+                'is_applicant' => false,
+                'relation' => $m->relation,
+                'person_class' => $m->person_class,
+                'dependent' => (bool) $m->dependent,
+                'unable_to_earn' => (bool) $m->unable_to_earn,
+                'work_income' => (int) $m->work_income,
+            ])
+            ->prepend($applicant)
+            ->values();
     }
 
     /**

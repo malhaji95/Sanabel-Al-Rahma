@@ -953,12 +953,16 @@ class MaskedCaseResource extends JsonResource
     {
         $housing = $case->housing;
 
-        if (! $housing || ! $housing->isRenting() || $housing->monthly_rent <= 0) {
+        // T-300 — a month against a month. This read the column raw, so a
+        // year's rent put every such family in the «high» band.
+        $rent = $housing?->monthlyRent() ?? 0;
+
+        if (! $housing || ! $housing->isRenting() || $rent <= 0) {
             return __('sanabel.masked.rent_band.none');
         }
 
         $reference = max(1, (int) ($case->currentAssessment()?->snapshot_json['rent_reference']['amount'] ?? 0));
-        $ratio = $housing->monthly_rent / $reference;
+        $ratio = $rent / $reference;
 
         return __('sanabel.masked.rent_band.'.match (true) {
             $ratio < 0.75 => 'low',
