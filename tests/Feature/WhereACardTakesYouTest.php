@@ -83,7 +83,9 @@ it('says on the donations screen what turns a pending gift into a confirmed one'
         ->test(DonationResource\Pages\ListDonations::class)
         ->assertSuccessful();
 
-    expect($page->instance()->getSubheading())->toBe(__('sanabel.donations.verify_help'));
+    // T-307 added the other half of the sentence — what follows the
+    // verifying — so this half is contained in it rather than being all of it.
+    expect($page->instance()->getSubheading())->toContain(__('sanabel.donations.verify_help'));
 
     // And an account that cannot verify is told who does, rather than being
     // shown a button it does not have.
@@ -91,7 +93,7 @@ it('says on the donations screen what turns a pending gift into a confirmed one'
         ->test(DonationResource\Pages\ListDonations::class)
         ->assertSuccessful();
 
-    expect($page->instance()->getSubheading())->toBe(__('sanabel.donations.verify_help_readonly'));
+    expect($page->instance()->getSubheading())->toContain(__('sanabel.donations.verify_help_readonly'));
 })->group('AUTH-01');
 
 it('filters the files by area first, then by the place inside it', function () {

@@ -66,6 +66,10 @@ class DonationResource extends Resource
         $query = parent::getEloquentQuery();
         $user = auth()->user();
 
+        // T-307 — the file column reads these; eager-loaded so a page of
+        // twenty-five transfers stays two queries rather than fifty.
+        $query->with('allocations.beneficiary');
+
         if ($user?->can_('verify_payment') || $user?->isAdmin() || $user?->hasRole('council')) {
             return $query;
         }
@@ -163,6 +167,24 @@ class DonationResource extends Resource
                     ->formatStateUsing(fn (string $state) => __('sanabel.designation.'.$state))
                     ->badge()
                     ->color(fn (string $state) => $state === 'general' ? 'warning' : 'success'),
+                /*
+                 | T-307 — «لازم يكون موجود رقم الطلب, ورقم الملف», 28 October.
+                 |
+                 | The platform's own number was on the row and the file was
+                 | not, although an earmarked gift names its files in its
+                 | allocations: the treasurer could see that money was tied to
+                 | a household without seeing which. General money has no file
+                 | yet by design, so its cell says so rather than sitting
+                 | blank — «لم يُخصَّص بعد» is a state, not a gap.
+                 */
+                Tables\Columns\TextColumn::make('allocations.beneficiary.file_number')
+                    ->label(__('sanabel.donation.files'))
+                    ->badge()
+                    ->color('gray')
+                    ->listWithLineBreaks()
+                    ->limitList(3)
+                    ->expandableLimitedList()
+                    ->placeholder(__('sanabel.donation.files_none')),
                 Tables\Columns\TextColumn::make('fund.name_ar')->label(__('sanabel.donation.fund')),
                 Tables\Columns\TextColumn::make('status')
                     ->label(__('sanabel.beneficiary.status'))
