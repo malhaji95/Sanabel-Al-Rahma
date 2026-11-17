@@ -39,7 +39,12 @@ class ScoringWeightResource extends Resource
                 ->label(__('sanabel.weight.factor'))
                 ->options(__('sanabel.weight.factors'))
                 ->searchable()->required(),
-            Forms\Components\TextInput::make('weight')->label(__('sanabel.weight.value'))->numeric()->required(),
+            // T-308 — the screen takes the number as written and never
+            // divides it by anything, so it says so where the number is typed.
+            Forms\Components\TextInput::make('weight')
+                ->label(__('sanabel.weight.value'))
+                ->helperText(__('sanabel.weight.value_help'))
+                ->numeric()->required(),
             // T-288 — off is a decision the association can state and read
             // back; a nought is a value nobody filled in.
             Forms\Components\Toggle::make('is_active')
