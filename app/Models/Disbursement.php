@@ -7,6 +7,7 @@ use App\Models\Concerns\TracksCreator;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /** One payment owed to one family, and every signature it collects. */
@@ -52,6 +53,16 @@ class Disbursement extends Model
     public function awaitsAndIsOverdue(): bool
     {
         return $this->awaitsBeneficiary() && $this->escalated_at !== null;
+    }
+
+    /*
+     | T-324 — the funding lines that paid for this one. The rows existed and
+     | the relation did not, so reading «which donations paid this» meant a
+     | query written out at every call site.
+     */
+    public function fundings(): HasMany
+    {
+        return $this->hasMany(DisbursementFunding::class);
     }
 
     public function beneficiary(): BelongsTo
