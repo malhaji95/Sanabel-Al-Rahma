@@ -32,8 +32,11 @@
                             <tr class="text-xs text-gray-500 dark:text-gray-400">
                                 <th class="p-2 text-start">{{ $table['who'] }}</th>
                                 <th class="p-2 text-start">{{ __('sanabel.follow_up.total') }}</th>
-                                <th class="p-2 text-start">{{ __('sanabel.follow_up.late') }}</th>
-                                <th class="p-2 text-start">{{ __('sanabel.follow_up.very_late') }}</th>
+                                {{-- T-316 — the heading says the hour the
+                                     association set, not the hour we once
+                                     wrote into it. --}}
+                                <th class="p-2 text-start">{{ __('sanabel.follow_up.late', ['hours' => $this::lateHours()]) }}</th>
+                                <th class="p-2 text-start">{{ __('sanabel.follow_up.very_late', ['hours' => $this::veryLateHours()]) }}</th>
                                 <th class="p-2 text-start">{{ __('sanabel.follow_up.oldest') }}</th>
                                 <th class="p-2 text-start"></th>
                             </tr>

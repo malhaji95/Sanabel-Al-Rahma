@@ -458,6 +458,16 @@ return [
         // association moves these from the settings screen.
         'priority_critical_below' => 41,
         'priority_middle_below' => 61,
+        /*
+         | T-316 — «مُهَل الاستجابة», البند الثاني من المرحلة الثانية.
+         |
+         | The two lines the association drew on 26 October were constants in
+         | the page that draws them. A reference amount is data (§5), and
+         | these are the amounts by which the association judges its own
+         | desks: it has to be able to move them without us.
+         */
+        'follow_up_late_hours' => 24,
+        'follow_up_very_late_hours' => 48,
         'referral_validity_days' => 30,
         // Where a donor sends the money when neither the family nor its
         // association says otherwise: direct|association|both.

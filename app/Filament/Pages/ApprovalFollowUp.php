@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Filament\Resources\BeneficiaryResource;
 use App\Models\Beneficiary;
 use App\Models\Region;
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\CaseService;
 use App\Services\PermissionService;
@@ -42,10 +43,36 @@ class ApprovalFollowUp extends Page
 
     protected static string $view = 'filament.pages.approval-follow-up';
 
-    /** The two lines the association drew, in hours. */
-    public const LATE = 24;
+    /*
+     | T-316 — «مُهَل الاستجابة», phase two, item 2.
+     |
+     | The two lines the association drew on 26 October were constants here.
+     | They are reference amounts, and a reference amount is data (§5): these
+     | are the hours by which the association judges its own desks, and it has
+     | to be able to move them without us. So they are settings, with the
+     | agreed twenty-four and forty-eight as their defaults, and the column
+     | headings read the number rather than spelling it out.
+     */
+    public static function lateHours(): int
+    {
+        return max(1, (int) Setting::value(
+            'follow_up_late_hours',
+            config('sanabel.setting_defaults.follow_up_late_hours')
+        ));
+    }
 
-    public const VERY_LATE = 48;
+    /**
+     * Always at least an hour past the first line. Two lines at the same hour
+     * would leave the middle band empty for ever, and a second line below the
+     * first would put every late file in both bands at once.
+     */
+    public static function veryLateHours(): int
+    {
+        return max(static::lateHours() + 1, (int) Setting::value(
+            'follow_up_very_late_hours',
+            config('sanabel.setting_defaults.follow_up_very_late_hours')
+        ));
+    }
 
     public static function getNavigationGroup(): ?string
     {
@@ -143,9 +170,13 @@ class ApprovalFollowUp extends Page
     ): array {
         $now = now();
 
+        // Read once for the whole table rather than per row.
+        $late = static::lateHours();
+        $veryLate = static::veryLateHours();
+
         return $cases
             ->groupBy($key)
-            ->map(function ($group, $id) use ($since, $label, $status, $people, $now) {
+            ->map(function ($group, $id) use ($since, $label, $status, $people, $now, $late, $veryLate) {
                 $hours = $group->map(fn (Beneficiary $case) => $this->hoursSince($since($case), $now));
 
                 $id = $id === '' ? null : (int) $id;
@@ -155,8 +186,8 @@ class ApprovalFollowUp extends Page
                     'label' => $label($id),
                     'people' => $people ? $people($id) : null,
                     'total' => $group->count(),
-                    'late' => $hours->filter(fn (float $h) => $h >= self::LATE && $h < self::VERY_LATE)->count(),
-                    'very_late' => $hours->filter(fn (float $h) => $h >= self::VERY_LATE)->count(),
+                    'late' => $hours->filter(fn (float $h) => $h >= $late && $h < $veryLate)->count(),
+                    'very_late' => $hours->filter(fn (float $h) => $h >= $veryLate)->count(),
                     'oldest_hours' => (int) floor($hours->max() ?? 0),
                     'url' => BeneficiaryResource::getUrl('index', [
                         'tableFilters' => ['status' => ['value' => $status]],
