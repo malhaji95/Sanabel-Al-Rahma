@@ -23,5 +23,9 @@ Schedule::command('sanabel:chase-receipts')->dailyAt('06:45');
 // T-240 — tasks left untouched past the association's working-day window.
 Schedule::command('sanabel:chase-tasks')->dailyAt('07:00');
 
+// T-320 — the complaints desk's own window, a quarter hour after the data
+// desk's so the two mornings do not land on the queue at once.
+Schedule::command('sanabel:chase-complaints')->dailyAt('07:15');
+
 // T-241 — gift cards whose scheduled hour has come.
 Schedule::command('sanabel:issue-gifts')->everyFifteenMinutes()->withoutOverlapping();

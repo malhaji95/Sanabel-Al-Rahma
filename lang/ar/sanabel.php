@@ -2364,6 +2364,7 @@ return [
             'referral_validity_days' => 'صلاحية بطاقة الإحالة (يوم)',
             'follow_up_late_hours' => 'خط التأخر الأول (ساعة)',
             'follow_up_very_late_hours' => 'خط التأخر الثاني (ساعة)',
+            'complaint_due_working_days' => 'مهلة الردّ على الشكوى (أيام عمل)',
             'platform_wallet_number' => 'محفظة سنابل الوفاء (شام كاش)',
             'platform_wallet_holder' => 'اسم صاحب المحفظة',
         ],
@@ -2924,6 +2925,8 @@ return [
              | (القاعدة 10): يُكتب مَن سأل ومتى وأيُّ ملفٍّ أجاب.
              */
             'read_by_national_id' => 'بحث برقم الهوية',
+            // T-320 — قيدٌ يكتبه النظام لا مستخدم.
+            'complaint_overdue' => 'تنبيه تجاوز مهلة شكوى',
         ],
         'entities' => [
             'Beneficiary' => 'ملف مستفيد',

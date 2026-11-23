@@ -359,6 +359,18 @@ return [
         'data_task_due_working_days' => 2,
         'data_task_alert_roles' => ['data_supervisor'],
         'data_task_escalation_roles' => ['executive_director', 'deputy_executive_director'],
+        /*
+         | T-320 — «مهلة تصعيد» for a complaint, phase two, item 3.
+         |
+         | Three working days rather than the data desk's two: a complaint is
+         | read, asked about and answered, where a change request is read and
+         | decided. The association moves both from the settings screen.
+         |
+         | The escalation list is the one they already named for an overdue
+         | task. Nothing here invents a second chain of command.
+         */
+        'complaint_due_working_days' => 3,
+        'complaint_escalation_roles' => ['executive_director', 'deputy_executive_director'],
         'weekend_days' => ['friday', 'saturday'],
 
         /*

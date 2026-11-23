@@ -79,10 +79,13 @@ class OverdueTaskAlerts
      * week with every day in the weekend would never fall due, so that case
      * is refused by falling back to plain days.
      */
-    public function dueAt(Carbon $from): Carbon
+    public function dueAt(Carbon $from, ?int $days = null): Carbon
     {
         $weekend = static::weekend();
-        $days = max(1, static::dueWorkingDays());
+        // T-320 — the complaints desk has a window of its own, and the
+        // weekend arithmetic is the same arithmetic. Omitted, it is the data
+        // desk's window, exactly as before.
+        $days = max(1, $days ?? static::dueWorkingDays());
         $cursor = $from->copy();
 
         if (count($weekend) >= 7) {
