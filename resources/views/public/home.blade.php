@@ -43,6 +43,17 @@
             aria-roledescription="carousel"
             aria-label="{{ __('sanabel.public.hero_carousel') }}"
         >
+            {{-- T-311 — «ليش عند تبديل الشرائح تظهر بهاد الشكل كأنه في خلل».
+                 Each slide used to sit in the page's flow, and the crossfade
+                 keeps the leaving slide displayed for its 400ms. So for those
+                 400ms two slides were in the flow at once and the hero grew to
+                 twice its height, one picture stacked under the other.
+
+                 The slides now lie on top of one another inside one track of
+                 fixed height. The heights T-107 settled are the track's, so
+                 the hero is that tall whichever slide is showing, and whether
+                 one is leaving or none at all. --}}
+            <div class="relative h-[180px] w-full sm:h-[300px] lg:h-[380px]">
             @foreach ($banners as $index => $banner)
                 {{-- T-295 — «الشريط بيختفي بعد ما بدّل الشريحة».
                      The slides after the first were held back with Tailwind's
@@ -61,7 +72,7 @@
                 <div
                     x-show="slide === {{ $index }}"
                     x-transition.opacity.duration.400ms
-                    class="relative"
+                    class="absolute inset-0"
                     @style(['display:none' => $index > 0])
                     role="group"
                     aria-roledescription="slide"
@@ -80,11 +91,11 @@
                                  of it before a reader saw anything else. The
                                  desktop heights are the ones the association's
                                  own asset pack asks for, 300 to 450. --}}
-                            class="h-[180px] w-full object-cover sm:h-[300px] lg:h-[380px]"
+                            class="h-full w-full object-cover"
                             @if ($index === 0) fetchpriority="high" @else loading="lazy" @endif
                         >
                     @else
-                        <div class="h-[180px] w-full sm:h-[300px] lg:h-[380px]" style="background-color: var(--accent);"></div>
+                        <div class="h-full w-full" style="background-color: var(--accent);"></div>
                     @endif
 
                     {{-- T-310 — the five wide messages the association sent
@@ -123,6 +134,7 @@
                     @endif
                 </div>
             @endforeach
+            </div>
 
             @if ($banners->count() > 1)
                 <button type="button"

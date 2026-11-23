@@ -429,7 +429,9 @@ it('keeps the banner off most of a phone screen, and within the pack sizes above
      */
     $body = $this->get(route('home'))->assertOk()->getContent();
 
-    expect($body)->toContain('h-[180px] w-full object-cover sm:h-[300px] lg:h-[380px]')
+    // T-311 moved the heights off the picture and onto the one track the
+    // slides lie in, so the hero is this tall whichever slide is showing.
+    expect($body)->toContain('relative h-[180px] w-full sm:h-[300px] lg:h-[380px]')
         ->and($body)->not->toContain('h-[260px]')
         // Two tiles to a row on a phone.
         ->and($body)->toContain('grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4');
