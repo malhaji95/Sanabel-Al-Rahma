@@ -87,6 +87,35 @@ class HealthPathService
             throw new \RuntimeException(__('sanabel.health_path.type_mismatch'));
         }
 
+        /*
+         | T-314 — «استبعاد الاتفاقيات غير الفعالة» (§4.3), enforced where §6
+         | says it must be: «التحقق ... على الخادم, وليس عبر إخفاء الأزرار في
+         | JavaScript».
+         |
+         | The picker on the screen already left an inactive provider out of
+         | the list. That is a list, not a rule: the service it called checked
+         | the provider's type and nothing else, so a request that did not come
+         | through that dropdown was issued a card against a suspended
+         | provider. And the agreement's own end date was read by nothing at
+         | all — not the screen, not the service — so a card went out under an
+         | agreement that had expired months before.
+         */
+        if ($provider->status !== 'active') {
+            throw new \RuntimeException(__('sanabel.health_path.provider_not_active'));
+        }
+
+        /*
+         | The last day of a term is inside it. `valid_until` is cast to a
+         | date, so it is midnight on that day: `isPast()` would refuse an
+         | agreement on the very day it runs until, which is a day the
+         | association is still paying for.
+         */
+        if ($provider->valid_until && $provider->valid_until->lt(now()->startOfDay())) {
+            throw new \RuntimeException(__('sanabel.health_path.agreement_expired', [
+                'date' => $provider->valid_until->toDateString(),
+            ]));
+        }
+
         return DB::transaction(function () use ($request, $provider, $handler) {
             $referral = app(ReferralService::class)->issue($request->beneficiary, $provider);
 
