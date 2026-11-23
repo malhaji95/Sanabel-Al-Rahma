@@ -151,6 +151,23 @@ trait CaseDecisionActions
                     ->helperText(__('sanabel.conflict.waiver_reason_help'))
                     ->rows(3)
                     ->required(),
+
+                /*
+                 | T-318 — «الاستثناء المؤقّت», phase two, item 4.
+                 |
+                 | A waiver granted once held for ever, so an exception made
+                 | for one urgent file quietly became a standing permission
+                 | over that family. It may now be given a term, and it ends
+                 | by itself when the term does.
+                 |
+                 | Left empty it behaves exactly as it always has, because
+                 | every waiver granted before today has no term and giving
+                 | them one now would change a decision already made.
+                 */
+                Forms\Components\DatePicker::make('expires_on')
+                    ->label(__('sanabel.conflict.waiver_expires_on'))
+                    ->helperText(__('sanabel.conflict.waiver_expires_help'))
+                    ->minDate(now()),
             ])
             ->action(function (Beneficiary $record, array $data) {
                 app(ConflictOfInterest::class)->waive(
@@ -158,6 +175,7 @@ trait CaseDecisionActions
                     User::findOrFail($data['user_id']),
                     auth()->user(),
                     (string) $data['reason_ar'],
+                    filled($data['expires_on'] ?? null) ? Carbon::parse($data['expires_on']) : null,
                 );
 
                 Notification::make()->title(__('sanabel.conflict.waived'))->success()->send();

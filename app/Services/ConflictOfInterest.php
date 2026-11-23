@@ -6,6 +6,7 @@ use App\Models\Beneficiary;
 use App\Models\ConflictDisclosure;
 use App\Models\ConflictWaiver;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -96,11 +97,19 @@ class ConflictOfInterest
             && ! $this->isWaived($case, $user);
     }
 
+    /*
+     | T-318 — a waiver that has run out does not lift anything. The row is
+     | not deleted: it says the bar was lifted, by whom, why, and until when,
+     | which is what the oversight committee reads it for. It simply stops
+     | being the answer to «may this hand act today».
+     */
     public function isWaived(Beneficiary $case, User $user): bool
     {
         return ConflictWaiver::query()
             ->where('beneficiary_id', $case->getKey())
             ->where('user_id', $user->getKey())
+            ->where(fn ($q) => $q->whereNull('expires_on')
+                ->orWhereDate('expires_on', '>=', now()->startOfDay()))
             ->exists();
     }
 
@@ -132,8 +141,13 @@ class ConflictOfInterest
      * which one failed: the person lifting it holds the key, they are not
      * the person it is lifted for, and they wrote down why.
      */
-    public function waive(Beneficiary $case, User $forUser, User $grantedBy, string $reason): ConflictWaiver
-    {
+    public function waive(
+        Beneficiary $case,
+        User $forUser,
+        User $grantedBy,
+        string $reason,
+        ?Carbon $expiresOn = null,
+    ): ConflictWaiver {
         if (! $this->permissions->has($grantedBy, self::WAIVER_KEY)) {
             throw new RuntimeException(__('sanabel.conflict.waiver_not_permitted'));
         }
@@ -146,9 +160,23 @@ class ConflictOfInterest
             throw new RuntimeException(__('sanabel.conflict.waiver_reason_required'));
         }
 
+        /*
+         | T-318 — a term that has already run out is not a term. Granting one
+         | would read on the screen as a lifted bar and act as a standing one,
+         | which is the worst of both.
+         */
+        if ($expiresOn && $expiresOn->lt(now()->startOfDay())) {
+            throw new RuntimeException(__('sanabel.conflict.waiver_expiry_past'));
+        }
+
         return DB::transaction(fn () => ConflictWaiver::updateOrCreate(
             ['beneficiary_id' => $case->getKey(), 'user_id' => $forUser->getKey()],
-            ['granted_by' => $grantedBy->getKey(), 'reason_ar' => $reason, 'granted_at' => now()],
+            [
+                'granted_by' => $grantedBy->getKey(),
+                'reason_ar' => $reason,
+                'granted_at' => now(),
+                'expires_on' => $expiresOn?->toDateString(),
+            ],
         ));
     }
 }
