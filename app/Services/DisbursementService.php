@@ -60,6 +60,17 @@ class DisbursementService
          | later screen — and money leaving a refused file is not a thing to
          | be prevented by a form.
          */
+        /*
+         | T-323 — «الإقفال». Before anything else about this payment: whether
+         | the month it belongs to is still open. A month whose books have
+         | been gone over and reported does not take new money, or the report
+         | and the ledger stop agreeing with nothing to say which came first.
+         |
+         | Here and not on the screen, for the same reason as the check below
+         | it: the screen is one of several ways in.
+         */
+        app(PeriodClose::class)->refuseIfClosed($period);
+
         if (! $beneficiary->mayReceiveMoney()) {
             $this->refuse(
                 __('sanabel.disbursement.file_may_not_receive', [
