@@ -2462,6 +2462,29 @@ class BeneficiaryResource extends Resource
                             ? app(CoverageService::class)->coveragePercent($record).'%'
                             : '—'),
                 ])->columns(2),
+
+                /*
+                 | T-313 — «السجلّ الزمني الموحَّد للأسرة», phase two, item 2.
+                 |
+                 | Everything that happened to this family, in one list, newest
+                 | first: the file's steps, the studies, the visits, the money,
+                 | the sponsorships, the deliveries. Each of the six was
+                 | recorded already, each on its own screen, so answering «what
+                 | has this family been through» meant opening six of them and
+                 | holding the dates in one's head.
+                 |
+                 | Hidden while a file is being opened, because there is
+                 | nothing yet for it to say.
+                 */
+                Forms\Components\Wizard\Step::make(__('sanabel.timeline.heading'))
+                    ->visible(fn (?Beneficiary $record) => $record !== null)
+                    ->schema([
+                        Forms\Components\ViewField::make('family_timeline')
+                            ->hiddenLabel()
+                            ->view('filament.forms.family-timeline')
+                            ->dehydrated(false)
+                            ->columnSpanFull(),
+                    ]),
             ])->columnSpanFull()
                 /*
                  | T-146 — the wizard is walked, not jumped.
