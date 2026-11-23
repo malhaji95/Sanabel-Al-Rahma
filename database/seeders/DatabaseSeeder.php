@@ -25,6 +25,8 @@ class DatabaseSeeder extends Seeder
              | left alone.
              */
             PageContentSeeder::class,
+            // T-309 — the association's own gift artwork, as rows they edit.
+            GiftCardSeeder::class,
             AdminUserSeeder::class,
         ]);
     }

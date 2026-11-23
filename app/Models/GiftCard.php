@@ -69,8 +69,16 @@ class GiftCard extends Model
 
         // The public disk, like the banners: marketing artwork, deliberately
         // not the media disk that holds family documents behind signed URLs.
-        return str_starts_with($path, 'http')
-            ? $path
+        //
+        // T-309 — and artwork that ships with the application, like the
+        // banners and the door pictures, is read from `public/` where it was
+        // deployed, not from a disk nobody uploaded it to.
+        if (str_starts_with($path, 'http')) {
+            return $path;
+        }
+
+        return str_starts_with($path, 'images/')
+            ? asset($path)
             : Storage::disk('public')->url($path);
     }
 }
