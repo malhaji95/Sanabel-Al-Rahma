@@ -37,6 +37,10 @@ class BannerResource extends Resource
         return $form->schema([
             Forms\Components\TextInput::make('title_ar')->label(__('sanabel.banner.title'))->required(),
             Forms\Components\Textarea::make('body_ar')->label(__('sanabel.banner.body'))->columnSpanFull(),
+            // T-310 — artwork that already carries its words is shown bare.
+            Forms\Components\Toggle::make('text_in_image')
+                ->label(__('sanabel.banner.text_in_image'))
+                ->helperText(__('sanabel.banner.text_in_image_help')),
             Forms\Components\Toggle::make('is_published')->label(__('sanabel.banner.is_published')),
             Forms\Components\TextInput::make('sort_order')->label(__('sanabel.banner.sort_order'))->numeric()->minValue(0),
             // Marketing artwork on the public disk — deliberately not the media

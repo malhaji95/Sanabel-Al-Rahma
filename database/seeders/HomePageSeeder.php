@@ -83,6 +83,54 @@ class HomePageSeeder extends Seeder
                 ],
             );
         }
+
+        $this->wideMessages();
+    }
+
+    /*
+     | T-310 — the five wide messages, re-exported at 1920×720 on 23 November.
+     |
+     | T-252 published the files in November and wired them to nothing,
+     | leaving which of them belongs in the carousel to the association. They
+     | did not choose, and on 23 November asked for them on the front page, so
+     | they go in last — after the five slides that were already there — and
+     | every one of them is a row the association reorders, renames or hides.
+     |
+     | Each destination is the page that answers its own sentence, because a
+     | slide whose button goes somewhere other than its words is the
+     | commonest lie on a charity home page:
+     |
+     |   · «اكتشف المنصة»            -> من نحن, where the platform is described
+     |   · «السياسة المالية»          -> الشفافية المالية
+     |   · «معايير الاستحقاق»         -> كيف نعمل, which carries the method
+     |   · «الضوابط الشرعية»          -> الأسئلة الشائعة, which answers what the
+     |                                  sharia board does and how zakat is
+     |                                  channelled
+     |   · «منظومة الرقابة»           -> الرقابة الداخلية
+     |
+     | `text_in_image` is what keeps the carousel from writing over them.
+     */
+    private function wideMessages(): void
+    {
+        foreach ([
+            ['التقنية في خدمة العطاء', 'images/banners/technology.webp', '/about'],
+            ['لا تداول نقدي... بل مسار مالي موثّق', 'images/banners/money-trail.webp', '/financial-transparency'],
+            ['العدالة في الاستحقاق', 'images/banners/fairness.webp', '/how-we-work'],
+            ['ضوابط شرعية واضحة', 'images/banners/sharia.webp', '/faq'],
+            ['رقابة مستقلة تحمي الأمانة', 'images/banners/oversight.webp', '/internal-oversight'],
+        ] as $index => [$title, $image, $link]) {
+            Banner::firstOrCreate(
+                ['title_ar' => $title],
+                [
+                    'body_ar' => null,
+                    'image' => $image,
+                    'link' => $link,
+                    'text_in_image' => true,
+                    'is_published' => true,
+                    'sort_order' => 10 + $index,
+                ],
+            );
+        }
     }
 
     private function card(string $block, string $title, array $attributes, int $order): void

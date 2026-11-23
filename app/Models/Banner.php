@@ -16,7 +16,7 @@ class Banner extends Model
 
     protected $guarded = ['id'];
 
-    protected $casts = ['is_published' => 'boolean', 'sort_order' => 'integer'];
+    protected $casts = ['is_published' => 'boolean', 'text_in_image' => 'boolean', 'sort_order' => 'integer'];
 
     public function campaign(): BelongsTo
     {

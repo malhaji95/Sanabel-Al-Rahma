@@ -69,7 +69,10 @@
                     @if ($banner->imageUrl())
                         <img
                             src="{{ $banner->imageUrl() }}"
-                            alt=""
+                            {{-- T-310 — a picture that carries the words is
+                                 described by them; a photograph behind a
+                                 heading is decoration and says nothing. --}}
+                            alt="{{ $banner->text_in_image ? $banner->title_ar : '' }}"
                             {{-- T-107 — «البنارات يكون أحجامهم صغيرة … مشان
                                  لما نفتح الموقع على الجوال يكون كل شي واضح»،
                                  16 October. A phone screen is about 650px
@@ -84,6 +87,18 @@
                         <div class="h-[180px] w-full sm:h-[300px] lg:h-[380px]" style="background-color: var(--accent);"></div>
                     @endif
 
+                    {{-- T-310 — the five wide messages the association sent
+                         on 23 November are finished compositions: headline,
+                         sentence and button are drawn into the artwork. So the
+                         slide is the picture and nothing else, and the whole
+                         of it goes where its own painted button promises. --}}
+                    @if ($banner->text_in_image)
+                        @if ($banner->destination())
+                            <a href="{{ $banner->destination() }}"
+                               class="absolute inset-0"
+                               aria-label="{{ $banner->title_ar }}"></a>
+                        @endif
+                    @else
                     {{-- The text sits on the picture, so it carries its own
                          scrim: a photograph cannot be relied on for contrast. --}}
                     <div
@@ -105,6 +120,7 @@
                             {{ __('sanabel.public.donate_now') }}
                         </a>
                     </div>
+                    @endif
                 </div>
             @endforeach
 
