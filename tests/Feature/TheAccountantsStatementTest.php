@@ -1,5 +1,6 @@
 <?php
 
+use App\Filament\Pages\AccountantStatements;
 use App\Models\Donation;
 use App\Models\DonationImport;
 use App\Models\Donor;
@@ -25,6 +26,13 @@ beforeEach(function () {
     seedCore();
     $this->region = regionWithRates();
     $this->accountant = userWithRole('finance');
+    /*
+     | T-322 — `verify_payment` is held by two roles only, the accountant and
+     | the treasurer, and this screen's one button verifies money. So the hand
+     | that approves a statement is the other of the two: two hands that may
+     | both verify, and never one of them being both.
+     */
+    $this->treasurer = userWithRole('treasurer');
     $this->director = userWithRole('executive_director');
     $this->statements = app(AccountantStatement::class);
 });
@@ -258,3 +266,77 @@ it('never creates a donation out of a statement line', function () {
     expect(Donation::count())->toBe($before)
         ->and($import->rows()->pluck('outcome')->all())->toBe(['no_match', 'no_match']);
 });
+
+it('opens the screen to the hand that verifies money, and to no other', function () {
+    Filament\Facades\Filament::setCurrentPanel(Filament\Facades\Filament::getPanel('admin'));
+    passTwoFactor();
+
+    $this->actingAs($this->treasurer);
+    expect(AccountantStatements::canAccess())->toBeTrue();
+
+    $this->actingAs($this->accountant);
+    expect(AccountantStatements::canAccess())->toBeTrue();
+
+    // The executive director approves a payment order and verifies no
+    // transfer: the two are different hands and this is the verifier's screen.
+    $this->actingAs($this->director);
+    expect(AccountantStatements::canAccess())->toBeFalse();
+
+    // A delegate writes no money and reads no statement.
+    $this->actingAs(userWithRole('delegate', ['region_id' => $this->region->id]));
+    expect(AccountantStatements::canAccess())->toBeFalse();
+
+    // Nor does oversight, which reads everything and writes nothing: this
+    // screen's one button verifies money.
+    $this->actingAs(userWithRole('oversight_director'));
+    expect(AccountantStatements::canAccess())->toBeFalse();
+})->group('AUTH-01');
+
+it('draws every line and its verdict before anything is approved', function () {
+    pendingDonation('TRX-090', 100000);
+
+    $import = $this->statements->stage(statementFile([
+        ['TRX-090', '100000', 'SYP', '2026-11-01'],
+        ['TRX-091', '5000', 'SYP', '2026-11-02'],
+    ]), $this->accountant);
+
+    Filament\Facades\Filament::setCurrentPanel(Filament\Facades\Filament::getPanel('admin'));
+    passTwoFactor();
+    $this->actingAs($this->treasurer);
+
+    $html = Livewire\Livewire::test(AccountantStatements::class)->html();
+
+    expect($html)->toContain('TRX-090')
+        ->toContain('TRX-091')
+        ->toContain(__('sanabel.statement.outcomes.ready'))
+        ->toContain(__('sanabel.statement.outcomes.no_match'))
+        ->toContain($this->accountant->name)
+        ->toContain(__('sanabel.statement.approve'));
+
+    expect($import->refresh()->status)->toBe('staged');
+});
+
+it('verifies from the screen, and refuses the uploader pressing it', function () {
+    $donation = pendingDonation('TRX-100', 100000);
+
+    $import = $this->statements->stage(statementFile([
+        ['TRX-100', '100000', 'SYP', '2026-11-01'],
+    ]), $this->accountant);
+
+    Filament\Facades\Filament::setCurrentPanel(Filament\Facades\Filament::getPanel('admin'));
+    passTwoFactor();
+
+    // The accountant who sent it presses approve: refused, and nothing moves.
+    $this->actingAs($this->accountant);
+    Livewire\Livewire::test(AccountantStatements::class)->call('approve', $import->id);
+
+    expect($donation->refresh()->status)->toBe('pending')
+        ->and($import->refresh()->status)->toBe('staged');
+
+    // The treasurer presses it: the money is verified.
+    $this->actingAs($this->treasurer);
+    Livewire\Livewire::test(AccountantStatements::class)->call('approve', $import->id);
+
+    expect($donation->refresh()->status)->toBe('verified')
+        ->and($import->refresh()->status)->toBe('approved');
+})->group('AUTH-01');
