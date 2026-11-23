@@ -144,7 +144,7 @@ class Beneficiary extends Model
         // the committee, and the two columns that say who signed it off.
         'story_ar', 'story_approved_by', 'story_approved_at',
         'urgency_deadline_at', 'documented_debt', 'status', 'last_assessment_at', 'next_assessment_due_at', 'source',
-        'merged_into_id', 'duplicate_review_flag', 'approved_by', 'approved_at', 'reject_reason_ar',
+        'merged_into_id', 'duplicate_review_flag', 'risk_reasons_json', 'approved_by', 'approved_at', 'reject_reason_ar',
         'field_verified_by', 'field_verified_at', 'endorsed_by', 'endorsed_at',
         'published_at', 'created_by',
     ];
@@ -268,6 +268,8 @@ class Beneficiary extends Model
             'documented_debt' => 'integer',
             'published_at' => 'datetime',
             'duplicate_review_flag' => 'boolean',
+            // T-321 — which rule held this file, for whoever opens it.
+            'risk_reasons_json' => 'array',
         ];
     }
 

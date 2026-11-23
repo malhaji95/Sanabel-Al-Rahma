@@ -137,7 +137,10 @@ it('flags a suspicious duplicate for review instead of merging it automatically'
     $second = familyOf($this->region);
     $second->update(['phone_encrypted' => '0987654321']);
 
-    expect(app(DuplicateService::class)->flagIfSuspicious($second->refresh()))->toBeTrue()
+    // T-321 — the call now names the rules that fired rather than answering
+    // yes or no, so the reviewer who opens the file knows which check held it.
+    expect(app(DuplicateService::class)->flagIfSuspicious($second->refresh()))
+        ->toBe(['same_phone_region'])
         ->and($second->fresh()->duplicate_review_flag)->toBeTrue()
         // Never an auto-merge.
         ->and($second->fresh()->merged_into_id)->toBeNull()

@@ -2708,7 +2708,18 @@ class BeneficiaryResource extends Resource
                     ->trueIcon('heroicon-o-exclamation-triangle')
                     ->falseIcon('heroicon-o-check-circle')
                     ->trueColor('warning')
-                    ->falseColor('gray'),
+                    ->falseColor('gray')
+                    /*
+                     | T-321 — and which rule raised it. The flag said a file
+                     | was held and not a word about why, so whoever opened it
+                     | had to guess which check fired and go looking for the
+                     | other file themselves.
+                     */
+                    ->tooltip(fn (Beneficiary $record) => $record->duplicate_review_flag
+                        ? collect($record->risk_reasons_json ?? [])
+                            ->map(fn (string $key) => __('sanabel.risk_reason.'.$key))
+                            ->implode('، ')
+                        : null),
                 Tables\Columns\TextColumn::make('next_assessment_due_at')
                     ->label(__('sanabel.beneficiary.next_assessment'))
                     ->date()

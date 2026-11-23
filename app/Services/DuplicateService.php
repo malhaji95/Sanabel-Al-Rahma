@@ -14,6 +14,7 @@ use App\Models\HouseholdMember;
 use App\Models\Income;
 use App\Models\Referral;
 use App\Models\Region;
+use App\Models\Setting;
 use App\Models\Sponsorship;
 use App\Models\User;
 use App\Models\Visit;
@@ -39,29 +40,83 @@ class DuplicateService
         }
     }
 
-    /** Same phone in the same region, or the same wallet (docs/07-decisions.md). */
-    public function flagIfSuspicious(Beneficiary $case): bool
+    /**
+     * The risk rules, as the association may switch them.
+     *
+     * T-321 — «قواعد مخاطر قابلة للضبط», phase two item 13. The two checks of
+     * docs/07-decisions.md were written into the method below; they are now
+     * read from the settings, both on, which is how they have always behaved.
+     *
+     * @return array<string,bool>
+     */
+    public static function riskRules(): array
     {
+        return [
+            'same_wallet' => (bool) Setting::value(
+                'risk_rule_same_wallet',
+                config('sanabel.setting_defaults.risk_rule_same_wallet')
+            ),
+            'same_phone_region' => (bool) Setting::value(
+                'risk_rule_same_phone_region',
+                config('sanabel.setting_defaults.risk_rule_same_phone_region')
+            ),
+        ];
+    }
+
+    /**
+     * Holds a file for review, and says which rule held it.
+     *
+     * T-321 — «تُحال إلى المراجعة ولا ترفض وحدها». Both halves were already
+     * true: the flag holds the file and nothing here rejects a family. What
+     * was missing is the reason. The flag is a yes or a no, so whoever opens
+     * a held file had to guess which check fired and go looking for the other
+     * file themselves.
+     *
+     * The status is never touched. A rule is a reason to look, not a verdict.
+     *
+     * @return array<int,string> the rules that fired, empty if none did
+     */
+    public function flagIfSuspicious(Beneficiary $case): array
+    {
+        $rules = static::riskRules();
+
         $candidates = Beneficiary::withoutGlobalScopes()
             ->whereKeyNot($case->getKey())
             ->where(fn ($q) => $q->where('region_id', $case->region_id)->orWhereNotNull('wallet_encrypted'))
             ->get();
 
-        $suspicious = $candidates->contains(function (Beneficiary $other) use ($case) {
-            $samePhoneAndRegion = $case->phone_encrypted
+        $fired = [];
+
+        foreach ($candidates as $other) {
+            if ($rules['same_wallet']
+                && $case->wallet_encrypted
+                && $other->wallet_encrypted === $case->wallet_encrypted) {
+                $fired['same_wallet'] = true;
+            }
+
+            if ($rules['same_phone_region']
+                && $case->phone_encrypted
                 && $other->phone_encrypted === $case->phone_encrypted
-                && $other->region_id === $case->region_id;
-
-            $sameWallet = $case->wallet_encrypted && $other->wallet_encrypted === $case->wallet_encrypted;
-
-            return $samePhoneAndRegion || $sameWallet;
-        });
-
-        if ($suspicious) {
-            $case->forceFill(['duplicate_review_flag' => true])->save();
+                && $other->region_id === $case->region_id) {
+                $fired['same_phone_region'] = true;
+            }
         }
 
-        return $suspicious;
+        $fired = array_keys($fired);
+
+        if ($fired !== []) {
+            /*
+             | The flag and the reasons, and nothing else. Not the status, not
+             | a rejection, not the other file's number: the reviewer searches
+             | by the rule's own criterion, which is what the rule names.
+             */
+            $case->forceFill([
+                'duplicate_review_flag' => true,
+                'risk_reasons_json' => $fired,
+            ])->save();
+        }
+
+        return $fired;
     }
 
     /**

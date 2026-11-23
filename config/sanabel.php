@@ -496,6 +496,19 @@ return [
         // family. Closed by default and opened from the settings screen when
         // the association needs it (13 Oct 2026). Opening it is a change to a
         // setting, so it carries a name and a time.
+        /*
+         | T-321 — «قواعد مخاطر قابلة للضبط», phase two, item 13.
+         |
+         | The two checks of docs/07-decisions.md, as switches rather than as
+         | code. Both start on, which is exactly how they have always behaved:
+         | this gives the association the switch, not a new default.
+         |
+         | Neither ever rejects a file. A rule that fires holds it for review
+         | and says which rule fired, and a human decides.
+         */
+        'risk_rule_same_wallet' => true,
+        'risk_rule_same_phone_region' => true,
+
         'anonymise_admin_allowed' => false,
         /*
          | T-78 — the share of a family's monthly need the donor is asked for.
