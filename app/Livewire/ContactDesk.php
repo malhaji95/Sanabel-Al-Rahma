@@ -72,6 +72,9 @@ class ContactDesk extends Component
     /** @var array<string, mixed>|null */
     public ?array $tracked = null;
 
+    /** T-319 — what the reporter writes when they say they were not served. */
+    public string $appealReason = '';
+
     public function mount(?string $door = null): void
     {
         if (in_array($door, ['new', 'track', 'secret'], true)) {
@@ -180,6 +183,55 @@ class ContactDesk extends Component
         }
 
         $this->tracked = app(ComplaintService::class)->publicView($ticket);
+    }
+
+    /*
+     | T-319 — «استئناف», phase two, item 3.
+     |
+     | A settlement was the end of the road for the person who complained.
+     | Their only way back was a second complaint about the same thing, which
+     | reaches the desk as a fresh ticket carrying none of the first one's
+     | history.
+     |
+     | The appeal is made from this page because this is the page a reporter
+     | with no account has: they hold the reference and the contact it was
+     | opened with, and nothing else. The same two are checked again here —
+     | the ticket on the screen is not proof that the person at the keyboard
+     | is its reporter.
+     */
+    public function appeal(): void
+    {
+        $this->error = null;
+        $this->door = 'track';
+
+        if (RateLimiter::tooManyAttempts($key = 'contact-appeal:'.request()->ip(), 5)) {
+            $this->error = __('sanabel.contact.too_many');
+
+            return;
+        }
+
+        RateLimiter::hit($key, 900);
+
+        $ticket = app(ComplaintService::class)->track($this->trackReference, $this->trackContact);
+
+        if (! $ticket) {
+            $this->error = __('sanabel.contact.not_found');
+
+            return;
+        }
+
+        try {
+            app(ComplaintService::class)->appeal($ticket, $this->appealReason);
+        } catch (\RuntimeException $e) {
+            $this->error = $e->getMessage();
+            $this->tracked = app(ComplaintService::class)->publicView($ticket->refresh());
+
+            return;
+        }
+
+        $this->appealReason = '';
+        $this->reference = $ticket->reference_no;
+        $this->tracked = app(ComplaintService::class)->publicView($ticket->refresh());
     }
 
     /** The association's own channels. An empty one is not drawn. */

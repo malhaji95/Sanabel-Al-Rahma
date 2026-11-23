@@ -44,11 +44,14 @@ class Complaint extends Model
         // T-257 — the visitor who has no account.
         'reporter_name_ar', 'reporter_phone_encrypted', 'reporter_phone_hash',
         'reporter_email', 'reporter_role', 'is_confidential', 'attachment_media_id',
+        // T-319 — the appeal and the desk it came back from.
+        'appealed_at', 'appeal_reason_ar', 'appealed_from_owner_id',
     ];
 
     protected $casts = [
         'reporter_phone_encrypted' => 'encrypted',
         'is_confidential' => 'boolean',
+        'appealed_at' => 'datetime',
     ];
 
     protected $hidden = ['reporter_phone_encrypted', 'reporter_phone_hash'];
@@ -133,12 +136,35 @@ class Complaint extends Model
         return $query->where('is_confidential', false);
     }
 
+    /*
+     | T-319 — an appeal is for a ticket that was answered, and it is heard
+     | once. A second «you still did not do me justice» on the same reference
+     | is not an appeal, it is the same appeal again.
+     */
+    public function mayBeAppealed(): bool
+    {
+        return $this->appealed_at === null
+            && in_array($this->status, ['resolved', 'closed'], true);
+    }
+
     protected static function booted(): void
     {
         static::saving(function (self $m) {
             /** Rule 14 — a complaint is never assigned to the person it is about. */
             if ($m->owner_id && $m->against_user_id && $m->owner_id === $m->against_user_id) {
                 throw new \RuntimeException(__('sanabel.complaints.owner_conflict'));
+            }
+
+            /*
+             | T-319 — «محقّق مستقلّ». An appeal says the first answer was
+             | wrong, so handing the ticket back to the desk that gave that
+             | answer is not a review of it. The refusal is here rather than on
+             | the screen because the screen is not the only way a ticket is
+             | assigned.
+             */
+            if ($m->owner_id && $m->appealed_from_owner_id
+                && (int) $m->owner_id === (int) $m->appealed_from_owner_id) {
+                throw new \RuntimeException(__('sanabel.complaints.appeal_same_owner'));
             }
 
             // T-257 — choosing the confidential kind is choosing the wall.

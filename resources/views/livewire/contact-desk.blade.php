@@ -59,6 +59,35 @@
                     <p class="mt-3 text-xs leading-relaxed" style="color: var(--text-muted);">
                         {{ __('sanabel.contact.track_scope') }}
                     </p>
+
+                    {{-- T-319 — «استئناف». A settlement used to be the end of
+                         the road for the person who complained; their only way
+                         back was a second ticket carrying none of this one's
+                         history. --}}
+                    @if ($tracked['may_appeal'])
+                        <form wire:submit="appeal" class="mt-4 space-y-3 border-t pt-4"
+                              style="border-color: var(--line);">
+                            <div>
+                                <label class="field-label" for="appeal-reason">
+                                    {{ __('sanabel.complaints.appeal_reason') }}
+                                </label>
+                                <textarea id="appeal-reason" rows="3" wire:model="appealReason"
+                                          class="field"></textarea>
+                                <p class="mt-1 text-xs" style="color: var(--text-muted);">
+                                    {{ __('sanabel.complaints.appeal_reason_help') }}
+                                </p>
+                            </div>
+
+                            <button type="submit" class="btn-primary">
+                                {{ __('sanabel.complaints.appeal') }}
+                            </button>
+                        </form>
+                    @elseif ($tracked['appealed_at'])
+                        <p class="mt-4 text-xs" style="color: var(--text-muted);">
+                            {{ __('sanabel.complaints.appealed_at') }}:
+                            {{ $tracked['appealed_at']->format('Y-m-d') }}
+                        </p>
+                    @endif
                 </div>
             @else
                 <form wire:submit="track" class="mt-4 space-y-4">

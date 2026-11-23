@@ -6,6 +6,7 @@ use App\Models\Complaint;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 /**
  * T-257 — the contact desk, as the association drew it on 5 November.
@@ -43,11 +44,11 @@ class ComplaintService
         $category = (string) ($data['category'] ?? 'other');
 
         if ($subject === '' || $body === '') {
-            throw new \RuntimeException(__('sanabel.complaints.subject_and_body_required'));
+            throw new RuntimeException(__('sanabel.complaints.subject_and_body_required'));
         }
 
         if (! in_array($category, Complaint::CATEGORIES, true)) {
-            throw new \RuntimeException(__('sanabel.complaints.unknown_category'));
+            throw new RuntimeException(__('sanabel.complaints.unknown_category'));
         }
 
         $phone = trim((string) ($data['reporter_phone'] ?? ''));
@@ -56,7 +57,7 @@ class ComplaintService
         // Somebody has to be reachable, or the ticket is a note nobody can
         // answer. A signed-in reporter is reachable through their account.
         if (! $actor && $phone === '' && $email === '') {
-            throw new \RuntimeException(__('sanabel.complaints.contact_required'));
+            throw new RuntimeException(__('sanabel.complaints.contact_required'));
         }
 
         return DB::transaction(function () use ($data, $subject, $body, $category, $phone, $email, $attachment, $actor) {
@@ -113,6 +114,53 @@ class ComplaintService
             ->first();
     }
 
+    /*
+     | T-319 — phase two, item 3: «استئناف».
+     |
+     | A complaint could be opened, followed and settled, and a settlement was
+     | the end of the road. The only way back was a second complaint about the
+     | same thing, which arrives as a fresh ticket carrying none of the first
+     | one's history — so the desk reading it cannot see that this is the
+     | second time of asking.
+     |
+     | An appeal keeps the reference and the history, reopens the ticket, and
+     | takes it off the desk that settled it. That last part is «محقّق
+     | مستقلّ»: an appeal says the first answer was wrong, and the same hand
+     | reviewing its own answer is not a review.
+     */
+    public function appeal(Complaint $complaint, string $reason): Complaint
+    {
+        if (! $complaint->mayBeAppealed()) {
+            throw new RuntimeException(__(
+                $complaint->appealed_at
+                    ? 'sanabel.complaints.appeal_already_heard'
+                    : 'sanabel.complaints.appeal_not_settled'
+            ));
+        }
+
+        $reason = trim($reason);
+
+        if ($reason === '') {
+            throw new RuntimeException(__('sanabel.complaints.appeal_reason_required'));
+        }
+
+        return DB::transaction(function () use ($complaint, $reason) {
+            $complaint->forceFill([
+                'appealed_at' => now(),
+                'appeal_reason_ar' => $reason,
+                // Remembered before it is cleared, so the ticket can refuse to
+                // come back to the same desk.
+                'appealed_from_owner_id' => $complaint->owner_id,
+                'owner_id' => null,
+                // Back to the front of the queue rather than to «assigned»:
+                // nobody holds it yet, and that is the point.
+                'status' => 'new',
+            ])->save();
+
+            return $complaint->refresh();
+        });
+    }
+
     /** What a ticket's own reporter is allowed to read back about it. */
     public function publicView(Complaint $complaint): array
     {
@@ -123,6 +171,10 @@ class ComplaintService
             'subject_ar' => $complaint->subject_ar,
             'created_at' => $complaint->created_at,
             'is_open' => in_array($complaint->status, Complaint::OPEN_STATUSES, true),
+            // T-319 — whether this reporter may still say «you did not do me
+            // justice», and whether they already have.
+            'may_appeal' => $complaint->mayBeAppealed(),
+            'appealed_at' => $complaint->appealed_at,
             // Never: the internal note, the owner's name, who it is about,
             // the attachment, or anything of an investigation. Their own
             // page says so and it is the whole point of a public view.
