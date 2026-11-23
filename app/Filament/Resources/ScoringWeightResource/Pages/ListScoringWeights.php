@@ -3,9 +3,13 @@
 namespace App\Filament\Resources\ScoringWeightResource\Pages;
 
 use App\Filament\Resources\ScoringWeightResource;
+use App\Models\ScoringWeight;
 use App\Services\ReferenceResolver;
+use App\Services\WeightRollback;
 use App\Services\WeightSimulation;
 use Filament\Actions;
+use Filament\Forms;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Support\Carbon;
 
@@ -18,7 +22,56 @@ class ListScoringWeights extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [Actions\CreateAction::make()];
+        return [
+            Actions\CreateAction::make(),
+
+            /*
+             | T-315 — «التراجع عن إصدار», phase two, item 14.
+             |
+             | The screen published a new version and never went back. Whoever
+             | published a wrong seven this morning had one way out: read
+             | yesterday's numbers off the audit log and type them in again by
+             | hand, seven times.
+             |
+             | It is a publish, not an undo: the weights of the named date go
+             | out as a new version in force from today, and no past row is
+             | touched. A study already computed keeps its own snapshot
+             | (hard rule 8), so this changes what happens next and never what
+             | has already happened.
+             */
+            Actions\Action::make('rollback')
+                ->label(__('sanabel.weight.rollback'))
+                ->icon('heroicon-o-arrow-uturn-left')
+                ->color('warning')
+                ->visible(fn () => auth()->user()?->can('create', ScoringWeight::class))
+                ->form([
+                    Forms\Components\DatePicker::make('as_of')
+                        ->label(__('sanabel.weight.rollback_date'))
+                        ->helperText(__('sanabel.weight.rollback_date_help'))
+                        ->maxDate(now())
+                        ->required(),
+                ])
+                ->requiresConfirmation()
+                ->action(function (array $data) {
+                    $asOf = Carbon::parse($data['as_of']);
+
+                    try {
+                        $changed = app(WeightRollback::class)->restoreTo($asOf, auth()->user());
+                    } catch (\RuntimeException $e) {
+                        Notification::make()->title($e->getMessage())->danger()->send();
+
+                        return;
+                    }
+
+                    Notification::make()
+                        ->title(__('sanabel.weight.rollback_done', [
+                            'date' => $asOf->toDateString(),
+                            'count' => implode('، ', array_keys($changed)),
+                        ]))
+                        ->success()
+                        ->send();
+                }),
+        ];
     }
 
     /**
