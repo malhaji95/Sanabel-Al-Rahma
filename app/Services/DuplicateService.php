@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Assessment;
+use App\Models\AuditLog;
 use App\Models\BasketItem;
 use App\Models\Beneficiary;
 use App\Models\Delivery;
@@ -101,6 +102,38 @@ class DuplicateService
         });
     }
 
+    /*
+     | T-317 — phase two, item 5: «تسجيل قراءة البيانات الحساسة».
+     |
+     | Rule 4 logs every write, and said plainly that reads are not logged in
+     | phase 1. This is the read the association named first, and it is the
+     | sharpest one in the system: somebody hands it a particular person's
+     | identity number and it answers whether that person is on file. Nothing
+     | recorded who had asked, or about whom.
+     |
+     | The screen and the partner API both come through here, so there is one
+     | place to write it rather than two to keep in step.
+     |
+     | The number itself is never written down (rule 10). The row says who
+     | asked, when, and which file answered — the file is named by its own id,
+     | the way every other row in this log names its subject. A lookup that
+     | found nothing is logged too, with no subject: a hundred misses in a
+     | morning is the shape of somebody fishing, and the log that cannot show
+     | that is the log that misses it.
+     */
+    private function logTheAsking(?Beneficiary $case, ?User $askedBy): void
+    {
+        AuditLog::create([
+            'actor_id' => $askedBy?->getKey(),
+            'actor_role' => $askedBy?->role?->key,
+            'action' => 'read_by_national_id',
+            'entity_type' => Beneficiary::class,
+            'entity_id' => $case?->getKey(),
+            'before_json' => null,
+            'after_json' => ['found' => $case !== null],
+        ]);
+    }
+
     /**
      * Hard rule 3 — an out-of-scope lookup returns four values only.
      *
@@ -110,6 +143,8 @@ class DuplicateService
     {
         $askedBy ??= auth()->user();
         $case = $this->existingFile($nationalId);
+
+        $this->logTheAsking($case, $askedBy);
 
         if (! $case) {
             return [

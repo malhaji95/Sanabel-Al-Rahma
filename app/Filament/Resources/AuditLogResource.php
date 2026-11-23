@@ -6,6 +6,7 @@ use App\Filament\Resources\AuditLogResource\Pages;
 use App\Models\AuditLog;
 use App\Models\Role;
 use App\Models\User;
+use Filament\Forms\Components\DatePicker;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
@@ -106,6 +107,10 @@ class AuditLogResource extends Resource
                         'updated' => __('sanabel.audit.actions.updated'),
                         'deleted' => __('sanabel.audit.actions.deleted'),
                         'restored' => __('sanabel.audit.actions.restored'),
+                        // T-317 — the first read on this log, and the one an
+                        // auditor will want to single out: a hundred lookups
+                        // in a morning is the shape of somebody fishing.
+                        'read_by_national_id' => __('sanabel.audit.actions.read_by_national_id'),
                     ]),
 
                 Tables\Filters\SelectFilter::make('entity_type')
@@ -123,8 +128,8 @@ class AuditLogResource extends Resource
 
                 Tables\Filters\Filter::make('when')
                     ->form([
-                        \Filament\Forms\Components\DatePicker::make('from')->label(__('sanabel.audit.from')),
-                        \Filament\Forms\Components\DatePicker::make('until')->label(__('sanabel.audit.until')),
+                        DatePicker::make('from')->label(__('sanabel.audit.from')),
+                        DatePicker::make('until')->label(__('sanabel.audit.until')),
                     ])
                     ->query(fn ($query, array $data) => $query
                         ->when($data['from'] ?? null, fn ($q, $d) => $q->whereDate('created_at', '>=', $d))
