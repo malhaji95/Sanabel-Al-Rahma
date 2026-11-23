@@ -251,6 +251,23 @@ class RoleAndPermissionSeeder extends Seeder
             'read_confidential_complaint' => 'all',
         ],
 
+        /*
+         | T-312 — «هو هذا الشخص الي عنده شاشة الي يقدر يتابعه الكل ويوجه الكل
+         | إلى اكمال حالات المتوقفة عنده بدون ما يقوم بي اي تعديل», 20 November.
+         |
+         | The same keys as the oversight director, less one: the confidential
+         | complaints are the oversight committee's to read, and following up
+         | a stalled file is not that. So the screen he was described by —
+         | «متابعة الاعتمادات», which shows every held file by whose desk it
+         | waits on and for how long — opens to him because it asks for
+         | `view_reports` and nothing else, and `is_read_only` below refuses
+         | him every write, whatever a later matrix edit might grant.
+         */
+        'operations_officer' => [
+            'view_full_case' => 'all', 'view_masked_case' => 'all',
+            'search_by_national_id' => 'all', 'view_reports' => 'all',
+        ],
+
         // Enters and completes, never approves.
         'data_officer' => [
             'edit_draft' => 'all', 'upload_media' => 'all', 'view_full_case' => 'all',
@@ -286,7 +303,7 @@ class RoleAndPermissionSeeder extends Seeder
     ];
 
     /** Roles that may look but never write, whatever the matrix says. */
-    private const READ_ONLY = ['council', 'oversight_director'];
+    private const READ_ONLY = ['council', 'oversight_director', 'operations_officer'];
 
     private const NAMES = [
         'beneficiary' => 'مستفيد', 'delegate' => 'مندوب', 'area_supervisor' => 'مشرف المناديب',
@@ -300,6 +317,7 @@ class RoleAndPermissionSeeder extends Seeder
         'deputy_area_supervisor' => 'نائب مشرف المناديب',
         'treasurer' => 'أمين الصندوق',
         'oversight_director' => 'مدير لجنة الرقابة والتفتيش',
+        'operations_officer' => 'مسؤول العمليات',
         'data_officer' => 'موظف البيانات',
         'data_supervisor' => 'مسؤول البيانات',
         'data_manager' => 'مدير البيانات',

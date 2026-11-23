@@ -217,6 +217,9 @@ class User extends Authenticatable implements FilamentUser
                 'board_director', 'executive_director', 'deputy_executive_director',
                 'deputy_area_supervisor', 'treasurer', 'oversight_director',
                 'data_officer', 'data_supervisor', 'data_manager',
+                // T-312 — he follows up the held files, so he needs the panel
+                // they are held in. He writes nothing once inside it.
+                'operations_officer',
             ),
             'association' => $this->hasRole('association', 'admin'),
             'provider' => $this->hasRole('service_provider', 'admin'),
