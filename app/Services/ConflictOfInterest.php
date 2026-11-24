@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Beneficiary;
 use App\Models\ConflictDisclosure;
 use App\Models\ConflictWaiver;
+use App\Models\Region;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -46,7 +47,10 @@ class ConflictOfInterest
     /** The permission that lifts a bar. Held by nobody who merely approves. */
     public const WAIVER_KEY = 'waive_conflict';
 
-    public function __construct(private readonly PermissionService $permissions) {}
+    public function __construct(
+        private readonly PermissionService $permissions,
+        private readonly NotificationService $notifications,
+    ) {}
 
     /** What this person has said about this file, if they have said anything. */
     public function disclosureFor(Beneficiary $case, User $user): ?ConflictDisclosure
@@ -79,7 +83,7 @@ class ConflictOfInterest
             throw new RuntimeException(__('sanabel.conflict.relation_required'));
         }
 
-        return ConflictDisclosure::updateOrCreate(
+        $disclosure = ConflictDisclosure::updateOrCreate(
             ['beneficiary_id' => $case->getKey(), 'user_id' => $user->getKey()],
             [
                 'has_relationship' => $hasRelationship,
@@ -88,6 +92,70 @@ class ConflictOfInterest
                 'declared_at' => now(),
             ],
         );
+
+        if ($hasRelationship) {
+            $this->callAnotherHand($case, $user);
+        }
+
+        return $disclosure;
+    }
+
+    /*
+     | T-325 — «وين بيروح الطلب بعدها؟», the association, 24 November.
+     |
+     | The bar works as they asked: the family is registered and the file is
+     | saved; it is the declarer who may not sign it off. And the way out
+     | exists — the area's supervisor, their deputy, and any other delegate in
+     | scope all hold the field sign-off, so one of them takes it.
+     |
+     | What was missing is that none of them knew. The file sat in «بانتظار
+     | زيارة المندوب» under the name of the very person who may not touch it,
+     | looking like every other file waiting for a visit. A way out nobody is
+     | told about is, to the person waiting, no way out at all.
+     |
+     | Rule 10 — the notice carries the file number. Not the family's name,
+     | not the kind of tie, not a word of what was written: that a file needs
+     | another hand is what the supervisor must act on, and why is the
+     | oversight committee's to read on the file itself.
+     */
+    private function callAnotherHand(Beneficiary $case, User $declarer): void
+    {
+        $area = $this->areaOf($case);
+
+        if (! $area) {
+            return;
+        }
+
+        $places = Region::where('parent_id', $area)->pluck('id')->push($area);
+
+        $supervisors = User::query()
+            ->where('is_active', true)
+            ->whereKeyNot($declarer->getKey())
+            ->whereIn('region_id', $places)
+            ->whereHas('role', fn ($q) => $q->whereIn('key', ['area_supervisor', 'deputy_area_supervisor']))
+            ->pluck('id');
+
+        foreach ($supervisors as $supervisorId) {
+            $this->notifications->send($supervisorId, 'case_needs_another_hand', [
+                'file_number' => $case->file_number,
+            ]);
+        }
+    }
+
+    /** The area a file sits in: itself if it is one, else the nearest above. */
+    private function areaOf(Beneficiary $case): ?int
+    {
+        $region = $case->region;
+
+        while ($region) {
+            if ($region->type === 'area') {
+                return $region->getKey();
+            }
+
+            $region = $region->parent;
+        }
+
+        return null;
     }
 
     /** A bar standing over this person on this file right now. */
