@@ -987,6 +987,23 @@ return [
          | لا اسم ولا منطقة ولا رقم. وهذا خيرٌ من مندوبٍ يطارد ملفًا ليس له,
          | ويظنّه غير مسجَّل.
          */
+        /*
+         | T-326 — «يظهر خيار عرض 25 ملفًا لكل صفحة, ولكن لا تظهر إمكانية
+         | الانتقال إلى الصفحات التالية», a delegate, 25 November.
+         |
+         | Nothing was broken: the delegate's own region held fewer than
+         | twenty-six files, so there was no second page to go to. What was
+         | missing is the sentence that says so. Filament draws «عرض ١ إلى ٣
+         | من ٣» only when the table's container is 56rem wide or more, and a
+         | delegate reads the list on a tablet, where it is hidden. So the
+         | screen showed a page-size box, no number, and no way forward — and
+         | the delegate read that as files being withheld.
+         |
+         | The count is put in the page's subheading instead, where no
+         | breakpoint reaches it.
+         */
+        'count_in_scope' => '{0} لا توجد ملفات ضمن نطاقك|{1} ملفٌ واحد ضمن نطاقك|{2} ملفان ضمن نطاقك|[3,10] :count ملفات ضمن نطاقك|[11,*] :count ملفًا ضمن نطاقك',
+        'count_filtered' => '{0} لا نتائج مطابقة, من أصل :total ضمن نطاقك|{1} نتيجةٌ واحدة مطابقة, من أصل :total ضمن نطاقك|{2} نتيجتان مطابقتان, من أصل :total ضمن نطاقك|[3,10] :count نتائج مطابقة, من أصل :total ضمن نطاقك|[11,*] :count نتيجة مطابقة, من أصل :total ضمن نطاقك',
         'file_in_another_region' => 'هذا الملف خارج منطقتك',
         'file_in_another_region_help' => 'يوجد ملفٌ بهذا الرقم, لكنه مسجَّل في منطقة أخرى فلا يظهر لك. راجع إدارة الجمعية إن كنت تحتاجه.',
         /*
