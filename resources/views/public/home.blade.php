@@ -189,7 +189,9 @@
          picture still gets them.
     --------------------------------------------------------------------- --}}
     @if ($features->isNotEmpty())
-        <div class="mt-6 grid gap-4 sm:grid-cols-2">
+        {{-- T-327 — two to a row on a telephone as well, which is how their
+             page draws them. One to a row made each picture most of a screen. --}}
+        <div class="mt-6 grid grid-cols-2 gap-3 sm:gap-4">
             @foreach ($features as $feature)
                 @php($art = $feature->imageUrl())
 
@@ -351,9 +353,9 @@
             {{-- T-327 — four to a row, which is the row their approved page
                  draws. How many are actually there is the association's: the
                  band fills with whatever is published and active. --}}
-            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                 @foreach ($campaigns->take(4) as $campaign)
-                    <x-campaign-card :campaign="$campaign" :monthly="$monthlyFunding[$campaign->id] ?? null" />
+                    <x-campaign-card :campaign="$campaign" compact />
                 @endforeach
             </div>
 
@@ -487,7 +489,7 @@
                 {{ __('sanabel.public.know_us_lead') }}
             </p>
 
-            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
                 @foreach ($aboutTiles as $tile)
                     <a href="{{ $tile->link }}" class="card-interactive block text-center no-underline">
                         @if ($tile->icon)
@@ -510,9 +512,14 @@
     @endif
 
     {{-- ---------- the four questions a first donation asks ------------------
-         T-327 — a band their page carries and this one never had. Four rows,
-         open on the page rather than behind a click, because a visitor who
-         has to open each one to see whether it answers them opens none.
+         T-327 — a band their page carries and this one never had.
+
+         Folded, as they drew them. They were written open here first, on the
+         reasoning that a reader who must open each one to see whether it
+         answers them opens none; but «اشتغل على نفس الشكل تماما» was the
+         instruction, and on a telephone four open answers are most of a
+         screen. `<details>` and not a script: it folds and unfolds with no
+         JavaScript at all, and a printed page shows every answer.
     --------------------------------------------------------------------- --}}
     @if ($homeFaq->isNotEmpty())
         <section id="faq" class="mt-10 scroll-mt-24">
@@ -520,15 +527,19 @@
 
             <div class="space-y-3">
                 @foreach ($homeFaq as $question)
-                    <article class="card">
-                        <h3 class="text-base">{{ $question->title_ar }}</h3>
+                    <details class="card group">
+                        <summary class="flex cursor-pointer items-center gap-2 text-base font-semibold marker:content-none">
+                            <x-brand.icon name="chevron-left" class="h-4 w-4 shrink-0 transition group-open:-rotate-90"
+                                          style="color: var(--accent);" />
+                            {{ $question->title_ar }}
+                        </summary>
 
                         @if ($question->body_ar)
                             <p class="mt-2 text-sm leading-relaxed" style="color: var(--text-muted);">
                                 {{ $question->body_ar }}
                             </p>
                         @endif
-                    </article>
+                    </details>
                 @endforeach
             </div>
 

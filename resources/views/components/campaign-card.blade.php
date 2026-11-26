@@ -11,7 +11,17 @@
     link to where the reader already is. One component for both, so a figure
     on the page can never disagree with the figure on the list.
 --}}
-@props(['campaign', 'monthly' => null, 'full' => false])
+{{--
+    T-327 — `compact` is the card as their approved front page draws it: the
+    picture, the name, a line or two, and the link to the campaign's own page.
+    No meter, no funding figures, no buttons.
+
+    Their reason is sound and worth keeping. On a telephone the full card runs
+    to most of a screen each, so four campaigns became a scroll nobody reaches
+    the end of — ours stood at eleven thousand pixels against their seven. All
+    of the card is one click away, on the page built to carry it.
+--}}
+@props(['campaign', 'monthly' => null, 'full' => false, 'compact' => false])
 
 @php
     $collected = $campaign->collectedAmount();
@@ -47,7 +57,8 @@
     @if ($campaign->body_ar)
         <p @class([
             'mt-2 text-sm leading-relaxed',
-            'line-clamp-3' => ! $full,
+            'line-clamp-2' => $compact,
+            'line-clamp-3' => ! $full && ! $compact,
             // The association types the story in a box; the line breaks they
             // put in it are part of what they wrote.
             'whitespace-pre-line leading-loose' => $full,
@@ -62,6 +73,8 @@
             </a>
         @endunless
     @endif
+
+    @unless ($compact)
 
     {{--
         T-103 — the project, fenced off from the family's monthly funding
@@ -213,4 +226,5 @@
             :url="route('campaign.public', $campaign)"
             :title="$campaign->title_ar" />
     </div>
+    @endunless
 </article>

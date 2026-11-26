@@ -90,13 +90,19 @@
                      stays for the long scroll; this one is for a reader who
                      has decided before scrolling at all. --}}
                 <a href="{{ route('donate.general') }}"
-                   class="btn-primary hidden shrink-0 text-sm no-underline sm:inline-flex">
+                   class="btn-primary inline-flex shrink-0 whitespace-nowrap !px-3 text-sm no-underline">
                     {{ __('sanabel.public.donate_now') }}
                 </a>
 
-                <x-theme-toggle />
+                {{-- T-327 — their approved bar on a telephone holds three
+                     things only: the drawer, «تبرع الآن», and the logo. The
+                     scheme switch and the account menu crowded it into two
+                     lines, so from `sm` upwards they stay in the bar, and on
+                     a telephone the switch moves into the drawer and the
+                     account is reached from the bottom bar's «حسابي». --}}
+                <span class="hidden sm:inline-flex"><x-theme-toggle /></span>
 
-                <x-account-menu />
+                <span class="hidden sm:inline-flex"><x-account-menu /></span>
 
                 <button type="button" x-on:click="drawer = true"
                         class="btn-secondary inline-flex shrink-0 items-center !px-2.5"
@@ -136,11 +142,16 @@
                 style="background-color: var(--card);"
                 aria-label="{{ __('sanabel.public.open_menu') }}"
             >
-                <button type="button" x-on:click="drawer = false"
-                        class="btn-secondary mb-2 self-start !px-2.5"
-                        aria-label="{{ __('sanabel.public.close_menu') }}">
-                    <x-brand.icon name="x" class="h-5 w-5" />
-                </button>
+                <div class="mb-2 flex items-center justify-between gap-2">
+                    <button type="button" x-on:click="drawer = false"
+                            class="btn-secondary !px-2.5"
+                            aria-label="{{ __('sanabel.public.close_menu') }}">
+                        <x-brand.icon name="x" class="h-5 w-5" />
+                    </button>
+
+                    {{-- The scheme switch a telephone cannot reach in the bar. --}}
+                    <span class="sm:hidden"><x-theme-toggle /></span>
+                </div>
 
                 @foreach ([
                     ['home', url('/'), 'home'],
