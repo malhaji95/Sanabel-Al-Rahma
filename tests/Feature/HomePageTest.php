@@ -56,8 +56,10 @@ it('draws every band of the page from rows the association edits', function () {
         ->assertSee('ترميم منزل')
         ->assertSee('كفالة يتيم')
         ->assertSee('زكاة واجبة')
-        // the promises
-        ->assertSee(__('sanabel.public.what_sets_us_apart'))
+        // the promises — T-327: their own artwork carries the heading and
+        // the six cards, so what the page shows is the picture and what a
+        // screen reader gets is its alt and the six titles under it
+        ->assertSee(__('sanabel.public.principles_six'))
         ->assertSee('كرامة المحتاج أولويتنا')
         // the closing cards
         ->assertSee('الهيئة الشرعية')
@@ -237,9 +239,12 @@ it('answers a wrong address in Arabic, with a way back', function () {
 it('puts a slide in the hero out of the box', function () {
     // Also found on the live demo: nothing seeds a banner, so the first and
     // largest band of the page was simply absent there.
+    //
+    // T-327 — what ships is the association's own artwork, and the slide
+    // named here is the first of the five their approved page carries.
     expect(Banner::where('is_published', true)->exists())->toBeTrue();
 
-    $this->get('/')->assertOk()->assertSee('بيدك.. تصنع الأمل');
+    $this->get('/')->assertOk()->assertSee('التقنية في خدمة العطاء');
 });
 
 /*
@@ -291,8 +296,9 @@ it('keeps the zakat door on the bar and a way to reach the association in the fo
 
     $nav = ContentCard::block('nav_link')->published()->pluck('link', 'title_ar');
 
-    expect($nav)->toHaveKey('زكاة مستحقة')
-        ->and($nav['زكاة مستحقة'])->toContain('zakat=1');
+    // T-327 — their approved bar writes it «الزكاة المستحقة».
+    expect($nav)->toHaveKey('الزكاة المستحقة')
+        ->and($nav['الزكاة المستحقة'])->toContain('zakat=1');
 
     $footer = ContentCard::block('footer_link')->published()->pluck('link', 'title_ar');
 
@@ -365,14 +371,16 @@ it('lets the association switch any single counter off', function () {
         ->and($html)->toContain(__('sanabel.public.stat_families'));
 })->group('APP-06');
 
-it('shows the partners band at the foot of the page, and only once they add one', function () {
+it('no longer draws a partners band on the front page', function () {
+    /*
+     | T-99 put a partners band at the foot of this page. T-327 took it off:
+     | their approved front page has no such band, and «شركاؤنا» lives in the
+     | footer's own links instead.
+     |
+     | The rows are untouched, so nothing the association entered is lost —
+     | what went is the band that drew them here.
+     */
     $this->seed(HomePageSeeder::class);
-
-    // Nothing is seeded: a partner is a real organisation with a real
-    // agreement, and inventing three for a demonstration would put names on
-    // their page that never agreed to be there.
-    expect(ContentCard::block('partner')->count())->toBe(0)
-        ->and($this->get('/')->getContent())->not->toContain(__('sanabel.public.partners'));
 
     ContentCard::create([
         'block' => 'partner',
@@ -384,37 +392,43 @@ it('shows the partners band at the foot of the page, and only once they add one'
 
     $html = $this->get('/')->getContent();
 
-    expect($html)->toContain(__('sanabel.public.partners'))
-        ->and($html)->toContain('جمعية شريكة');
+    expect($html)->not->toContain('جمعية شريكة')
+        ->and(ContentCard::block('partner')->count())->toBe(1);
 })->group('APP-06');
 
-it('puts الكفالات and زكاة and فزعة on the bar, each leading where it says', function () {
+it('puts the six headings their page draws on the bar, each leading where it says', function () {
     $this->seed(HomePageSeeder::class);
 
     $nav = ContentCard::block('nav_link')->published()->pluck('link', 'title_ar');
 
     /*
-     | T-232 — «نعتمد إضافة الكفالات إلى التنقل العلوي» and «نعتمد اسم فزعة
-     | في جميع المواضع الظاهرة للزائر», 3 November.
+     | T-327 — «اشتغل على نفس الشكل تماما», 26 November. Their approved bar
+     | carries six headings in this order, and this test is the record of
+     | which six and where each one goes.
      |
-     | This test used to assert the two readings they have now replaced:
-     | that «كفالات» meant the monthly list, which was our own reading
-     | before T-228 gave sponsorships a page, and that the bar said
-     | «الحملات». Both were right when written and are not any more.
+     | Two that were on it are not on theirs: «الرئيسية», because the logo
+     | already goes home, and «الأخبار», because the news has a band of its
+     | own at the foot of the page. «الكفالات» goes the same way — their bar
+     | does not carry it — and the sponsorships page it opened is still
+     | reachable from the doors of «أبواب العطاء».
      */
-    expect($nav)->toHaveKey('الكفالات')
-        ->and($nav['الكفالات'])->toContain('/sponsorships')
-        ->and($nav)->toHaveKey('زكاة مستحقة')
-        // The name moved; the address did not, because that is all they
-        // decided — the routes and the tables stay as they are.
-        ->and($nav)->toHaveKey('فزعة')
+    expect($nav->keys()->all())->toBe([
+        'المسار الصحي',
+        'مسار الكفاية',
+        'الحالات',
+        'فزعة',
+        'الزكاة المستحقة',
+        'الهدايا',
+    ]);
+
+    expect($nav['الحالات'])->toContain('/cases')
         ->and($nav['فزعة'])->toContain('/campaigns')
-        ->and($nav)->not->toHaveKey('الحملات')
-        // T-242 — «هدية» used to be absent from this bar, and the comment
-        // here said it was waiting for the feature. It is not waiting any
-        // more.
-        ->and($nav)->toHaveKey('هدية')
-        ->and($nav['هدية'])->toContain('/gift');
+        ->and($nav['الزكاة المستحقة'])->toContain('zakat=1')
+        ->and($nav['الهدايا'])->toContain('/gift')
+        ->and($nav['مسار الكفاية'])->toContain('/sufficiency-path')
+        // Theirs is one page with anchors; ours is a site, so the one
+        // heading without a page of its own points at the band.
+        ->and($nav['المسار الصحي'])->toContain('#health');
 })->group('APP-06');
 
 it('keeps the banner off most of a phone screen, and within the pack sizes above it', function () {
@@ -431,7 +445,7 @@ it('keeps the banner off most of a phone screen, and within the pack sizes above
 
     // T-311 moved the heights off the picture and onto the one track the
     // slides lie in, so the hero is this tall whichever slide is showing.
-    expect($body)->toContain('relative h-[180px] w-full sm:h-[300px] lg:h-[380px]')
+    expect($body)->toContain('relative aspect-[8/3] w-full')
         ->and($body)->not->toContain('h-[260px]')
         // Two tiles to a row on a phone.
         ->and($body)->toContain('grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4');

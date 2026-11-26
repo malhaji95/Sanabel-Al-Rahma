@@ -80,12 +80,17 @@ it('puts the page in the bar and its banner on the home page', function () {
     expect($nav)->toHaveKey('مسار الكفاية')
         ->and($nav['مسار الكفاية'])->toBe('/sufficiency-path');
 
-    $banner = Banner::where('title_ar', 'مسار الكفاية')->first();
+    /*
+     | T-327 — the artwork was one slide of the hero among eleven. Their
+     | approved page gives the path a band of its own, the same standing as
+     | the health path, so the picture is looked for where it now is.
+     */
+    $html = $this->get('/')->assertOk()->getContent();
 
-    expect($banner)->not->toBeNull()
-        ->and($banner->image)->toBe('images/banners/sufficiency-path.webp')
-        ->and($banner->link)->toBe('/sufficiency-path')
-        ->and(public_path($banner->image))->toBeFile();
+    expect($html)->toContain('id="kifaya"')
+        ->and($html)->toContain('images/banners/sufficiency-path.webp')
+        ->and($html)->toContain(__('sanabel.public.kifaya_support'))
+        ->and(public_path('images/banners/sufficiency-path.webp'))->toBeFile();
 });
 
 it('leaves what the association has since written over it alone', function () {

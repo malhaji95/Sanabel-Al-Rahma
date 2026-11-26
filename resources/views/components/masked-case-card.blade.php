@@ -10,7 +10,7 @@
     and no sponsorship block is drawn, which is every other screen; an array,
     even an empty one, means it is.
 --}}
-@props(['case', 'showNote' => null, 'rates' => null])
+@props(['case', 'showNote' => null, 'rates' => null, 'illustration' => false])
 
 @php
     /*
@@ -55,7 +55,38 @@
     $covered = (bool) ($case['is_covered'] ?? false);
 @endphp
 
-<article class="card-interactive flex h-full flex-col">
+@php
+    /*
+     | T-327 — «اشتغل على نفس الشكل تماما», 26 November. Their approved front
+     | page puts a picture at the head of every case card, and its own alt
+     | text says what kind of picture: «صورة تصنيفية توضيحية للحالة».
+     |
+     | Rule 2 decides how it is chosen. Nothing about the household may reach
+     | a donor's screen that MaskedCaseResource did not put there, so the
+     | picture is not chosen from the family's circumstances, its region, its
+     | needs or its score — it is one of seven stock illustrations picked from
+     | the file number, which the card already shows. It therefore carries no
+     | information at all, which is exactly what is wanted: decoration that
+     | cannot become disclosure.
+     |
+     | Off by default. The home page asks for it; the list and the basket draw
+     | the card as they did.
+     */
+    $art = null;
+
+    if ($illustration) {
+        $index = (crc32((string) ($case['file_number'] ?? '')) % 7) + 1;
+        $art = 'images/cases/illustration-'.str_pad((string) $index, 2, '0', STR_PAD_LEFT).'.webp';
+    }
+@endphp
+
+<article class="card-interactive flex h-full flex-col{{ $art ? ' overflow-hidden !p-0' : '' }}">
+    @if ($art)
+        <img src="{{ asset($art) }}" alt="{{ __('sanabel.public.case_illustration_alt') }}"
+             class="h-40 w-full object-cover" loading="lazy">
+    @endif
+
+    <div @class(['flex flex-1 flex-col', 'p-4' => (bool) $art])>
     <header class="flex items-start justify-between gap-3">
         <div>
             <p class="text-xs" style="color: var(--text-muted);">{{ __('sanabel.beneficiary.file_number') }}</p>
@@ -341,5 +372,6 @@
 
     <div class="mt-auto pt-4">
         {{ $slot }}
+    </div>
     </div>
 </article>

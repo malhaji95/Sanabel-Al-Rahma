@@ -20,8 +20,14 @@
 
     {{-- ---------- the hero ---------------------------------------------- --}}
     @if ($banners->isNotEmpty())
+        {{-- T-327 — their approved page runs the hero the whole width of the
+             window and lets the artwork keep its own 8:3, rather than setting
+             it in a rounded card inside the column like every other band.
+             The logical margins pull it out of the column in both directions,
+             so the same rule serves the Arabic page and a left-to-right one. --}}
         <section
-            class="card relative overflow-hidden !p-0"
+            class="relative overflow-hidden"
+            style="margin-inline: calc(50% - 50vw); width: 100vw;"
             {{-- T-99 — «بنرات متحركة»: it advances by itself every six seconds,
                  and stops the moment a reader points at it or tabs into it, so
                  the slide does not move out from under somebody reading it.
@@ -53,7 +59,11 @@
                  fixed height. The heights T-107 settled are the track's, so
                  the hero is that tall whichever slide is showing, and whether
                  one is leaving or none at all. --}}
-            <div class="relative h-[180px] w-full sm:h-[300px] lg:h-[380px]">
+            {{-- T-311 kept the track a fixed height so two slides never stack.
+                 T-327 keeps the track and changes the measure: the artwork is
+                 1920×720, so the track is 8:3 and the picture is never cropped
+                 at any width. --}}
+            <div class="relative aspect-[8/3] w-full">
             @foreach ($banners as $index => $banner)
                 {{-- T-295 — «الشريط بيختفي بعد ما بدّل الشريحة».
                      The slides after the first were held back with Tailwind's
@@ -164,50 +174,55 @@
         </section>
     @endif
 
-    {{-- ---------- the two offers ----------------------------------------- --}}
+    {{-- ---------- the two promotions -------------------------------------
+         T-327 — «اشتغل على نفس الشكل تماما», 26 November.
+
+         These were two small cards: a 144px thumbnail at the start, a
+         heading, a line and a button beside it. Their approved page gives
+         each one a square picture the width of half the page, and nothing
+         else — because the artwork already carries its own heading, its own
+         sentence and its own button drawn into it (T-310's rule, on the two
+         pictures it was written for).
+
+         So the card is the picture, and the only thing added is the link
+         under it. The words live in `alt`, where a reader who cannot see the
+         picture still gets them.
+    --------------------------------------------------------------------- --}}
     @if ($features->isNotEmpty())
         <div class="mt-6 grid gap-4 sm:grid-cols-2">
             @foreach ($features as $feature)
-                <article class="card flex items-center gap-4 overflow-hidden !p-0">
-                    @if ($feature->imageUrl())
-                        <img src="{{ $feature->imageUrl() }}" alt=""
-                             class="h-36 w-36 shrink-0 object-cover sm:h-40 sm:w-44" loading="lazy">
-                    @elseif ($feature->icon)
-                        <div class="flex h-36 w-36 shrink-0 items-center justify-center sm:h-40 sm:w-44"
-                             style="background-color: var(--page); color: var(--accent);">
-                            <x-brand.icon :name="$feature->icon" class="h-12 w-12" />
-                        </div>
-                    @endif
+                @php($art = $feature->imageUrl())
 
-                    <div class="min-w-0 flex-1 py-4 pe-4">
-                        <h2 class="text-xl font-bold" style="color: var(--accent);">{{ $feature->title_ar }}</h2>
+                <article class="card overflow-hidden !p-0">
+                    @if ($art)
+                        <a href="{{ $feature->link ?: route('donate.general') }}" class="block no-underline">
+                            <img src="{{ $art }}"
+                                 alt="{{ trim($feature->title_ar.' — '.$feature->body_ar, ' —') }}"
+                                 class="aspect-square w-full object-cover" loading="lazy">
+                        </a>
+                    @else
+                        {{-- No artwork yet: the words it would have carried,
+                             drawn rather than left as an empty frame. --}}
+                        <div class="flex aspect-square w-full flex-col items-center justify-center gap-3 p-6 text-center"
+                             style="background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 24%, var(--card)), var(--page));">
+                            @if ($feature->icon)
+                                <x-brand.icon :name="$feature->icon" class="h-12 w-12" style="color: var(--accent);" />
+                            @endif
 
-                        @if ($feature->body_ar)
-                            <p class="mt-1 text-sm leading-relaxed" style="color: var(--text-muted);">
-                                {{ $feature->body_ar }}
-                            </p>
-                        @endif
+                            <h2 class="text-xl font-bold" style="color: var(--accent);">{{ $feature->title_ar }}</h2>
 
-                        <div class="mt-3 flex flex-wrap items-center gap-2">
+                            @if ($feature->body_ar)
+                                <p class="text-sm leading-relaxed" style="color: var(--text-muted);">{{ $feature->body_ar }}</p>
+                            @endif
+
                             @if ($feature->link)
                                 <a href="{{ $feature->link }}" class="btn-primary inline-flex items-center gap-2 no-underline">
                                     <x-brand.icon name="heart" class="h-4 w-4" />
                                     {{ __('sanabel.public.donate_now') }}
                                 </a>
                             @endif
-
-                            {{-- The live count the design asks for, on the card
-                                 that offers the list it counts. --}}
-                            @if ($loop->first)
-                                <span class="badge inline-flex items-center gap-1.5"
-                                      style="background-color: var(--page); color: var(--text-muted);">
-                                    <x-brand.icon name="card" class="h-3.5 w-3.5" />
-                                    <span class="tabular font-semibold" style="color: var(--text);">{{ number_format($stats['open']) }}</span>
-                                    {{ __('sanabel.public.open_cases_now') }}
-                                </span>
-                            @endif
                         </div>
-                    </div>
+                    @endif
                 </article>
             @endforeach
         </div>
@@ -223,7 +238,17 @@
          T-183 — and it moves while the page is open. The strip is a Livewire
          component now; the switches, the figures and the words are the same.
     --------------------------------------------------------------------- --}}
-    <livewire:platform-counters />
+    {{-- T-327 — their approved page gives the figures a heading, a line
+         under it and a band of their own, rather than a strip with no name
+         on it between two pictures. --}}
+    <section id="numbers" class="mt-10 scroll-mt-24">
+        <h2 class="text-xl">{{ __('sanabel.public.numbers_heading') }}</h2>
+        <p class="mb-4 mt-1 text-sm" style="color: var(--text-muted);">
+            {{ __('sanabel.public.numbers_lead') }}
+        </p>
+
+        <livewire:platform-counters />
+    </section>
 
     {{-- ---------- today's appeals ---------------------------------------- --}}
     <section class="mt-10">
@@ -249,7 +274,7 @@
         --}}
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             @forelse ($cases->take(3) as $case)
-                <x-masked-case-card :case="$case">
+                <x-masked-case-card :case="$case" illustration>
                     {{-- T-207 — «هون ما في يحط المبلغ ويحط إضافة بالسلة…
                          هون احنا نحتاج متل هيك, إنه يقدر يحط المبلغ»,
                          30 October.
@@ -319,8 +344,15 @@
                 {{ __('sanabel.public.open_campaigns') }}
             </h2>
 
-            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                @foreach ($campaigns->take(3) as $campaign)
+            <p class="-mt-2 mb-4 text-sm" style="color: var(--text-muted);">
+                {{ __('sanabel.public.campaigns_lead') }}
+            </p>
+
+            {{-- T-327 — four to a row, which is the row their approved page
+                 draws. How many are actually there is the association's: the
+                 band fills with whatever is published and active. --}}
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                @foreach ($campaigns->take(4) as $campaign)
                     <x-campaign-card :campaign="$campaign" :monthly="$monthlyFunding[$campaign->id] ?? null" />
                 @endforeach
             </div>
@@ -334,40 +366,51 @@
         </section>
     @endif
 
-    {{-- ---------- ways to give, first half -------------------------------- --}}
-    <x-home.tiles :tiles="$tiles->take(4)" class="mt-6" />
+    {{-- ---------- what sets the association apart ------------------------
+         T-327 — «اشتغل على نفس الشكل تماما», 26 November.
 
-    {{-- ---------- what sets the association apart -------------------------- --}}
-    @if ($advantages->isNotEmpty())
-        <section class="card mt-10 overflow-hidden !p-0">
-            <div class="p-8"
-                 style="background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, var(--card)), var(--page));">
-                <h2 class="mb-6 text-center text-xl font-bold" style="color: var(--accent);">
-                    {{ __('sanabel.public.what_sets_us_apart') }}
-                </h2>
+         Six promises used to be drawn here as six icons over six lines of
+         text. Their approved page puts one picture in their place — the
+         association's own artwork, with the heading and the six cards set
+         inside it — so that is what goes here.
 
-                <div class="grid gap-6 sm:grid-cols-3 lg:grid-cols-6">
-                    @foreach ($advantages as $advantage)
-                        <div class="text-center">
-                            @if ($advantage->icon)
-                                <x-brand.icon :name="$advantage->icon" class="mx-auto mb-3 h-9 w-9" style="color: var(--accent);" />
-                            @endif
-                            <p class="text-sm leading-relaxed">{{ $advantage->title_ar }}</p>
-                            @if ($advantage->body_ar)
-                                <p class="mt-1 text-xs" style="color: var(--text-muted);">{{ $advantage->body_ar }}</p>
-                            @endif
-                        </div>
-                    @endforeach
-                </div>
-            </div>
+         A picture that carries words is unreadable to a screen reader and
+         invisible to a search engine, so the six headings follow it in text
+         that is there for both and drawn for neither. The rows are still the
+         association's, which is what keeps that list true when they edit one.
+    --------------------------------------------------------------------- --}}
+    <section id="features" class="mt-10 scroll-mt-24">
+        <img src="{{ asset('images/home/features-six.webp') }}"
+             alt="{{ __('sanabel.public.principles_six') }}"
+             class="mx-auto w-full max-w-3xl rounded-2xl" loading="lazy">
+
+        @if ($advantages->isNotEmpty())
+            <ul class="sr-only">
+                @foreach ($advantages as $advantage)
+                    <li>{{ $advantage->title_ar }}@if ($advantage->body_ar) — {{ $advantage->body_ar }}@endif</li>
+                @endforeach
+            </ul>
+        @endif
+    </section>
+
+    {{-- ---------- the eight ways to give, in one band ---------------------
+         T-327 — they were four, then the promises, then four more. Their page
+         carries the eight together under one heading, and a reader choosing
+         between doors should see all of them at once.
+    --------------------------------------------------------------------- --}}
+    @if ($tiles->isNotEmpty())
+        <section id="zakat" class="mt-10 scroll-mt-24">
+            <h2 class="text-xl">{{ __('sanabel.public.giving_doors') }}</h2>
+            <p class="mb-4 mt-1 text-sm" style="color: var(--text-muted);">
+                {{ __('sanabel.public.giving_doors_lead') }}
+            </p>
+
+            <x-home.tiles :tiles="$tiles" />
         </section>
     @endif
 
-    {{-- ---------- ways to give, second half -------------------------------- --}}
-    <x-home.tiles :tiles="$tiles->slice(4)" class="mt-6" />
-
-    {{-- ---------- the health path ------------------------------------------ --}}
-    {{-- T-150 — «هذا البنر الرئيسي للمسار الصحي … ممكن يكون فوق من نحن على عرض
+    {{-- ---------- the health path ------------------------------------------
+         T-150 — «هذا البنر الرئيسي للمسار الصحي … ممكن يكون فوق من نحن على عرض
          الشاشة», so: full width, directly above the association's own cards.
 
          «ساهم في العلاج» opens the donation page. Money given there reaches
@@ -377,102 +420,167 @@
 
          «ساهم كمزود خدمة» has no page of its own yet: a provider is entered
          from the panel, and a public sign-up is part of the health path's
-         second and third stages, which the association's own message leaves
-         where they were. Until it is built the button opens «تواصل معنا», so
-         nothing on the banner leads nowhere. --}}
-    <x-home.health-path-banner
-        :treatment="route('donate.general')"
-        :provider="route('page', 'contact')"
-    />
+         second and third stages. Until it is built the button opens «تواصل
+         معنا», so nothing on the banner leads nowhere.
 
-    {{-- ---------- the association, and the news ---------------------------- --}}
-    <section class="mt-10 grid gap-4 lg:grid-cols-3">
-        @foreach ([$shariaBoard, $about] as $page)
-            @if ($page)
-                <article class="card">
-                    <h2 class="inline-flex items-center gap-2 text-lg">
-                        <x-brand.icon :name="$loop->first ? 'scales' : 'info'" class="h-5 w-5" style="color: var(--accent);" />
-                        {{ $page->title_ar }}
-                    </h2>
+         T-327 — a heading, a line and the three buttons their page sets under
+         the picture.
+    --------------------------------------------------------------------- --}}
+    <section id="health" class="mt-10 scroll-mt-24">
+        <h2 class="text-xl">{{ __('sanabel.public.health_path_heading') }}</h2>
+        <p class="mb-4 mt-1 text-sm" style="color: var(--text-muted);">
+            {{ __('sanabel.public.health_path_lead') }}
+        </p>
 
-                    <p class="mt-3 line-clamp-4 text-sm leading-relaxed" style="color: var(--text-muted);">
-                        {{ Str::limit(strip_tags($page->body_ar), 180) }}
-                    </p>
+        <x-home.health-path-banner
+            :treatment="route('donate.general')"
+            :provider="route('page', 'contact')"
+        />
 
-                    <a href="{{ route('page', $page->slug) }}"
-                       class="btn-secondary mt-4 inline-flex items-center gap-1 no-underline">
-                        {{ __('sanabel.public.read_more') }}
-                        <x-brand.icon name="chevron-left" class="h-4 w-4" />
-                    </a>
-                </article>
-            @endif
-        @endforeach
-
-        <article class="card">
-            <div class="flex items-center justify-between gap-3">
-                <h2 class="text-lg">{{ __('sanabel.public.news') }}</h2>
-                <a href="{{ route('news') }}" class="text-sm no-underline" style="color: var(--accent);">
-                    {{ __('sanabel.public.more') }}
-                </a>
-            </div>
-
-            <ul class="mt-3 space-y-3">
-                @forelse ($posts as $post)
-                    <li class="flex items-start gap-3">
-                        @if ($post->image)
-                            <img src="{{ Storage::disk('public')->url($post->image) }}" alt=""
-                                 class="h-14 w-20 shrink-0 rounded-lg object-cover" loading="lazy">
-                        @endif
-                        <div class="min-w-0">
-                            <a href="{{ route('post', $post->slug) }}" class="text-sm font-medium no-underline">
-                                {{ $post->title_ar }}
-                            </a>
-                            <p class="tabular mt-1 text-xs" style="color: var(--text-muted);" dir="ltr">
-                                {{ $post->published_at?->format('Y/m/d') }}
-                            </p>
-                        </div>
-                    </li>
-                @empty
-                    <li class="text-sm" style="color: var(--text-muted);">{{ __('sanabel.public.no_news') }}</li>
-                @endforelse
-            </ul>
-        </article>
+        <div class="mt-4 flex flex-wrap items-center justify-center gap-3">
+            <a href="{{ route('donate.general') }}" class="btn-primary no-underline">
+                {{ __('sanabel.public.health_support') }}
+            </a>
+            <a href="{{ route('page', 'contact') }}" class="btn-secondary no-underline">
+                {{ __('sanabel.public.health_provider_signup') }}
+            </a>
+            <a href="{{ route('page', 'how-we-work') }}" class="btn-secondary no-underline">
+                {{ __('sanabel.public.path_learn_more') }}
+            </a>
+        </div>
     </section>
 
-    {{-- ---------- our partners ------------------------------------------
-         T-99 — at the foot of the page and nowhere else, as the association
-         asked on 15 October. Rows like everything else: a logo, a name, and a
-         link to the partner's own site if there is one. The band does not
-         exist until they add the first one, so the page never carries an
-         empty «شركاؤنا» heading.
+    {{-- ---------- the sufficiency path -------------------------------------
+         T-327 — a band of its own, which it never had on this page. Its
+         banner was one slide of the carousel among eleven, and their page
+         gives it the same standing as the health path: heading, picture, and
+         the two buttons under it.
     --------------------------------------------------------------------- --}}
-    @if ($partners->isNotEmpty())
-        <section class="mt-10" aria-label="{{ __('sanabel.public.partners') }}">
-            <h2 class="mb-4 inline-flex items-center gap-2 text-xl">
-                <x-brand.icon name="hand-heart" class="h-5 w-5" style="color: var(--accent);" />
-                {{ __('sanabel.public.partners') }}
-            </h2>
+    <section id="kifaya" class="mt-10 scroll-mt-24">
+        <h2 class="text-xl">{{ __('sanabel.public.kifaya_heading') }}</h2>
 
-            <div class="card flex flex-wrap items-center justify-center gap-x-10 gap-y-6 py-6">
-                @foreach ($partners as $partner)
-                    @php($logo = $partner->imageUrl())
+        <a href="{{ route('page', 'sufficiency-path') }}" class="mt-4 block no-underline">
+            <img src="{{ asset('images/banners/sufficiency-path.webp') }}"
+                 alt="{{ __('sanabel.public.kifaya_image_alt') }}"
+                 class="w-full rounded-2xl" loading="lazy">
+        </a>
 
-                    <a @if ($partner->link) href="{{ $partner->link }}" rel="noopener" target="_blank" @endif
-                       class="inline-flex flex-col items-center gap-2 no-underline"
-                       title="{{ $partner->title_ar }}">
-                        @if ($logo)
-                            {{-- Greyed until pointed at, so a row of logos does
-                                 not shout louder than the families above it. --}}
-                            <img src="{{ $logo }}" alt="{{ $partner->title_ar }}" loading="lazy"
-                                 class="h-12 w-auto opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0">
-                        @else
-                            <x-brand.icon name="shield-check" class="h-10 w-10" style="color: var(--text-muted);" />
+        <div class="mt-4 flex flex-wrap items-center justify-center gap-3">
+            <a href="{{ route('donate.general') }}" class="btn-primary no-underline">
+                {{ __('sanabel.public.kifaya_support') }}
+            </a>
+            <a href="{{ route('page', 'sufficiency-path') }}" class="btn-secondary no-underline">
+                {{ __('sanabel.public.path_learn_more') }}
+            </a>
+        </div>
+    </section>
+
+    {{-- ---------- know us --------------------------------------------------
+         T-327 — two cards became six doors, which is what their page draws.
+         Every one of them is a page the association already writes; the line
+         under each heading is a row it edits.
+    --------------------------------------------------------------------- --}}
+    @if ($aboutTiles->isNotEmpty())
+        <section id="about" class="mt-10 scroll-mt-24">
+            <h2 class="text-xl">{{ __('sanabel.public.know_us') }}</h2>
+            <p class="mb-4 mt-1 text-sm" style="color: var(--text-muted);">
+                {{ __('sanabel.public.know_us_lead') }}
+            </p>
+
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                @foreach ($aboutTiles as $tile)
+                    <a href="{{ $tile->link }}" class="card-interactive block text-center no-underline">
+                        @if ($tile->icon)
+                            <x-brand.icon :name="$tile->icon" class="mx-auto mb-2 h-7 w-7" style="color: var(--accent);" />
                         @endif
 
-                        <span class="text-xs" style="color: var(--text-muted);">{{ $partner->title_ar }}</span>
+                        <h3 class="text-base">{{ $tile->title_ar }}</h3>
+
+                        @if ($tile->body_ar)
+                            <p class="mt-1 text-xs" style="color: var(--text-muted);">{{ $tile->body_ar }}</p>
+                        @endif
+
+                        <span class="mt-2 inline-block text-xs" style="color: var(--accent);">
+                            {{ __('sanabel.public.know_more') }}
+                        </span>
                     </a>
                 @endforeach
             </div>
         </section>
     @endif
+
+    {{-- ---------- the four questions a first donation asks ------------------
+         T-327 — a band their page carries and this one never had. Four rows,
+         open on the page rather than behind a click, because a visitor who
+         has to open each one to see whether it answers them opens none.
+    --------------------------------------------------------------------- --}}
+    @if ($homeFaq->isNotEmpty())
+        <section id="faq" class="mt-10 scroll-mt-24">
+            <h2 class="mb-4 text-xl">{{ __('sanabel.public.donor_questions') }}</h2>
+
+            <div class="space-y-3">
+                @foreach ($homeFaq as $question)
+                    <article class="card">
+                        <h3 class="text-base">{{ $question->title_ar }}</h3>
+
+                        @if ($question->body_ar)
+                            <p class="mt-2 text-sm leading-relaxed" style="color: var(--text-muted);">
+                                {{ $question->body_ar }}
+                            </p>
+                        @endif
+                    </article>
+                @endforeach
+            </div>
+
+            <a href="{{ route('page', 'faq') }}"
+               class="mt-4 inline-flex items-center gap-1 text-sm no-underline" style="color: var(--accent);">
+                {{ __('sanabel.public.all_faq') }}
+                <x-brand.icon name="chevron-left" class="h-4 w-4" />
+            </a>
+        </section>
+    @endif
+
+    {{-- ---------- the news --------------------------------------------------
+         T-327 — it used to be a third of a row beside the association's two
+         cards. Their page gives it a band of its own at the foot, so it has
+         one.
+    --------------------------------------------------------------------- --}}
+    <section id="news" class="mt-10 scroll-mt-24">
+        <div class="flex items-end justify-between gap-3">
+            <div>
+                <h2 class="text-xl">{{ __('sanabel.public.news_updates') }}</h2>
+                <p class="mt-1 text-sm" style="color: var(--text-muted);">
+                    {{ __('sanabel.public.news_lead') }}
+                </p>
+            </div>
+
+            <a href="{{ route('news') }}" class="shrink-0 text-sm no-underline" style="color: var(--accent);">
+                {{ __('sanabel.public.more') }}
+            </a>
+        </div>
+
+        <div class="mt-4 grid gap-4 sm:grid-cols-2">
+            @forelse ($posts as $post)
+                <article class="card flex items-start gap-3">
+                    @if ($post->image)
+                        <img src="{{ Storage::disk('public')->url($post->image) }}" alt=""
+                             class="h-16 w-24 shrink-0 rounded-lg object-cover" loading="lazy">
+                    @endif
+
+                    <div class="min-w-0">
+                        <a href="{{ route('post', $post->slug) }}" class="text-sm font-medium no-underline">
+                            {{ $post->title_ar }}
+                        </a>
+                        <p class="tabular mt-1 text-xs" style="color: var(--text-muted);" dir="ltr">
+                            {{ $post->published_at?->format('Y/m/d') }}
+                        </p>
+                    </div>
+                </article>
+            @empty
+                <p class="card text-sm sm:col-span-2" style="color: var(--text-muted);">
+                    {{ __('sanabel.public.no_news') }}
+                </p>
+            @endforelse
+        </div>
+    </section>
 @endsection

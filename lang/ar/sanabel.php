@@ -3521,6 +3521,58 @@ return [
         'donate_for_month' => 'تبرع لتغطية :month',
         'next_month_on_file' => 'تغطية الشهر القادم تتم من صفحة الأسرة',
         'open_family_file' => 'افتح ملف الأسرة',
+        /*
+         | T-327 — the words of the approved front page, taken from their own
+         | file so the bands read as they drew them.
+         */
+        'giving_doors' => 'أبواب العطاء',
+        'giving_doors_lead' => 'اختر المجال الأقرب إلى نيتك, واطّلع على الحالات قبل المساهمة',
+        'principles_six' => 'ما الذي يجعل عطاءك مع سنابل الوفاء مختلفًا؟ المبادئ الستة المعتمدة',
+        /*
+         | T-327 — the drawer behind «☰» and the bar their page puts at the
+         | foot of a telephone. Both are on their approved file, and neither
+         | existed here.
+         */
+        'open_menu' => 'القائمة',
+        'close_menu' => 'إغلاق القائمة',
+        'menu' => [
+            'home' => 'الرئيسية',
+            'giving' => 'الكفالات وأبواب العطاء',
+            'health' => 'المسار الصحي',
+            'about' => 'من نحن',
+            'governance' => 'الحوكمة والشفافية',
+            'faq' => 'الأسئلة الشائعة',
+            'contact' => 'تواصل معنا',
+        ],
+        'tabbar' => [
+            // A household sees its own three; a donor sees the five below.
+            'file' => 'ملفّي',
+            'contact' => 'تواصل معنا',
+            'account' => 'حسابي',
+            'cases' => 'الحالات',
+            'basket' => 'سلة التبرع',
+            'gifts' => 'الهدايا',
+            'favourites' => 'المفضلة',
+        ],
+        'case_illustration_alt' => 'صورة تصنيفية توضيحية للحالة',
+        'numbers_heading' => 'سنابل الوفاء بالأرقام',
+        'numbers_lead' => 'الأثر الحقيقي يبدأ بمعلومات واضحة قابلة للتحقق',
+        'campaigns_lead' => 'مشروعات جماعية بأهداف ومتابعة معلنة',
+        'health_path_heading' => 'المسار الصحي',
+        'health_path_lead' => 'مساندة الأسر في الوصول إلى الخدمات الصحية وتخفيف الأعباء',
+        'know_more' => 'اعرف المزيد',
+        'health_support' => 'ساهم في المسار الصحي',
+        'health_provider_signup' => 'تسجيل مزود خدمة',
+        'path_learn_more' => 'تعرّف على المسار',
+        'kifaya_heading' => 'مسار الكفاية — من الحاجة إلى الاكتفاء',
+        'kifaya_support' => 'ساهم في مسار الكفاية',
+        'kifaya_image_alt' => 'مسار الكفاية: من الحاجة إلى الاكتفاء',
+        'know_us' => 'تعرّف علينا',
+        'know_us_lead' => 'المعلومات التي تحتاجها قبل أن تمنح ثقتك',
+        'donor_questions' => 'أسئلة تهم المتبرع',
+        'all_faq' => 'عرض باقي الأسئلة الشائعة',
+        'news_updates' => 'الأخبار والتحديثات',
+        'news_lead' => 'نشر أخبار المنصة بعد التحقق والموافقة على المحتوى',
         'what_sets_us_apart' => 'ما يميز سنابل الوفاء',
 
         'amount' => 'المبلغ',

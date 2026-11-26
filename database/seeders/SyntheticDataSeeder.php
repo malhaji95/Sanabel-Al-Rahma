@@ -743,42 +743,81 @@ class SyntheticDataSeeder extends Seeder
         ]);
     }
 
-    /** One published campaign, so the funding path has something to show. */
+    /*
+     | T-327 — four published campaigns, because the approved front page
+     | draws four and because every one of them carries the association's own
+     | artwork. They were two, one of which the demo then funds to its goal,
+     | so the band on the front page showed a single card where their design
+     | shows a row.
+     |
+     | The names and the pictures are theirs, off the approved page. Synthetic
+     | all the same (rule 11): the families behind them are generated.
+     */
     private function campaign(): void
     {
-        $case = Beneficiary::where('status', 'published')->orderBy('id')->first();
+        $published = Beneficiary::where('status', 'published')->orderBy('id')->get();
 
-        if (! $case || Campaign::exists()) {
+        if ($published->isEmpty()) {
             return;
         }
 
-        $second = Beneficiary::where('status', 'published')->orderBy('id')->skip(1)->first();
+        $restricted = Fund::byKey(Fund::RESTRICTED)->id;
 
-        if ($second) {
-            Campaign::create([
-                'beneficiary_id' => $second->id,
-                'title_ar' => 'ترميم سقف منزل قبل الشتاء',
-                'body_ar' => 'سقف المنزل غير صالح، والترميم لا يحتمل التأجيل إلى ما بعد الشتاء.',
-                'goal_amount' => 60_000,
-                'currency' => config('sanabel.currency'),
-                'status' => 'active',
-                'is_published' => true,
-                'surplus_policy_text_ar' => 'يوجَّه الفائض إلى ترميم منزل آخر في المنطقة نفسها.',
-                'fund_id' => Fund::byKey(Fund::RESTRICTED)->id,
-            ]);
+        foreach ([
+            [
+                'ترميم سقف منزل قبل الشتاء',
+                'سقف المنزل غير صالح، والترميم لا يحتمل التأجيل إلى ما بعد الشتاء.',
+                60_000,
+                'يوجَّه الفائض إلى ترميم منزل آخر في المنطقة نفسها.',
+                'images/campaigns/winter.webp',
+            ],
+            [
+                'عملية جراحية عاجلة',
+                'تحتاج الأسرة إلى تغطية تكلفة عملية جراحية لا يشملها الدعم الشهري.',
+                100_000,
+                'يوجَّه الفائض إلى حملة صحية مماثلة في المنطقة نفسها.',
+                'images/campaigns/cancer.webp',
+            ],
+            [
+                'ترميم مسجد في اللجاة',
+                'مسجد الحيّ متضرر، وترميمه يعيد إليه الصلاة والدرس.',
+                80_000,
+                'يوجَّه الفائض إلى ترميم مسجد آخر في المنطقة نفسها.',
+                'images/campaigns/mosque.webp',
+            ],
+            [
+                'إغاثة عاجلة',
+                'أسر في ظروف إنسانية صعبة تحتاج إغاثة لا تحتمل الانتظار.',
+                120_000,
+                'يوجَّه الفائض إلى إغاثة أسرة أخرى في المنطقة نفسها.',
+                'images/campaigns/relief.webp',
+            ],
+        ] as $index => [$title, $body, $goal, $surplus, $image]) {
+            Campaign::firstOrCreate(
+                ['title_ar' => $title],
+                [
+                    'beneficiary_id' => $published[$index % $published->count()]->id,
+                    'body_ar' => $body,
+                    'goal_amount' => $goal,
+                    'currency' => config('sanabel.currency'),
+                    'status' => 'active',
+                    'is_published' => true,
+                    'surplus_policy_text_ar' => $surplus,
+                    'fund_id' => $restricted,
+                    'image' => $image,
+                ],
+            );
         }
 
-        Campaign::create([
-            'beneficiary_id' => $case->id,
-            'title_ar' => 'عملية جراحية عاجلة',
-            'body_ar' => 'تحتاج الأسرة إلى تغطية تكلفة عملية جراحية لا يشملها الدعم الشهري.',
-            'goal_amount' => 100_000,
-            'currency' => config('sanabel.currency'),
-            'status' => 'active',
-            'is_published' => true,
-            'surplus_policy_text_ar' => 'يوجَّه الفائض إلى حملة صحية مماثلة في المنطقة نفسها.',
-            'fund_id' => Fund::byKey(Fund::RESTRICTED)->id,
-        ]);
+        // Artwork for rows an earlier run already created without any.
+        foreach ([
+            'ترميم سقف منزل قبل الشتاء' => 'images/campaigns/winter.webp',
+            'عملية جراحية عاجلة' => 'images/campaigns/cancer.webp',
+            'ترميم مسجد في اللجاة' => 'images/campaigns/mosque.webp',
+            'إغاثة عاجلة' => 'images/campaigns/relief.webp',
+        ] as $title => $image) {
+            Campaign::where('title_ar', $title)->whereNull('image')->update(['image' => $image]);
+        }
     }
 
     private function donors(): void

@@ -35,56 +35,106 @@ class HomePageSeeder extends Seeder
         $this->advantages();
         $this->footerLinks();
         $this->partners();
+        $this->aboutTiles();
+        $this->homeFaq();
     }
 
-    /**
-     * One slide, so the first band of the page is not an empty space on a
-     * fresh install. Banners already carry a picture, a title, a line and a
-     * destination; the association edits this one or adds its own beside it.
-     */
     /*
-     | T-99 — five slides, because the association asked for five on 15 October
-     | and because a carousel with one slide is a picture.
+     | T-327 — «تعرّف علينا»: the six doors the approved page puts between the
+     | paths and the questions. Each is a page the association already writes;
+     | what is new is the one line under each heading, because a reader
+     | choosing between six doors needs to know what is behind them before
+     | opening one.
      |
-     | Each one leads where its own words promise: the one that says «زكاة» to
-     | the zakat-eligible list, the one that says «كفالة» to the monthly list.
-     | A slide whose button goes somewhere other than its sentence is the
-     | commonest lie on a charity home page, and the easiest to avoid.
+     | Rows, so the line, the order and whether a door shows at all are the
+     | association's, and the glyph is the one the design drew.
+     */
+    private function aboutTiles(): void
+    {
+        foreach ([
+            ['الهيئة الشرعية', 'ضوابط صرف الزكاة والصدقات', '/sharia-board', 'scales'],
+            ['من نحن', 'رسالتنا ومبادئنا في خدمة المجتمع', '/about', 'info'],
+            ['تواصل معنا', 'قنوات التواصل الرسمية', '/contact', 'phone'],
+            ['الرقابة والتدقيق', 'فصل الصلاحيات ومراجعة العمليات', '/internal-oversight', 'shield-check'],
+            ['الشفافية المالية', 'إيضاح حركة التبرعات والمساعدات', '/financial-transparency', 'card'],
+            ['الأسئلة الشائعة', 'إجابات عن رحلة التبرع', '/faq', 'info'],
+        ] as $index => [$title, $body, $link, $icon]) {
+            $this->card('about_tile', $title, [
+                'body_ar' => $body,
+                'link' => $link,
+                'icon' => $icon,
+            ], $index + 1);
+        }
+    }
+
+    /*
+     | T-327 — the four questions the approved page puts on the front, chosen
+     | because they are the four a first-time donor asks before giving. The
+     | rest live on «الأسئلة الشائعة», and the band ends with the link to it.
+     */
+    private function homeFaq(): void
+    {
+        /*
+         | Two of the four answers on their file describe the file itself —
+         | «لا، هذه نسخة لمراجعة التصميم» — because it was a mock with no
+         | money behind it. Repeating that here would be a lie on a running
+         | site, so those two say what this system actually does.
+         */
+        foreach ([
+            [
+                'كيف تُحدَّد الأسر الأكثر احتياجاً؟',
+                'تُدرس بيانات الأسرة وتُراجع وفق عوامل الاحتياج المعتمدة, ثم تُرتَّب الأولويات دون محاباة.',
+            ],
+            [
+                'كيف أعرف أين يذهب تبرعي؟',
+                'يُوثَّق استلام التبرع وتخصيصه وصرفه, ويظهر في السجلات والتقارير وفق الصلاحيات وحماية الخصوصية.',
+            ],
+            [
+                'هل تُعرض صور أو أسماء الأسر؟',
+                'تُستخدم صور تصنيفية ثابتة, ولا تُنشر البيانات الشخصية الحسّاسة للأسر.',
+            ],
+            [
+                'كيف يصل المال إلى الأسرة؟',
+                'كلّ تحويل يمرّ بصندوق الجمعية ثم بأمر صرفٍ معتمد, ولا يدفع المتبرع إلى الأسرة مباشرةً.',
+            ],
+        ] as $index => [$question, $answer]) {
+            $this->card('faq_home', $question, [
+                'body_ar' => $answer,
+                'link' => '/faq',
+            ], $index + 1);
+        }
+    }
+
+    /*
+     | T-327 — «اشتغل على نفس الشكل تماما», 26 November.
      |
-     | Artwork: the design pack supplied five images, and the three slides it
-     | did not cover open on their colour band rather than on somebody else's
-     | photograph. The association replaces any of it from the panel without a
-     | release — image, words, destination, order and whether it shows at all.
+     | The approved page carries five slides, and they are the five wide
+     | messages of T-310 — technology, the money trail, fairness, the sharia
+     | rules and oversight — in that order and nothing beside them.
+     |
+     | Six older slides used to open the page in front of them. Two of those
+     | were never given artwork at all, and one, «كفالة يتيم», was drawn over
+     | the direct-payment banner, so the home page said one thing in words and
+     | another in the picture under them. They came from a time before the
+     | association sent its own art; the art has arrived, so they go.
+     |
+     | A fresh install no longer ships them, and an install that already has
+     | them is left with the rows intact and unpublished — a seeder does not
+     | destroy what the association may have edited, and an unpublished banner
+     | is one switch away from coming back.
      */
     private function heroSlide(): void
     {
-        foreach ([
-            ['بيدك.. تصنع الأمل', 'معاً نحيي حياة.. ونرسم مستقبلاً أفضل', 'images/home/hero-child.webp', '/cases'],
-            ['كفالة يتيم', 'كفالة شهرية تُغطّي احتياج أسرة، وتُجدَّد شهراً بشهر', 'images/home/direct-donation.webp', '/cases?supportType=monthly'],
-            ['زكاة مستحقة', 'ملفّات راجعتها الجمعية وأقرّت أن الزكاة تُصرف عليها', null, '/cases?zakat=1'],
-            ['علاج مريض', 'تكلفة علاجٍ محسوبة، وإثبات صرفٍ مرفوع', 'images/home/medical.webp', '/cases?supportType=one_time'],
-            ['حملاتنا المفتوحة', 'هدفٌ معلن، وما جُمع منه، وسياسة الفائض مكتوبة', null, '/campaigns'],
-            /*
-             | T-253 — their own banner for their own page, sent together on
-             | 4 November. The five other wide messages in the same pack are
-             | deliberately not here: which of them belongs in the carousel,
-             | and in what order, is a row on the association's own screen.
-             */
-            ['مسار الكفاية', 'من الحاجة إلى القدرة، ثم الاستقرار', 'images/banners/sufficiency-path.webp', '/sufficiency-path'],
-        ] as $index => [$title, $body, $image, $link]) {
-            Banner::firstOrCreate(
-                ['title_ar' => $title],
-                [
-                    'body_ar' => $body,
-                    'image' => $image,
-                    'link' => $link,
-                    'is_published' => true,
-                    'sort_order' => $index + 1,
-                ],
-            );
-        }
-
         $this->wideMessages();
+
+        Banner::whereIn('title_ar', [
+            'بيدك.. تصنع الأمل',
+            'كفالة يتيم',
+            'زكاة مستحقة',
+            'علاج مريض',
+            'حملاتنا المفتوحة',
+            'مسار الكفاية',
+        ])->update(['is_published' => false]);
     }
 
     /*
@@ -176,49 +226,49 @@ class HomePageSeeder extends Seeder
          | and a heading leading to a page that cannot do what it says is
          | worse than its absence. T-241 and T-242 built it.
          */
+        /*
+         | T-327 — «اشتغل على نفس الشكل تماما», 26 November, over the approved
+         | front page. Its bar carries six headings and not eight: the two the
+         | association had on it that the design drops («الرئيسية», because the
+         | logo already goes home, and «الأخبار», because the news has a band of
+         | its own at the foot of the page) come out, and «المسار الصحي» goes in.
+         |
+         | Their file is one page with anchors, so «المسار الصحي» points at the
+         | band. The other five have pages of their own and keep them: an anchor
+         | where a page exists would strand a reader who is not on the home page,
+         | and the bar is drawn on every page of the site.
+         |
+         | Rows, not code: the association reorders, renames or hides any of
+         | them from the panel, and what is written here is only what a fresh
+         | install ships with.
+         */
         foreach ([
-            ['الرئيسية', '/'],
-            ['الحالات', '/cases'],
-            /*
-             | T-232 — «نعتمد إضافة الكفالات إلى التنقل العلوي», 3 November.
-             |
-             | The row was here already, and it pointed at the reading we
-             | held before they decided otherwise: «monthly support is what
-             | a sponsorship is», so it opened the whole monthly list. Since
-             | T-228 a sponsorship is its own page behind the association's
-             | own doors, and that is where the word belongs.
-             |
-             | The bar is content (T-89), so on a system already running
-             | this row is edited from the panel; what changes here is only
-             | what a fresh install ships with.
-             */
-            ['الكفالات', '/sponsorships'],
-            /*
-             | T-242 — «هدية» was named in the bar the association drew on
-             | 15 October and left out of it ever since, because the note at
-             | the top of this file was true: there was no gift in the
-             | system, and a heading leading to a page that cannot do what it
-             | says is worse than its absence. The row goes in the day the
-             | feature does, and this is that day.
-             */
-            ['هدية', '/gift'],
-            /*
-             | T-253 — «مسار الكفاية» joins the bar the day its page does.
-             | The association sent its text and its banner on 4 November,
-             | and the same rule holds as for «هدية»: a heading goes in when
-             | the thing behind it exists, not before.
-             */
+            ['المسار الصحي', '/#health'],
             ['مسار الكفاية', '/sufficiency-path'],
-            // The visitor's word is «فزعة» (T-232); the address does not
-            // move, because their decision was the name and nothing else.
+            ['الحالات', '/cases'],
             ['فزعة', '/campaigns'],
-            // T-98 — the files the association has judged zakat may be spent
-            // on. One list, one ranking, one set of masked cards.
-            ['زكاة مستحقة', '/cases?zakat=1'],
-            ['الأخبار', '/news'],
+            ['الزكاة المستحقة', '/cases?zakat=1'],
+            ['الهدايا', '/gift'],
         ] as $index => [$title, $link]) {
             $this->card('nav_link', $title, ['link' => $link], $index + 1);
         }
+
+        /*
+         | The bar is rows, and rows already on a running system keep whatever
+         | the association last set on them — so the six are given their place
+         | and their switch here, and every other heading that used to be on
+         | the bar is hidden rather than deleted. A hidden row is one switch
+         | away from coming back; a deleted one is a support call.
+         */
+        $wanted = ['المسار الصحي', 'مسار الكفاية', 'الحالات', 'فزعة', 'الزكاة المستحقة', 'الهدايا'];
+
+        foreach ($wanted as $index => $title) {
+            ContentCard::where('block', 'nav_link')->where('title_ar', $title)
+                ->update(['sort_order' => $index + 1, 'is_published' => true]);
+        }
+
+        ContentCard::where('block', 'nav_link')->whereNotIn('title_ar', $wanted)
+            ->update(['is_published' => false]);
     }
 
     /** The two offers under the hero. */
@@ -233,12 +283,17 @@ class HomePageSeeder extends Seeder
          | And the card promised an act and delivered a list: it now lands on
          | the act, with no file to pick.
          */
+        /*
+         | T-327 — their approved page puts «إهداء التبرع» first and «الدفع
+         | المباشر» second, which on a right-to-left page is gift on the right.
+         | The order here is the order they drew.
+         */
         $this->card('feature', 'تبرع سريع', [
             'body_ar' => 'ساهم الآن ونحن نوصلها لأكثر الحالات حاجة',
             'image' => 'images/home/direct-donation.webp',
             'icon' => 'hand-heart',
             'link' => '/donate',
-        ], 1);
+        ], 2);
 
         $this->card('feature', 'هدية', [
             'body_ar' => 'أهدِ ما تحب .. يصنع سعادة لغيرك',
@@ -247,7 +302,7 @@ class HomePageSeeder extends Seeder
             // T-242 — it had no link, because there was no gift anywhere in
             // the system. There is one now.
             'link' => '/gift',
-        ], 2);
+        ], 1);
     }
 
     /** The ways to give. */

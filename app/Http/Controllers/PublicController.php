@@ -38,7 +38,7 @@ class PublicController extends Controller
         $campaigns = Campaign::where('is_published', true)
             ->where('status', 'active')
             ->with('beneficiary')
-            ->orderByDesc('id')->take(3)->get();
+            ->orderByDesc('id')->take(4)->get();
 
         /*
          | T-89 — every band of the page is a row the association edits, and
@@ -66,8 +66,13 @@ class PublicController extends Controller
             'features' => $cards->get('feature', collect()),
             'tiles' => $cards->get('tile', collect()),
             'advantages' => $cards->get('advantage', collect()),
-            // T-99 — at the foot of the page only, and absent until they add one.
-            'partners' => $cards->get('partner', collect()),
+            /*
+             | T-327 — the six doors of «تعرّف علينا» and the four questions
+             | the approved page puts on the front. Both are rows in the same
+             | query as every other band, so neither costs a trip of its own.
+             */
+            'aboutTiles' => $cards->get('about_tile', collect()),
+            'homeFaq' => $cards->get('faq_home', collect()),
             // The two cards at the foot of the page: the association's own
             // words, on pages it already edits.
             'about' => Page::where('slug', 'about')->where('is_published', true)->first(),

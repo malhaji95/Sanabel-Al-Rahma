@@ -13,7 +13,9 @@
                 'grid grid-cols-2',
                 'sm:grid-cols-3' => $figures->count() === 3,
                 'sm:grid-cols-4' => $figures->count() === 4,
-                'sm:grid-cols-5' => $figures->count() >= 5,
+                // T-327 — six figures read as 3x2 on their page, not as one
+                // row of six squeezed across the width.
+                'sm:grid-cols-3' => $figures->count() >= 5,
             ])>
                 @foreach ($figures as [$key, $value, $label, $icon, $colour, $isMoney])
                     <div class="border-b border-s p-4 text-center last:border-b-0 sm:border-b-0"

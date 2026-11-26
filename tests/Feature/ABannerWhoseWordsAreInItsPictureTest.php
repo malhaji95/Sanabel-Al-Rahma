@@ -46,13 +46,24 @@ it('shows artwork that carries its own words bare, and links the whole slide', f
 });
 
 it('still lays a heading and a scrim over a photograph', function () {
+    /*
+     | T-327 unpublished the six slides that came before the association's own
+     | artwork, and «بيدك.. تصنع الأمل» was one of them — so the photograph
+     | this test is about is now made here rather than looked up. The rule it
+     | guards is unchanged: a picture that does not carry its own words still
+     | gets the heading and the scrim drawn over it.
+     */
     Banner::query()->update(['is_published' => false]);
 
-    $photo = Banner::where('title_ar', 'بيدك.. تصنع الأمل')->firstOrFail();
-
-    expect($photo->text_in_image)->toBeFalse();
-
-    $photo->update(['is_published' => true]);
+    $photo = Banner::create([
+        'title_ar' => 'بيدك.. تصنع الأمل',
+        'body_ar' => 'معاً نحيي حياة',
+        'image' => 'images/home/hero-child.webp',
+        'link' => '/cases',
+        'text_in_image' => false,
+        'is_published' => true,
+        'sort_order' => 1,
+    ]);
 
     $html = $this->get('/')->assertOk()->getContent();
 
@@ -81,9 +92,34 @@ it('seeds the five wide messages, each pointing where its own words promise', fu
     }
 });
 
-it('leaves the five behind the slides that were already there', function () {
-    $first = Banner::where('text_in_image', false)->max('sort_order');
-    $wide = Banner::where('text_in_image', true)->min('sort_order');
+it('leaves the association’s own artwork alone in the hero', function () {
+    /*
+     | T-310 put the five wide messages behind the six slides that were
+     | already there. T-327 took those six off the page — their approved
+     | front page carries these five and nothing else — so what this test
+     | asks has changed with it: not «are they last», but «are they all».
+     */
+    $published = Banner::where('is_published', true)->get();
 
-    expect($wide)->toBeGreaterThan($first);
+    expect($published)->toHaveCount(5)
+        ->and($published->every(fn ($banner) => $banner->text_in_image))->toBeTrue()
+        ->and($published->pluck('title_ar')->all())->toContain('التقنية في خدمة العطاء');
+
+    // A fresh install never makes the six at all, and an install that
+    // already has one keeps the row and loses only the switch — so the
+    // association can bring it back without us.
+    Banner::create([
+        'title_ar' => 'بيدك.. تصنع الأمل',
+        'image' => 'images/home/hero-child.webp',
+        'link' => '/cases',
+        'is_published' => true,
+        'sort_order' => 1,
+    ]);
+
+    (new HomePageSeeder)->run();
+
+    $old = Banner::where('title_ar', 'بيدك.. تصنع الأمل')->first();
+
+    expect($old)->not->toBeNull()
+        ->and($old->is_published)->toBeFalse();
 });

@@ -27,7 +27,7 @@ beforeEach(function () {
 
 it('gives the slides one track, and the track the height', function () {
     expect($this->published)->toBeGreaterThan(1)
-        ->and(substr_count($this->body, 'relative h-[180px] w-full sm:h-[300px] lg:h-[380px]'))->toBe(1)
+        ->and(substr_count($this->body, 'relative aspect-[8/3] w-full'))->toBe(1)
         // The picture fills the track instead of setting its own height, which
         // is what let a second slide add to it.
         ->and($this->body)->toContain('h-full w-full object-cover')

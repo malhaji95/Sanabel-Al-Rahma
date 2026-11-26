@@ -28,10 +28,16 @@ it('shows the approved artwork above the association’s own cards', function ()
         ->assertSee('images/home/health-path.webp')
         ->assertSee(__('sanabel.health_path.banner_alt'));
 
-    // Above «من نحن», which is where the association asked for it.
+    /*
+     | Above «من نحن», which is where the association asked for it.
+     |
+     | T-327 — against the band and not against the words: «من نحن» is now a
+     | door in the drawer too, and the drawer is in the header, so the bare
+     | phrase first appears long before any band of the page.
+     */
     $html = $page->getContent();
 
-    expect(strpos($html, 'health-path.webp'))->toBeLessThan(strpos($html, 'من نحن'));
+    expect(strpos($html, 'health-path.webp'))->toBeLessThan(strpos($html, 'id="about"'));
 });
 
 it('gives each drawn button somewhere real to go', function () {
